@@ -1,5 +1,4 @@
-/* 導入基礎樣式 */
-@import url('base.css');
+/* 將這些樣式添加到 auth.css 中，修改原有的容器和圖片設置 */
 
 /* 登入/註冊區塊統一樣式 */
 .login-section, .register-section {
@@ -43,7 +42,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5); /* 加深背景遮罩 */
+    background: rgba(0, 0, 0, 0.4); /* 略微加深背景遮罩 */
     z-index: 1;
 }
 
@@ -62,7 +61,6 @@
     font-size: 32px;
     margin-bottom: 15px;
     color: #ffffff; /* 確保標題是白色 */
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* 添加陰影增加可讀性 */
 }
 
 .login-image-content p, .register-image-content p {
@@ -70,34 +68,6 @@
     color: #f6f6f6; /* 淺色系文字 */
     opacity: 0.9;
     margin-bottom: 20px;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); /* 輕微陰影 */
-}
-
-/* 確保列表項文字也是淺色 */
-.benefits-list {
-    padding-left: 0;
-    list-style: none;
-}
-
-.benefits-list li {
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    color: #f6f6f6;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.benefits-list li i {
-    background-color: rgba(255, 255, 255, 0.25);
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 10px;
-    font-size: 12px;
-    color: #ffffff;
 }
 
 /* 統一表單容器 */
@@ -145,263 +115,32 @@
     font-size: 15px;
 }
 
-.form-group {
-    margin-bottom: 20px;
+/* 適應性調整 */
+@media (max-width: 991px) {
+    .login-card, .register-card {
+        flex-direction: column;
+    }
+    
+    .login-image, .register-image {
+        min-height: 300px;
+    }
 }
 
-.form-group label {
-    font-weight: 500;
-    margin-bottom: 8px;
-    display: block;
+@media (max-width: 767px) {
+    .login-section, .register-section {
+        padding: 100px 0 50px;
+    }
+    
+    .login-image-content h2, .register-image-content h2 {
+        font-size: 24px;
+    }
+    
+    .login-form-container, .register-form-container {
+        padding: 20px;
+    }
 }
 
-.form-control {
-    height: 50px;
-    padding: 10px 15px;
-    border-radius: 10px;
-    border: 1px solid #ddd;
-    transition: all 0.3s ease;
-}
-
-.form-control:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.2rem rgba(157, 127, 134, 0.25);
-}
-
-textarea.form-control {
-    height: auto;
-    min-height: 100px;
-}
-
-.password-field {
-    position: relative;
-}
-
-.password-toggle {
-    position: absolute;
-    top: 50%;
-    right: 15px;
-    transform: translateY(-50%);
-    border: none;
-    background: none;
-    color: #777;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.password-toggle:hover {
-    color: var(--primary-color);
-}
-
-.login-options {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 25px;
-}
-
-.remember-me {
-    display: flex;
-    align-items: center;
-}
-
-.forgot-password {
-    color: var(--primary-color);
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 14px;
-    transition: all 0.3s ease;
-}
-
-.forgot-password:hover {
-    color: #86686F;
-    text-decoration: underline;
-}
-
-.login-btn {
-    height: 50px;
-    border-radius: 10px;
-    background-color: var(--primary-color);
-    border: none;
-    color: white;
-    font-weight: 600;
-    font-size: 16px;
-    transition: all 0.3s ease;
-    margin-bottom: 15px;
-}
-
-.login-btn:hover {
-    background-color: #86686F;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.register-btn {
-    height: 50px;
-    border-radius: 10px;
-    background-color: transparent;
-    border: 2px solid var(--primary-color);
-    color: var(--primary-color);
-    font-weight: 600;
-    font-size: 16px;
-    transition: all 0.3s ease;
-}
-
-.register-btn:hover {
-    background-color: #f8f3f4;
-    transform: translateY(-2px);
-}
-
-.or-divider {
-    position: relative;
-    text-align: center;
-    margin: 25px 0;
-}
-
-.or-divider::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background-color: #ddd;
-    z-index: 1;
-}
-
-.or-divider span {
-    display: inline-block;
-    padding: 0 15px;
-    background-color: white;
-    position: relative;
-    z-index: 2;
-    color: #777;
-    font-size: 14px;
-}
-
-.social-login {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-}
-
-.social-btn {
-    width: 50px;
-    height: 50px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #ddd;
-    background-color: white;
-    color: #555;
-    font-size: 18px;
-    transition: all 0.3s ease;
-}
-
-.social-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.google-btn:hover {
-    color: #DB4437;
-    border-color: #DB4437;
-}
-
-.facebook-btn:hover {
-    color: #4267B2;
-    border-color: #4267B2;
-}
-
-.apple-btn:hover {
-    color: #000;
-    border-color: #000;
-}
-
-.login-footer {
-    text-align: center;
-    margin-top: 25px;
-    font-size: 14px;
-    color: #777;
-}
-
-.login-footer a {
-    color: var(--primary-color);
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.login-footer a:hover {
-    text-decoration: underline;
-}
-
-/* 按鈕樣式 */
-.form-btn-group {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 30px;
-}
-
-.btn-prev {
-    background-color: transparent;
-    border: 1px solid #ddd;
-    color: #777;
-    padding: 12px 25px;
-    border-radius: 10px;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}
-
-.btn-prev:hover {
-    background-color: #f8f9fa;
-    color: var(--dark-color);
-}
-
-.btn-next, .btn-submit {
-    background-color: var(--primary-color);
-    border: none;
-    color: white;
-    padding: 12px 25px;
-    border-radius: 10px;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}
-
-.btn-next:hover, .btn-submit:hover {
-    background-color: #8a6e74;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-}
-
-/* 照片上傳樣式 */
-.photo-upload-container {
-    margin-bottom: 15px;
-}
-
-.custom-file-upload {
-    display: block;
-    width: 100%;
-    padding: 15px;
-    background-color: #f8f9fa;
-    border: 2px dashed #ddd;
-    border-radius: 10px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.custom-file-upload:hover {
-    border-color: var(--primary-color);
-    background-color: var(--primary-light);
-}
-
-.custom-file-upload i {
-    font-size: 24px;
-    margin-bottom: 8px;
-    color: #777;
-}
-
+/* 統一照片預覽樣式 */
 .photo-preview-container {
     display: flex;
     flex-wrap: wrap;
@@ -425,45 +164,6 @@ textarea.form-control {
     object-fit: cover;
 }
 
-.photo-preview-item .delete-btn {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 20px;
-    height: 20px;
-    background-color: rgba(255, 255, 255, 0.8);
-    color: #dc3545;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-.photo-preview-item .file-name {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    color: white;
-    font-size: 10px;
-    padding: 2px 5px;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    white-space: nowrap;
-}
-
-.upload-progress {
-    margin-top: 10px;
-}
-
-.upload-info {
-    display: flex;
-    justify-content: space-between;
-}
-
 /* 拒絕原因區塊統一樣式 */
 .rejection-reason {
     background-color: #f8d7da;
@@ -482,156 +182,4 @@ textarea.form-control {
 .rejection-reason p {
     color: #721c24;
     margin-bottom: 0;
-}
-
-/* 照片載入錯誤樣式 */
-.photo-preview-item.load-error {
-    border: 2px solid #dc3545;
-}
-
-.photo-preview-item.load-error::after {
-    content: "載入錯誤";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(220, 53, 69, 0.8);
-    color: white;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 10px;
-}
-
-/* 驗證相關樣式 */
-.error-feedback {
-    display: none;
-    width: 100%;
-    margin-top: .25rem;
-    font-size: 14px;
-    color: var(--danger-color);
-}
-
-.form-control.is-invalid {
-    border-color: var(--danger-color);
-}
-
-.form-control.is-invalid + .error-feedback {
-    display: block;
-}
-
-/* 優惠核銷區塊 */
-.verification-info {
-    margin-top: 30px;
-    background-color: #fff;
-    border-radius: 15px;
-    padding: 25px;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-}
-
-.verification-info h4 {
-    color: var(--primary-color);
-    margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-}
-
-.verification-info h4 i {
-    margin-right: 10px;
-}
-
-.verification-steps {
-    margin-top: 15px;
-}
-
-.verification-step {
-    display: flex;
-    margin-bottom: 15px;
-}
-
-.step-number {
-    width: 25px;
-    height: 25px;
-    background-color: var(--primary-light);
-    color: var(--primary-color);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 14px;
-    margin-right: 15px;
-    flex-shrink: 0;
-}
-
-.step-content {
-    flex: 1;
-}
-
-.step-content h5 {
-    font-size: 16px;
-    margin-bottom: 5px;
-    color: var(--dark-color);
-}
-
-.step-content p {
-    color: #777;
-    font-size: 14px;
-    margin-bottom: 0;
-}
-
-.verification-cta {
-    margin-top: 20px;
-    text-align: center;
-}
-
-.try-verification-btn {
-    padding: 10px 20px;
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    display: inline-block;
-}
-
-.try-verification-btn:hover {
-    background-color: #86686F;
-    transform: translateY(-2px);
-    color: white;
-}
-
-/* 適應性調整 */
-@media (max-width: 991px) {
-    .login-card, .register-card {
-        flex-direction: column;
-    }
-    
-    .login-image, .register-image {
-        min-height: 300px;
-    }
-    
-    .login-form-container, .register-form-container {
-        padding: 20px;
-    }
-}
-
-@media (max-width: 767px) {
-    .login-section, .register-section {
-        padding: 100px 0 50px;
-    }
-    
-    .login-image-content h2, .register-image-content h2 {
-        font-size: 24px;
-    }
-    
-    .form-btn-group {
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .btn-prev, .btn-submit {
-        width: 100%;
-    }
 }
