@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="base.css">
+
     <link rel="stylesheet" href="auth.css">
     <!-- Favicon -->
     <link rel="icon" href="favicon.ico" type="image/x-icon">
@@ -601,29 +601,6 @@
     <script>
         // 全局變數
         window.uploadedFiles = [];
-        
-        // 照片上傳功能
-        document.addEventListener('DOMContentLoaded', function() {
-            const businessLicenseFile = document.getElementById('businessLicenseFile');
-            const photoPreviewContainer = document.getElementById('photoPreviewContainer');
-            const uploadProgress = document.getElementById('uploadProgress');
-            const uploadCountElement = document.getElementById('uploadCount');
-            const uploadLabel = document.getElementById('uploadLabel');
-            
-            // 配置參數
-            const MAX_UPLOAD_COUNT = 5; // 最大上傳張數
-            const MAX_FILE_SIZE_MB = 5; // 每個文件最大 5MB
-            
-            // 更新上傳計數
-            function updateUploadCount() {
-                uploadCountElement.textContent = window.uploadedFiles.length;
-                
-                if (window.uploadedFiles.length >= MAX_UPLOAD_COUNT) {
-                    uploadLabel.style.display = 'none';
-                } else {
-                    uploadLabel.style.display = 'block';
-                }
-            }
             
             // 處理文件上傳
             document.addEventListener('DOMContentLoaded', function() {
