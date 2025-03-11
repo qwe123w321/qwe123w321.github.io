@@ -3,7 +3,6 @@
 
 /* 登入/註冊區塊樣式 */
 /* 店家登入區塊樣式 */
-
 .login-section {
     padding: 120px 0 80px;
     min-height: 100vh;
@@ -11,23 +10,23 @@
     position: relative;
 }
 
-.login-container, .register-container  {
+.login-container {
     max-width: 1000px;
     margin: 0 auto;
     position: relative;
     z-index: 1;
 }
 
-.login-card, .register-card  {
+.login-card {
     background-color: white;
     border-radius: 20px;
     overflow: hidden;
     box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
-    height: 650px;
+    height: 600px;
 }
 
-.login-image, .register-image  {
-    height: 650px;
+.login-image {
+    height: 600px;
     background-image: url('cafe-interior.jpg');
     background-size: cover;
     background-position: center;
@@ -93,12 +92,10 @@
     color: #ffffff; /* 確保為白色 */
 }
 
-.login-form-container, .register-form-container  {
-    height: 650px; /* 固定高度為600px */
+.login-form-container {
+    height: 600px; /* 固定高度為600px */
     overflow-y: auto; /* 內容超出時顯示垂直滾動條 */
     padding: 30px 40px;
-    display: flex;
-    flex-direction: column;
 }
 
 .login-form-header {
@@ -423,7 +420,7 @@
 /* 響應式調整 */
 @media (max-width: 991px) {
     .login-image {
-        height: 600px;
+        min-height: 300px;
         background-position: center;
     }
     
