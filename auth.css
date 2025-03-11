@@ -27,7 +27,7 @@
 }
 
 .login-image, .register-image  {
-    height: 650px;
+    height: 1000px;
     background-image: url('cafe-interior.jpg');
     background-size: cover;
     background-position: center;
