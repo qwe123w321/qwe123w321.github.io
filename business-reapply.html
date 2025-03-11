@@ -323,6 +323,29 @@
             }
         }
     </style>
+    <Script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const style = document.createElement('style');
+        style.textContent = `
+            .photo-preview-item.load-error {
+                border: 2px solid #dc3545;
+            }
+            .photo-preview-item.load-error::after {
+                content: "載入錯誤";
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(220, 53, 69, 0.8);
+                color: white;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 10px;
+            }
+        `;
+        document.head.appendChild(style);
+    });
+    </Script>
 </head>
 <body>
     <!-- 導航欄 -->
@@ -1093,27 +1116,48 @@
                 window.uploadedFiles = [];
             }
             
+            console.log("載入照片URLs:", licenseUrls); // 調試用
+            
             // 創建已有照片的預覽
             licenseUrls.forEach((url, index) => {
-                const fileId = `existing-file-${Date.now()}-${index}`;
-                
-                // 使用新的函數提取文件名
-                const fileName = getFileNameFromFirebaseUrl(url) || `文件${index + 1}`;
-                
-                // 確保URL是有效的
-                let displayUrl = url;
-                // 檢查URL是否有效
-                if (!url.startsWith('http')) {
-                    // 如果URL不是以http開頭，嘗試構建完整URL
-                    console.warn('URL不完整，可能需要使用Firebase Storage Reference獲取完整URL');
-                    // 這裡不修改URL，因為如果不是完整URL，應該通過Firebase獲取
+                // 正確解析 Firebase Storage URL 中的文件名
+                let fileName = '';
+                try {
+                    // 嘗試使用 URL 對象解析
+                    const urlObj = new URL(url);
+                    const pathname = urlObj.pathname;
+                    // 如果是 Firebase Storage URL (包含 /o/ 路徑)
+                    if (pathname.includes('/o/')) {
+                        const encodedFilePath = pathname.split('/o/')[1];
+                        const decodedPath = decodeURIComponent(encodedFilePath);
+                        fileName = decodedPath.split('/').pop();
+                    } else {
+                        // 如果不是標準格式，使用基本方法
+                        fileName = url.split('/').pop().split('?')[0];
+                    }
+                } catch (e) {
+                    // 如果 URL 解析失敗，嘗試直接從字符串解析
+                    try {
+                        const decodedUrl = decodeURIComponent(url);
+                        fileName = decodedUrl.split('/').pop();
+                    } catch (error) {
+                        // 最後回退到索引命名
+                        fileName = `文件${index + 1}`;
+                    }
                 }
+                
+                // 如果仍然獲取不到文件名，使用索引命名
+                if (!fileName || fileName.includes('%2F')) {
+                    fileName = `文件${index + 1}`;
+                }
+                
+                const fileId = `existing-file-${Date.now()}-${index}`;
                 
                 // 添加到上傳文件列表
                 window.uploadedFiles.push({
                     id: fileId,
                     fileName: fileName,
-                    objectURL: displayUrl,
+                    objectURL: url,
                     existingUrl: url // 標記為已存在的URL
                 });
                 
@@ -1121,15 +1165,35 @@
                 previewItem.className = 'photo-preview-item';
                 previewItem.id = fileId;
                 
-                // 判斷文件類型 (根據文件名)
-                if (fileName.toLowerCase().match(/\.(jpeg|jpg|gif|png)$/i)) {
-                    // 圖片預覽
+                // 判斷文件類型
+                const isImage = fileName.toLowerCase().match(/\.(jpeg|jpg|gif|png)$/i);
+                const isPdf = fileName.toLowerCase().includes('.pdf');
+                
+                if (isImage) {
+                    // 圖片預覽 - 確保URL是完整的
                     previewItem.innerHTML = `
-                        <img src="${displayUrl}" alt="${fileName}" onerror="this.src='https://via.placeholder.com/100x100?text=載入失敗'">
+                        <img src="${url}" alt="${fileName}" onerror="this.src='https://via.placeholder.com/100x100?text=載入失敗'">
                         <div class="file-name">${fileName}</div>
                         <div class="delete-btn"><i class="fas fa-times"></i></div>
                     `;
-                } else if (fileName.toLowerCase().includes('.pdf')) {
+                    
+                    // 添加額外的調試信息
+                    console.log(`載入圖片: ${fileName}, URL: ${url}`);
+                    
+                    // 確保圖片正確加載
+                    const img = previewItem.querySelector('img');
+                    img.addEventListener('load', function() {
+                        console.log(`圖片 ${fileName} 加載成功`);
+                    });
+                    
+                    img.addEventListener('error', function() {
+                        console.error(`圖片 ${fileName} 加載失敗`);
+                        // 顯示錯誤信息在預覽中
+                        this.parentNode.classList.add('load-error');
+                        this.parentNode.setAttribute('title', '圖片加載失敗，可能是權限問題或URL無效');
+                    });
+                    
+                } else if (isPdf) {
                     // PDF 預覽
                     previewItem.innerHTML = `
                         <div style="height:100%;display:flex;align-items:center;justify-content:center;background-color:#f8f9fa;">
@@ -1153,7 +1217,7 @@
                 const img = previewItem.querySelector('img');
                 if (img) {
                     img.addEventListener('click', function() {
-                        window.open(displayUrl, '_blank');
+                        window.open(url, '_blank');
                     });
                 }
                 
@@ -1193,6 +1257,11 @@
             }
             
             console.log('已載入 ' + licenseUrls.length + ' 張照片');
+        };
+
+        // 確保 getUploadedBusinessLicenseFiles 函數在全局範圍內可用
+        window.getUploadedBusinessLicenseFiles = function() {
+            return window.uploadedFiles || [];
         };
         
         // 提交重新申請
