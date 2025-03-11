@@ -1,102 +1,108 @@
-/* 導入基礎樣式 */
-@import url('base.css');
+/* 將這些樣式添加到 auth.css 中，修改原有的容器和圖片設置 */
 
-/* 登入/註冊區塊樣式 */
-/* 店家登入區塊樣式 */
-.login-section {
+/* 登入/註冊區塊統一樣式 */
+.login-section, .register-section {
     padding: 120px 0 80px;
     min-height: 100vh;
     background: linear-gradient(135deg, #F6EEE0 0%, #E8D8CF 100%);
     position: relative;
 }
 
-.login-container {
+.login-container, .register-container {
     max-width: 1000px;
     margin: 0 auto;
     position: relative;
     z-index: 1;
 }
 
-.login-card {
+/* 統一卡片容器樣式 */
+.login-card, .register-card {
     background-color: white;
     border-radius: 20px;
     overflow: hidden;
     box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: row;
 }
 
-.login-image {
-    height: 100%;
+/* 統一左側圖片區域 */
+.login-image, .register-image {
+    position: relative;
+    width: 100%;
+    min-height: 600px; /* 固定最小高度 */
     background-image: url('cafe-interior.jpg');
     background-size: cover;
     background-position: center;
-    position: relative;
 }
 
-.login-image::before {
+.login-image::before, .register-image::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.4); /* 略微加深背景遮罩 */
     z-index: 1;
 }
 
-.login-image-content {
+/* 統一圖片內容區域 */
+.login-image-content, .register-image-content {
     position: absolute;
     bottom: 40px;
     left: 30px;
     right: 30px;
-    color: white;
+    color: white; /* 確保文字為白色 */
     z-index: 2;
 }
 
-.login-image-content h2 {
+.login-image-content h2, .register-image-content h2 {
     font-family: 'Playfair Display', 'Noto Serif TC', serif;
     font-size: 32px;
     margin-bottom: 15px;
+    color: #ffffff; /* 確保標題是白色 */
 }
 
-.login-image-content p {
+.login-image-content p, .register-image-content p {
     font-size: 16px;
+    color: #f6f6f6; /* 淺色系文字 */
     opacity: 0.9;
     margin-bottom: 20px;
 }
 
-.benefits-list {
-    padding-left: 0;
-    list-style: none;
+/* 統一表單容器 */
+.login-form-container, .register-form-container {
+    padding: 30px 40px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto; /* 內容過多時允許滾動 */
 }
 
-.benefits-list li {
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
+/* 確保表單容器的滾動條美觀 */
+.login-form-container::-webkit-scrollbar, 
+.register-form-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
 }
 
-.benefits-list li i {
-    background-color: rgba(255, 255, 255, 0.2);
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 10px;
-    font-size: 12px;
+.login-form-container::-webkit-scrollbar-thumb, 
+.register-form-container::-webkit-scrollbar-thumb {
+    background-color: #ddd;
+    border-radius: 4px;
 }
 
-.login-form-container {
-    padding: 50px 40px;
+.login-form-container::-webkit-scrollbar-thumb:hover, 
+.register-form-container::-webkit-scrollbar-thumb:hover {
+    background-color: #ccc;
 }
 
-.login-form-header {
-    margin-bottom: 30px;
+/* 統一表單頭部樣式 */
+.login-form-header, .register-form-header {
+    margin-bottom: 20px;
     text-align: center;
 }
 
-.login-form-header h3 {
+.login-form-header h3, .register-form-header h3 {
     font-size: 28px;
     font-weight: 700;
     color: var(--dark-color);
@@ -104,193 +110,76 @@
     font-family: 'Playfair Display', 'Noto Serif TC', serif;
 }
 
-.login-form-header p {
+.login-form-header p, .register-form-header p {
     color: #777;
     font-size: 15px;
 }
 
-.form-group {
-    margin-bottom: 20px;
+/* 適應性調整 */
+@media (max-width: 991px) {
+    .login-card, .register-card {
+        flex-direction: column;
+    }
+    
+    .login-image, .register-image {
+        min-height: 300px;
+    }
 }
 
-.form-group label {
-    font-weight: 500;
-    margin-bottom: 8px;
-    display: block;
+@media (max-width: 767px) {
+    .login-section, .register-section {
+        padding: 100px 0 50px;
+    }
+    
+    .login-image-content h2, .register-image-content h2 {
+        font-size: 24px;
+    }
+    
+    .login-form-container, .register-form-container {
+        padding: 20px;
+    }
 }
 
-.form-control {
-    height: 50px;
-    padding: 10px 15px;
-    border-radius: 10px;
-    border: 1px solid #ddd;
-    transition: all 0.3s ease;
-}
-
-.form-control:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.2rem rgba(157, 127, 134, 0.25);
-}
-
-.password-field {
-    position: relative;
-}
-
-.password-toggle {
-    position: absolute;
-    top: 50%;
-    right: 15px;
-    transform: translateY(-50%);
-    border: none;
-    background: none;
-    color: #777;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.password-toggle:hover {
-    color: var(--primary-color);
-}
-
-.login-options {
+/* 統一照片預覽樣式 */
+.photo-preview-container {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.photo-preview-item {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    background-color: #f8f9fa; /* 確保非透明背景 */
+}
+
+.photo-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* 拒絕原因區塊統一樣式 */
+.rejection-reason {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 10px;
+    padding: 15px;
     margin-bottom: 25px;
 }
 
-.remember-me {
-    display: flex;
-    align-items: center;
-}
-
-.forgot-password {
-    color: var(--primary-color);
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 14px;
-    transition: all 0.3s ease;
-}
-
-.forgot-password:hover {
-    color: #86686F;
-    text-decoration: underline;
-}
-
-.login-btn {
-    height: 50px;
-    border-radius: 10px;
-    background-color: var(--primary-color);
-    border: none;
-    color: white;
-    font-weight: 600;
-    font-size: 16px;
-    transition: all 0.3s ease;
-    margin-bottom: 15px;
-}
-
-.login-btn:hover {
-    background-color: #86686F;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.register-btn {
-    height: 50px;
-    border-radius: 10px;
-    background-color: transparent;
-    border: 2px solid var(--primary-color);
-    color: var(--primary-color);
-    font-weight: 600;
-    font-size: 16px;
-    transition: all 0.3s ease;
-}
-
-.register-btn:hover {
-    background-color: #f8f3f4;
-    transform: translateY(-2px);
-}
-
-.or-divider {
-    position: relative;
-    text-align: center;
-    margin: 25px 0;
-}
-
-.or-divider::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background-color: #ddd;
-    z-index: 1;
-}
-
-.or-divider span {
-    display: inline-block;
-    padding: 0 15px;
-    background-color: white;
-    position: relative;
-    z-index: 2;
-    color: #777;
-    font-size: 14px;
-}
-
-.social-login {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-}
-
-.social-btn {
-    width: 50px;
-    height: 50px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #ddd;
-    background-color: white;
-    color: #555;
+.rejection-reason h4 {
+    color: #721c24;
+    margin-bottom: 10px;
     font-size: 18px;
-    transition: all 0.3s ease;
 }
 
-.social-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.google-btn:hover {
-    color: #DB4437;
-    border-color: #DB4437;
-}
-
-.facebook-btn:hover {
-    color: #4267B2;
-    border-color: #4267B2;
-}
-
-.apple-btn:hover {
-    color: #000;
-    border-color: #000;
-}
-
-.login-footer {
-    text-align: center;
-    margin-top: 25px;
-    font-size: 14px;
-    color: #777;
-}
-
-.login-footer a {
-    color: var(--primary-color);
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.login-footer a:hover {
-    text-decoration: underline;
+.rejection-reason p {
+    color: #721c24;
+    margin-bottom: 0;
 }
