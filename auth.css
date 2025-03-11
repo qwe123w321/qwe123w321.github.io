@@ -48,7 +48,7 @@
     bottom: 40px;
     left: 30px;
     right: 30px;
-    color: white;
+    color: #ffffff; /* 確保為白色 */
     z-index: 2;
 }
 
@@ -56,12 +56,14 @@
     font-family: 'Playfair Display', 'Noto Serif TC', serif;
     font-size: 32px;
     margin-bottom: 15px;
+    color: #f8f6f2; /* 米白色 */
 }
 
 .login-image-content p {
     font-size: 16px;
     opacity: 0.9;
     margin-bottom: 20px;
+    color: #ffffff; /* 確保為白色 */
 }
 
 .benefits-list {
@@ -73,6 +75,7 @@
     margin-bottom: 10px;
     display: flex;
     align-items: center;
+    color: #ffffff; /* 確保為白色 */
 }
 
 .benefits-list li i {
@@ -85,10 +88,13 @@
     justify-content: center;
     margin-right: 10px;
     font-size: 12px;
+    color: #ffffff; /* 確保為白色 */
 }
 
 .login-form-container {
     padding: 50px 40px;
+    height: 100%; /* 確保表單容器填充高度 */
+    overflow-y: auto; /* 如果內容超出，則顯示滾動條 */
 }
 
 .login-form-header {
@@ -293,4 +299,158 @@
 
 .login-footer a:hover {
     text-decoration: underline;
+}
+
+/* 狀態訊息樣式 */
+.status-alert {
+    margin-bottom: 20px;
+    border-radius: 10px;
+}
+
+/* 確保所有狀態訊息和通知不會影響整體排版 */
+.alert-success, 
+.alert-danger, 
+.alert-warning, 
+.alert-info {
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+/* 重新申請表單樣式 */
+.rejection-reason {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 25px;
+}
+
+.rejection-reason h4 {
+    color: #721c24;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+.rejection-reason p {
+    color: #721c24;
+    margin-bottom: 0;
+}
+
+/* 文件上傳樣式 */
+.photo-upload-container {
+    margin-bottom: 15px;
+}
+
+.custom-file-upload {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border: 2px dashed #ddd;
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.custom-file-upload:hover {
+    border-color: var(--primary-color);
+    background-color: var(--primary-light);
+}
+
+.custom-file-upload i {
+    font-size: 24px;
+    margin-bottom: 8px;
+    color: #777;
+}
+
+.photo-preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.photo-preview-item {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.photo-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photo-preview-item .delete-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 20px;
+    height: 20px;
+    background-color: rgba(255, 255, 255, 0.8);
+    color: #dc3545;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.photo-preview-item .file-name {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 10px;
+    padding: 2px 5px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* 響應式調整 */
+@media (max-width: 991px) {
+    .login-image {
+        min-height: 300px;
+        background-position: center;
+    }
+    
+    .login-form-container {
+        padding: 30px 20px;
+    }
+    
+    .benefits-list li {
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 767px) {
+    .login-section {
+        padding: 100px 0 50px;
+    }
+    
+    .login-image-content h2 {
+        font-size: 24px;
+    }
+    
+    .benefits-list li {
+        font-size: 13px;
+    }
+    
+    .form-btn-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .btn-prev, .btn-next, .btn-submit {
+        width: 100%;
+    }
 }
