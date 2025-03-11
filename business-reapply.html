@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>重新申請店家帳號 - BrewDate</title>
+    <!-- SEO 優化 meta 標籤 -->
+    <meta name="description" content="BREWDATE 商家合作平台 - 重新申請您的店家帳戶，增加曝光度，吸引更多顧客。">
+    <meta name="keywords" content="BREWDATE, 商家重新申請, 店家平台, 約會場所, 合作夥伴">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="base.css">
+    <!-- Favicon -->
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+
+    <!-- 添加 Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    
+    <!-- 錯誤處理和 Firebase 配置 -->
+    <script src="error-handler.js"></script>
+    <script src="firebase-config.js"></script>
+    
+    <!-- 引入多照片上傳功能所需的樣式 -->
+    <style>
+        /* 註冊區塊樣式 */
+        .register-section {
+            padding: 120px 0 80px;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #F6EEE0 0%, #E8D8CF 100%);
+            position: relative;
+        }
+        
+        .register-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .register-card {
+            background-color: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+        }
+        
+        .register-image {
+            height: 100%;
+            background-image: url('cafe-interior.jpg');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        
+        .register-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 1;
+        }
+        
+        .register-image-content {
+            position: absolute;
+            bottom: 40px;
+            left: 30px;
+            right: 30px;
+            color: white;
+            z-index: 2;
+        }
+        
+        .register-image-content h2 {
+            font-family: 'Playfair Display', 'Noto Serif TC', serif;
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+        
+        .register-image-content p {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+        
+        .register-form-container {
+            padding: 30px 40px;
+        }
+        
+        .register-form-header {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .register-form-header h3 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--dark-color);
+            margin-bottom: 10px;
+            font-family: 'Playfair Display', 'Noto Serif TC', serif;
+        }
+        
+        .register-form-header p {
+            color: #777;
+            font-size: 15px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            font-weight: 500;
+            margin-bottom: 8px;
+            display: block;
+        }
+        
+        .form-control {
+            height: 50px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(157, 127, 134, 0.25);
+        }
+        
+        textarea.form-control {
+            height: auto;
+            min-height: 100px;
+        }
+        
+        .form-btn-group {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+        
+        .btn-prev {
+            background-color: transparent;
+            border: 1px solid #ddd;
+            color: #777;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-prev:hover {
+            background-color: #f8f9fa;
+            color: var(--dark-color);
+        }
+        
+        .btn-next, .btn-submit {
+            background-color: var(--primary-color);
+            border: none;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-next:hover, .btn-submit:hover {
+            background-color: #8a6e74;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .error-feedback {
+            display: none;
+            width: 100%;
+            margin-top: .25rem;
+            font-size: 14px;
+            color: var(--danger-color);
+        }
+        
+        .form-control.is-invalid {
+            border-color: var(--danger-color);
+        }
+        
+        .form-control.is-invalid + .error-feedback {
+            display: block;
+        }
+        
+        /* 照片上傳樣式 */
+        .photo-upload-container {
+            margin-bottom: 15px;
+        }
+        
+        .custom-file-upload {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .custom-file-upload:hover {
+            border-color: var(--primary-color);
+            background-color: var(--primary-light);
+        }
+        
+        .custom-file-upload i {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: #777;
+        }
+        
+        .photo-preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .photo-preview-item {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .photo-preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .photo-preview-item .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 20px;
+            height: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            color: #dc3545;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .photo-preview-item .file-name {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            font-size: 10px;
+            padding: 2px 5px;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        
+        .upload-progress {
+            margin-top: 10px;
+        }
+        
+        .upload-info {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        /* 拒絕原因樣式 */
+        .rejection-reason {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .rejection-reason h4 {
+            color: #721c24;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .rejection-reason p {
+            color: #721c24;
+            margin-bottom: 0;
+        }
+        
+        /* 響應式調整 */
+        @media (max-width: 767px) {
+            .register-section {
+                padding: 100px 0 50px;
+            }
+            
+            .register-image-content h2 {
+                font-size: 24px;
+            }
+            
+            .form-btn-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .btn-prev, .btn-submit {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 導航欄 -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <img src="logo.png" alt="BREWDATE" height="40">
+                BREWDATE
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#home">首頁</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#features">特色</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#business">商家合作</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#download">下載APP</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="business-login.html">店家登入</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 重新申請區塊 -->
+    <section class="register-section">
+        <div class="container register-container">
+            <div class="register-card">
+                <div class="row g-0">
+                    <div class="col-lg-5 d-none d-lg-block">
+                        <div class="register-image">
+                            <div class="register-image-content">
+                                <h2>重新申請店家帳戶</h2>
+                                <p>修正您的資訊，並重新提交申請</p>
+                                <ul class="benefits-list">
+                                    <li><i class="fas fa-check"></i> 接觸更多高質量潛在客戶</li>
+                                    <li><i class="fas fa-check"></i> 提高店面曝光度和客流量</li>
+                                    <li><i class="fas fa-check"></i> 獲得詳細的數據分析報告</li>
+                                    <li><i class="fas fa-check"></i> 輕鬆管理店家資訊和優惠</li>
+                                    <li><i class="fas fa-check"></i> 增強品牌形象與影響力</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-7">
+                        <div class="register-form-container">
+                            <div class="register-form-header">
+                                <h3>重新申請店家審核</h3>
+                                <p>請修正您的資訊並重新提交申請</p>
+                            </div>
+                            
+                            <!-- 拒絕原因區塊 -->
+                            <div class="rejection-reason">
+                                <h4><i class="fas fa-exclamation-circle me-2"></i>審核未通過原因</h4>
+                                <p id="rejectReason">未提供拒絕原因</p>
+                            </div>
+                            
+                            <form id="businessReapplyForm">
+                                <!-- 店家資訊 -->
+                                <div class="form-group">
+                                    <label for="businessName">店家名稱 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="businessName" name="businessName" required>
+                                    <div class="error-feedback">請輸入店家名稱</div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="businessType">店家類型 <span class="text-danger">*</span></label>
+                                    <select class="form-select form-control" id="businessType" name="businessType" required>
+                                        <option value="" selected disabled>請選擇</option>
+                                        <option value="cafe">咖啡廳</option>
+                                        <option value="restaurant">餐廳</option>
+                                        <option value="bar">酒吧</option>
+                                        <option value="dessert">甜點店</option>
+                                        <option value="tea">茶飲店</option>
+                                        <option value="other">其他</option>
+                                    </select>
+                                    <div class="error-feedback">請選擇店家類型</div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="businessAddress">店家地址 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="businessAddress" name="businessAddress" required>
+                                    <div class="error-feedback">請輸入店家地址</div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="businessPhone">店家電話 <span class="text-danger">*</span></label>
+                                    <input type="tel" class="form-control" id="businessPhone" name="businessPhone" required>
+                                    <div class="error-feedback">請輸入有效的店家電話</div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="contactName">聯絡人姓名 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="contactName" name="contactName" required>
+                                    <div class="error-feedback">請輸入聯絡人姓名</div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="contactPhone">聯絡人手機 <span class="text-danger">*</span></label>
+                                    <input type="tel" class="form-control" id="contactPhone" name="contactPhone" required>
+                                    <div class="error-feedback">請輸入有效的聯絡人手機</div>
+                                </div>
+                                
+                                <!-- 營業執照上傳 - 使用多照片上傳組件 -->
+                                <div class="form-group">
+                                    <label for="businessLicense">上傳營業執照或相關證明 <span class="text-danger">*</span></label>
+                                    <div class="photo-upload-container">
+                                        <label for="businessLicenseFile" class="custom-file-upload" id="uploadLabel">
+                                            <i class="fas fa-upload d-block mb-2"></i>
+                                            <span>點擊上傳檔案或將檔案拖曳至此</span>
+                                            <span class="text-muted d-block mt-1">支援格式: JPG, PNG, PDF (最大檔案大小: 5MB)</span>
+                                        </label>
+                                        <input type="file" id="businessLicenseFile" style="display: none;" accept=".jpg,.jpeg,.png,.pdf" multiple>
+                                        
+                                        <!-- 預覽容器 -->
+                                        <div class="photo-preview-container" id="photoPreviewContainer">
+                                            <!-- 照片預覽將在這裡動態生成 -->
+                                        </div>
+                                        
+                                        <!-- 上傳進度 -->
+                                        <div class="upload-progress" id="uploadProgress" style="display: none;">
+                                            <div class="progress">
+                                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                            </div>
+                                            <small class="text-muted">上傳中...</small>
+                                        </div>
+                                        
+                                        <!-- 上傳資訊 -->
+                                        <div class="upload-info mt-2">
+                                            <span class="text-muted"><span id="uploadCount">0</span>/<span id="maxUploadCount">5</span> 張照片</span>
+                                        </div>
+                                    </div>
+                                    <div class="error-feedback">請上傳營業執照或相關證明</div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="termsCheck" name="termsCheck" required>
+                                        <label class="form-check-label" for="termsCheck">
+                                            我已閱讀並同意 <a href="#" target="_blank">使用條款</a> 和 <a href="#" target="_blank">隱私政策</a>
+                                        </label>
+                                        <div class="error-feedback">請確認同意使用條款和隱私政策</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-btn-group">
+                                    <a href="business-login.html" class="btn btn-prev">取消</a>
+                                    <button type="submit" class="btn btn-submit">提交重新申請</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 頁腳 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="footer-info">
+                        <h3>BREWDATE</h3>
+                        <p>用一杯咖啡的時間，找到真實的火花</p>
+                        <div class="social-links">
+                            <a href="#"><i class="fab fa-facebook-f"></i></a>
+                            <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <div class="footer-links">
+                        <h4>快速連結</h4>
+                        <ul>
+                            <li><a href="index.html#home">首頁</a></li>
+                            <li><a href="index.html#features">特色</a></li>
+                            <li><a href="index.html#business">商家合作</a></li>
+                            <li><a href="index.html#download">下載應用</a></li>
+                            <li><a href="index.html#faq">常見問題</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="footer-links">
+                        <h4>聯絡我們</h4>
+                        <ul>
+                            <li><i class="fas fa-envelope"></i> <a href="mailto:info@brewdate.com">info@brewdate.com</a></li>
+                            <li><i class="fas fa-phone"></i> <a href="tel:+886912345678">+886 912 345 678</a></li>
+                            <li><i class="fas fa-map-marker-alt"></i> <span>台北市信義區松仁路 100 號</span></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="footer-newsletter">
+                        <h4>店家訂閱</h4>
+                        <p>訂閱我們的電子報，獲取最新的活動和合作信息</p>
+                        <form>
+                            <div class="input-group">
+                                <input type="email" name="email" class="form-control" placeholder="您的電子郵件">
+                                <button class="btn btn-primary" type="submit">訂閱</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="copyright">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p>&copy; 2023 BREWDATE. 保留所有權利.</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="footer-bottom-links">
+                            <a href="#">隱私政策</a>
+                            <a href="#">使用條款</a>
+                            <a href="#">Cookie 政策</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    
+    <!-- 照片上傳功能 JS -->
+    <script>
+        // 全局變數
+        window.uploadedFiles = [];
+        
+        // 照片上傳功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const businessLicenseFile = document.getElementById('businessLicenseFile');
+            const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+            const uploadProgress = document.getElementById('uploadProgress');
+            const uploadCountElement = document.getElementById('uploadCount');
+            const uploadLabel = document.getElementById('uploadLabel');
+            
+            // 配置參數
+            const MAX_UPLOAD_COUNT = 5; // 最大上傳張數
+            const MAX_FILE_SIZE_MB = 5; // 每個文件最大 5MB
+            
+            // 更新上傳計數
+            function updateUploadCount() {
+                uploadCountElement.textContent = window.uploadedFiles.length;
+                
+                if (window.uploadedFiles.length >= MAX_UPLOAD_COUNT) {
+                    uploadLabel.style.display = 'none';
+                } else {
+                    uploadLabel.style.display = 'block';
+                }
+            }
+            
+            // 處理文件上傳
+            document.addEventListener('DOMContentLoaded', function() {
+            const businessLicenseFile = document.getElementById('businessLicenseFile');
+            const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+            const uploadProgress = document.getElementById('uploadProgress');
+            const uploadCountElement = document.getElementById('uploadCount');
+            const uploadLabel = document.getElementById('uploadLabel');
+            
+            if (!businessLicenseFile || !photoPreviewContainer) {
+                console.error('找不到上傳或預覽元素');
+                return;
+            }
+            
+            // 確保 window.uploadedFiles 被初始化
+            if (!window.uploadedFiles) {
+                window.uploadedFiles = [];
+            }
+            
+            // 配置參數
+            const MAX_UPLOAD_COUNT = 5; // 最大上傳張數
+            const MAX_FILE_SIZE_MB = 5; // 每個文件最大 5MB
+            
+            // 更新上傳計數
+            function updateUploadCount() {
+                if (uploadCountElement) {
+                    uploadCountElement.textContent = window.uploadedFiles.length;
+                }
+                
+                if (uploadLabel) {
+                    if (window.uploadedFiles.length >= MAX_UPLOAD_COUNT) {
+                        uploadLabel.style.display = 'none';
+                    } else {
+                        uploadLabel.style.display = 'block';
+                    }
+                }
+            }
+    
+            // 處理文件上傳
+            businessLicenseFile.addEventListener('change', async function(e) {
+                const files = Array.from(e.target.files);
+                
+                if (window.uploadedFiles.length + files.length > MAX_UPLOAD_COUNT) {
+                    alert(`最多只能上傳 ${MAX_UPLOAD_COUNT} 張照片`);
+                    return;
+                }
+                
+                for (const file of files) {
+                    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+                        alert(`文件 ${file.name} 超過大小限制（${MAX_FILE_SIZE_MB}MB）`);
+                        continue;
+                    }
+                    
+                    try {
+                        // 顯示上傳進度
+                        if (uploadProgress) {
+                            uploadProgress.style.display = 'block';
+                        }
+                        
+                        // 壓縮圖片（如果是圖片類型）
+                        let processedFile = file;
+                        if (file.type.startsWith('image/')) {
+                            processedFile = await compressImage(file);
+                        }
+                        
+                        // 添加到上傳文件列表
+                        const fileId = `file-${Date.now()}-${window.uploadedFiles.length}`;
+                        window.uploadedFiles.push({
+                            id: fileId,
+                            file: processedFile,
+                            fileName: file.name,
+                            objectURL: URL.createObjectURL(processedFile)
+                        });
+                        
+                        // 創建預覽元素
+                        createFilePreview(fileId, file);
+                        
+                        // 更新上傳計數
+                        updateUploadCount();
+                        
+                        // 隱藏上傳進度
+                        if (uploadProgress) {
+                            uploadProgress.style.display = 'none';
+                        }
+                    } catch (error) {
+                        console.error('處理文件錯誤:', error);
+                        alert(`處理文件 ${file.name} 時發生錯誤`);
+                        if (uploadProgress) {
+                            uploadProgress.style.display = 'none';
+                        }
+                    }
+                }
+                
+                // 重置文件輸入，以便可以重新選擇相同的文件
+                businessLicenseFile.value = '';
+            });
+            
+            // 壓縮圖片
+            async function compressImage(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.src = event.target.result;
+                        img.onload = function() {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            
+                            // 計算新的尺寸，保持寬高比
+                            let width = img.width;
+                            let height = img.height;
+                            const maxDimension = 1024; // 最大寬度/高度
+                            
+                            if (width > height && width > maxDimension) {
+                                height = Math.round((height * maxDimension) / width);
+                                width = maxDimension;
+                            } else if (height > maxDimension) {
+                                width = Math.round((width * maxDimension) / height);
+                                height = maxDimension;
+                            }
+                            
+                            canvas.width = width;
+                            canvas.height = height;
+                            ctx.drawImage(img, 0, 0, width, height);
+                            
+                            // 轉換為 Blob
+                            canvas.toBlob(
+                                (blob) => {
+                                    // 創建新文件對象
+                                    const compressedFile = new File([blob], file.name, {
+                                        type: 'image/jpeg',
+                                        lastModified: Date.now()
+                                    });
+                                    resolve(compressedFile);
+                                },
+                                'image/jpeg',
+                                0.7 // 設置壓縮質量 (0.7 = 70% 質量)
+                            );
+                        };
+                    };
+                    reader.onerror = function(error) {
+                        reject(error);
+                    };
+                });
+            }
+            
+            // 創建文件預覽
+            function createFilePreview(fileId, file) {
+                const previewItem = document.createElement('div');
+                previewItem.className = 'photo-preview-item';
+                previewItem.id = fileId;
+                
+                // 判斷文件類型
+                if (file.type.startsWith('image/')) {
+                    // 圖片預覽
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.alt = file.name;
+                    img.onload = function() {
+                        URL.revokeObjectURL(this.src);
+                    };
+                    previewItem.appendChild(img);
+                } else {
+                    // PDF 或其他文件類型
+                    const fileIcon = document.createElement('div');
+                    fileIcon.className = 'file-icon';
+                    fileIcon.innerHTML = '<i class="fas fa-file-pdf fa-2x"></i>';
+                    fileIcon.style.display = 'flex';
+                    fileIcon.style.alignItems = 'center';
+                    fileIcon.style.justifyContent = 'center';
+                    fileIcon.style.height = '100%';
+                    fileIcon.style.backgroundColor = '#f8f9fa';
+                    previewItem.appendChild(fileIcon);
+                }
+                
+                // 文件名
+                const fileName = document.createElement('div');
+                fileName.className = 'file-name';
+                fileName.textContent = file.name;
+                previewItem.appendChild(fileName);
+                
+                // 刪除按鈕
+                const deleteBtn = document.createElement('div');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
+                deleteBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    
+                    // 從上傳文件列表中移除
+                    window.uploadedFiles = window.uploadedFiles.filter(item => item.id !== fileId);
+                    
+                    // 移除預覽元素
+                    photoPreviewContainer.removeChild(previewItem);
+                    
+                    // 更新上傳計數
+                    updateUploadCount();
+                });
+                previewItem.appendChild(deleteBtn);
+                
+                // 添加到預覽容器
+                photoPreviewContainer.appendChild(previewItem);
+            }
+            
+            // 使用 DnD (Drag and Drop) 上傳
+            const uploadArea = document.querySelector('.custom-file-upload');
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                uploadArea.classList.add('highlight');
+            }
+            
+            function unhighlight() {
+                uploadArea.classList.remove('highlight');
+            }
+            
+            uploadArea.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                businessLicenseFile.files = files;
+                
+                // 觸發 change 事件
+                const event = new Event('change', { bubbles: true });
+                businessLicenseFile.dispatchEvent(event);
+            }
+        });
+        
+        // 獲取上傳的文件列表
+        function getUploadedBusinessLicenseFiles() {
+            return window.uploadedFiles || [];
+        }
+    </script>
+    
+    <!-- 重新申請功能 JS -->
+    <script>
+        // 輔助函數：驗證電話號碼
+        function isValidPhone(phone) {
+            // 簡單的臺灣電話格式驗證，可根據需要調整
+            const phoneRegex = /^(0[2-9]\d{7,8}|09\d{8})$/;
+            return phoneRegex.test(phone);
+        }
+        
+        // 驗證重新申請表單
+        function validateReapplyForm() {
+            let isValid = true;
+            
+            // 驗證店家名稱
+            const businessName = document.getElementById('businessName');
+            if (!businessName.value) {
+                businessName.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                businessName.classList.remove('is-invalid');
+            }
+            
+            // 驗證店家類型
+            const businessType = document.getElementById('businessType');
+            if (!businessType.value) {
+                businessType.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                businessType.classList.remove('is-invalid');
+            }
+            
+            // 驗證店家地址
+            const businessAddress = document.getElementById('businessAddress');
+            if (!businessAddress.value) {
+                businessAddress.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                businessAddress.classList.remove('is-invalid');
+            }
+            
+            // 驗證店家電話
+            const businessPhone = document.getElementById('businessPhone');
+            if (!businessPhone.value || !isValidPhone(businessPhone.value)) {
+                businessPhone.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                businessPhone.classList.remove('is-invalid');
+            }
+            
+            // 驗證聯絡人姓名
+            const contactName = document.getElementById('contactName');
+            if (!contactName.value) {
+                contactName.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                contactName.classList.remove('is-invalid');
+            }
+            
+            // 驗證聯絡人手機
+            const contactPhone = document.getElementById('contactPhone');
+            if (!contactPhone.value || !isValidPhone(contactPhone.value)) {
+                contactPhone.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                contactPhone.classList.remove('is-invalid');
+            }
+            
+            // 驗證營業執照上傳
+            const uploadedFiles = getUploadedBusinessLicenseFiles();
+            if (!uploadedFiles || uploadedFiles.length === 0) {
+                // 檢查是否已有舊的證照
+                const licenseContainer = document.getElementById('photoPreviewContainer');
+                if (licenseContainer && licenseContainer.children.length === 0) {
+                    document.querySelector('.custom-file-upload').classList.add('is-invalid');
+                    isValid = false;
+                }
+            }
+            
+            // 驗證條款勾選
+            const termsCheck = document.getElementById('termsCheck');
+            if (!termsCheck.checked) {
+                termsCheck.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                termsCheck.classList.remove('is-invalid');
+            }
+            
+            if (!isValid) {
+                alert('請填寫所有必填欄位');
+            }
+            
+            return isValid;
+        }
+        
+        // 頁面載入時初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 檢查用戶是否已登入
+            firebase.auth().onAuthStateChanged(function(user) {
+                if (user) {
+                    // 用戶已登入，初始化重新申請頁面
+                    initReapplyPage();
+                } else {
+                    // 用戶未登入，重定向到登入頁面
+                    window.location.href = 'business-login.html';
+                }
+            });
+            
+            // 表單提交事件
+            document.getElementById('businessReapplyForm').addEventListener('submit', submitReapplication);
+        });
+        
+        // 初始化重新申請頁面
+        async function initReapplyPage() {
+            try {
+                // 從 URL 中獲取店家 ID
+                const urlParams = new URLSearchParams(window.location.search);
+                const businessId = urlParams.get('id');
+                
+                if (!businessId) {
+                    alert('缺少店家 ID');
+                    window.location.href = 'business-login.html';
+                    return;
+                }
+                
+                // 檢查用戶是否已登入
+                const user = firebase.auth().currentUser;
+                if (!user || user.uid !== businessId) {
+                    alert('請先登入店家帳號');
+                    window.location.href = 'business-login.html';
+                    return;
+                }
+                
+                // 獲取店家信息
+                const businessDoc = await firebase.firestore().collection('businesses').doc(businessId).get();
+                
+                if (!businessDoc.exists) {
+                    alert('找不到店家信息');
+                    window.location.href = 'business-login.html';
+                    return;
+                }
+                
+                const businessData = businessDoc.data();
+                
+                // 檢查狀態是否為 rejected
+                if (businessData.status !== 'rejected') {
+                    alert('只有被拒絕的商家才能重新申請');
+                    window.location.href = 'business-login.html';
+                    return;
+                }
+                
+                // 填充表單字段
+                document.getElementById('businessName').value = businessData.businessName || '';
+                
+                const businessTypeSelect = document.getElementById('businessType');
+                if (businessTypeSelect) {
+                    for (let i = 0; i < businessTypeSelect.options.length; i++) {
+                        if (businessTypeSelect.options[i].value === businessData.businessType) {
+                            businessTypeSelect.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+                
+                document.getElementById('businessAddress').value = businessData.address || '';
+                document.getElementById('businessPhone').value = businessData.phoneNumber || '';
+                document.getElementById('contactName').value = businessData.contactName || '';
+                document.getElementById('contactPhone').value = businessData.contactPhone || '';
+                
+                // 顯示拒絕原因
+                const rejectReasonEl = document.getElementById('rejectReason');
+                if (rejectReasonEl && businessData.rejectReason) {
+                    rejectReasonEl.textContent = businessData.rejectReason;
+                }
+                
+                // 加載已有的證照照片
+                const licenseUrls = businessData.licenseUrls || [];
+                
+                if (licenseUrls.length > 0 && window.loadExistingLicenses) {
+                    window.loadExistingLicenses(licenseUrls);
+                }
+                
+            } catch (error) {
+                console.error('初始化重新申請頁面時發生錯誤:', error);
+                alert('加載頁面時發生錯誤: ' + error.message);
+            }
+        }
+        
+        // 加載已有的證照照片
+        window.loadExistingLicenses = function(licenseUrls) {
+            const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+            if (!photoPreviewContainer) {
+                console.error('找不到照片預覽容器元素');
+                return;
+            }
+            
+            // 清空預覽容器
+            photoPreviewContainer.innerHTML = '';
+            
+            // 更新上傳計數
+            const uploadCountElement = document.getElementById('uploadCount');
+            if (uploadCountElement) {
+                uploadCountElement.textContent = licenseUrls.length;
+            }
+            
+            // 初始化上傳文件數組
+            if (!window.uploadedFiles) {
+                window.uploadedFiles = [];
+            } else {
+                // 清空現有文件列表，確保不會保留舊數據
+                window.uploadedFiles = [];
+            }
+            
+            // 創建已有照片的預覽
+            licenseUrls.forEach((url, index) => {
+                const fileId = `existing-file-${Date.now()}-${index}`;
+                const fileName = url.split('/').pop().split('?')[0] || `文件${index + 1}`; // 去除URL參數
+                
+                // 添加到上傳文件列表
+                window.uploadedFiles.push({
+                    id: fileId,
+                    fileName: fileName,
+                    objectURL: url,
+                    existingUrl: url // 標記為已存在的URL
+                });
+                
+                const previewItem = document.createElement('div');
+                previewItem.className = 'photo-preview-item';
+                previewItem.id = fileId;
+                
+                // 判斷文件類型
+                if (url.toLowerCase().match(/\.(jpeg|jpg|gif|png)$/i)) {
+                    // 圖片預覽
+                    previewItem.innerHTML = `
+                        <img src="${url}" alt="${fileName}" onerror="this.src='https://via.placeholder.com/100x100?text=載入失敗'">
+                        <div class="file-name">${fileName}</div>
+                        <div class="delete-btn"><i class="fas fa-times"></i></div>
+                    `;
+                } else if (url.toLowerCase().includes('.pdf')) {
+                    // PDF 預覽
+                    previewItem.innerHTML = `
+                        <div style="height:100%;display:flex;align-items:center;justify-content:center;background-color:#f8f9fa;">
+                            <i class="fas fa-file-pdf fa-2x" style="color:#dc3545;"></i>
+                        </div>
+                        <div class="file-name">${fileName}</div>
+                        <div class="delete-btn"><i class="fas fa-times"></i></div>
+                    `;
+                } else {
+                    // 其他文件類型
+                    previewItem.innerHTML = `
+                        <div style="height:100%;display:flex;align-items:center;justify-content:center;background-color:#f8f9fa;">
+                            <i class="fas fa-file fa-2x" style="color:#007bff;"></i>
+                        </div>
+                        <div class="file-name">${fileName}</div>
+                        <div class="delete-btn"><i class="fas fa-times"></i></div>
+                    `;
+                }
+                
+                // 添加點擊事件顯示大圖
+                const img = previewItem.querySelector('img');
+                if (img) {
+                    img.addEventListener('click', function() {
+                        window.open(url, '_blank');
+                    });
+                }
+                
+                // 刪除按鈕
+                const deleteBtn = previewItem.querySelector('.delete-btn');
+                deleteBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    
+                    // 從上傳文件列表中移除
+                    window.uploadedFiles = window.uploadedFiles.filter(item => item.id !== fileId);
+                    
+                    // 移除預覽元素
+                    photoPreviewContainer.removeChild(previewItem);
+                    
+                    // 更新上傳計數
+                    if (uploadCountElement) {
+                        uploadCountElement.textContent = window.uploadedFiles.length;
+                    }
+                    
+                    // 顯示上傳按鈕
+                    const uploadLabel = document.getElementById('uploadLabel');
+                    if (uploadLabel) {
+                        uploadLabel.style.display = 'block';
+                    }
+                });
+                
+                photoPreviewContainer.appendChild(previewItem);
+            });
+            
+            // 如果已達到最大上傳數，隱藏上傳按鈕
+            const maxUploadCount = parseInt(document.getElementById('maxUploadCount')?.textContent || '5');
+            if (licenseUrls.length >= maxUploadCount) {
+                const uploadLabel = document.getElementById('uploadLabel');
+                if (uploadLabel) {
+                    uploadLabel.style.display = 'none';
+                }
+            }
+            
+            console.log('已載入 ' + licenseUrls.length + ' 張照片');
+        };
+        
+        // 提交重新申請
+        async function submitReapplication(e) {
+            e.preventDefault();
+            
+            try {
+                const user = firebase.auth().currentUser;
+                
+                if (!user) {
+                    alert('請先登入');
+                    return;
+                }
+                
+                // 檢查表單是否有效
+                if (!validateReapplyForm()) {
+                    return;
+                }
+                
+                // 禁用提交按鈕防止重複提交
+                const submitButton = document.querySelector('.btn-submit');
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 處理中...';
+                submitButton.disabled = true;
+                
+                // 獲取表單數據
+                const businessName = document.getElementById('businessName').value;
+                const businessType = document.getElementById('businessType').value;
+                const businessAddress = document.getElementById('businessAddress').value;
+                const businessPhone = document.getElementById('businessPhone').value;
+                const contactName = document.getElementById('contactName').value;
+                const contactPhone = document.getElementById('contactPhone').value;
+                
+                // 更新店家資訊
+                await firebase.firestore().collection('businesses').doc(user.uid).update({
+                    businessName: businessName,
+                    businessType: businessType,
+                    address: businessAddress,
+                    phoneNumber: businessPhone,
+                    contactName: contactName,
+                    contactPhone: contactPhone,
+                    status: 'pending', // 改為待審核狀態
+                    rejectReason: null, // 清除拒絕原因
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // 處理營業執照上傳
+                const uploadedFiles = getUploadedBusinessLicenseFiles();
+                let licenseUrls = [];
+                
+                if (uploadedFiles && uploadedFiles.length > 0) {
+                    // 找出新上傳的文件和已存在的文件
+                    const newFiles = uploadedFiles.filter(file => !file.existingUrl);
+                    const existingUrls = uploadedFiles.filter(file => file.existingUrl).map(file => file.existingUrl);
+                    
+                    // 如果有新文件，上傳它們
+                    if (newFiles.length > 0) {
+                        // 顯示上傳進度
+                        document.getElementById('uploadProgress').style.display = 'block';
+                        
+                        // 先刪除不在 existingUrls 中的舊文件
+                        try {
+                            const businessDoc = await firebase.firestore().collection('businesses').doc(user.uid).get();
+                            const oldLicenseUrls = businessDoc.data().licenseUrls || [];
+                            
+                            for (const oldUrl of oldLicenseUrls) {
+                                if (!existingUrls.includes(oldUrl)) {
+                                    try {
+                                        // 提取文件路徑並刪除
+                                        const oldRef = firebase.storage().refFromURL(oldUrl);
+                                        await oldRef.delete();
+                                    } catch (error) {
+                                        console.error('刪除舊照片錯誤:', error);
+                                        // 繼續處理，不阻止整個流程
+                                    }
+                                }
+                            }
+                        } catch (error) {
+                            console.error('處理舊照片時發生錯誤:', error);
+                            // 繼續處理，不阻止整個流程
+                        }
+                        
+                        // 上傳新文件
+                        for (const uploadedFile of newFiles) {
+                            const file = uploadedFile.file;
+                            const storageRef = firebase.storage().ref(`licenses/${user.uid}/${uploadedFile.fileName}`);
+                            
+                            const uploadTask = storageRef.put(file);
+                            
+                            // 顯示上傳進度
+                            uploadTask.on('state_changed', 
+                                (snapshot) => {
+                                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                    const progressBar = document.querySelector('.progress-bar');
+                                    if (progressBar) {
+                                        progressBar.style.width = progress + '%';
+                                    }
+                                },
+                                (error) => {
+                                    console.error('上傳文件失敗:', error);
+                                }
+                            );
+                            
+                            // 等待上傳完成
+                            await uploadTask;
+                            
+                            // 獲取下載 URL
+                            const licenseUrl = await storageRef.getDownloadURL();
+                            licenseUrls.push(licenseUrl);
+                        }
+                        
+                        // 合併新舊 URL
+                        licenseUrls = [...existingUrls, ...licenseUrls];
+                    } else {
+                        // 沒有新文件，只保留選中的舊文件
+                        licenseUrls = existingUrls;
+                    }
+                    
+                    // 更新店家文檔添加執照 URL 數組
+                    await firebase.firestore().collection('businesses').doc(user.uid).update({
+                        licenseUrls: licenseUrls
+                    });
+                }
+                
+                // 創建審核請求
+                await firebase.firestore().collection('businessApprovalRequests').doc(user.uid).set({
+                    userId: user.uid,
+                    businessName: businessName,
+                    businessType: businessType,
+                    address: businessAddress,
+                    phoneNumber: businessPhone,
+                    contactName: contactName,
+                    contactPhone: contactPhone,
+                    licenseUrls: licenseUrls,
+                    status: 'pending',
+                    rejectReason: null,
+                    isReapply: true, // 標記為重新申請
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // 顯示成功訊息
+                const successAlert = document.createElement('div');
+                successAlert.className = 'alert alert-success mt-4';
+                successAlert.innerHTML = `
+                    <h5>重新申請已成功提交！</h5>
+                    <p>我們將盡快審核您的申請，並通過電子郵件通知您結果。</p>
+                    <p>5秒後將自動跳轉到登入頁面...</p>
+                `;
+                
+                // 添加成功訊息
+                const formContainer = document.querySelector('.register-form-container') || document.body;
+                formContainer.appendChild(successAlert);
+                
+                // 登出用戶（需要等待審核）
+                await firebase.auth().signOut();
+                
+                // 5秒後跳轉到登入頁面
+                setTimeout(() => {
+                    window.location.href = 'business-login.html?status=reapplied';
+                }, 5000);
+                
+            } catch (error) {
+                console.error('重新申請時發生錯誤:', error);
+                
+                // 恢復按鈕狀態
+                const submitButton = document.querySelector('.btn-submit');
+                if (submitButton) {
+                    submitButton.innerHTML = '提交申請';
+                    submitButton.disabled = false;
+                }
+                
+                // 顯示錯誤訊息
+                alert('重新申請時發生錯誤: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

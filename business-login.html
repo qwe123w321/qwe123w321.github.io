@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>店家登入 - BrewDate</title>
+    <!-- SEO 優化 meta 標籤 -->
+    <meta name="description" content="BREWDATE 商家合作平台 - 登入您的店家帳戶，管理店鋪資訊，增加店面曝光度。">
+    <meta name="keywords" content="BREWDATE, 商家登入, 店家平台, 約會場所, 合作夥伴">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="auth.css">
+    
+    <script src="error-handler.js"></script>
+    
+    <style>
+         /* 優惠核銷區塊 */
+         .verification-info {
+            margin-top: 30px;
+            background-color: #fff;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .verification-info h4 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .verification-info h4 i {
+            margin-right: 10px;
+        }
+        
+        .verification-steps {
+            margin-top: 15px;
+        }
+        
+        .verification-step {
+            display: flex;
+            margin-bottom: 15px;
+        }
+        
+        .step-number {
+            width: 25px;
+            height: 25px;
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        
+        .step-content {
+            flex: 1;
+        }
+        
+        .step-content h5 {
+            font-size: 16px;
+            margin-bottom: 5px;
+            color: var(--dark-color);
+        }
+        
+        .step-content p {
+            color: #777;
+            font-size: 14px;
+            margin-bottom: 0;
+        }
+        
+        .verification-cta {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .try-verification-btn {
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .try-verification-btn:hover {
+            background-color: #86686F;
+            transform: translateY(-2px);
+            color: white;
+        }
+    </style>
+
+</head>
+<body>
+    <!-- 導航欄 -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <img src="logo.png" alt="BREWDATE" height="40">
+                BREWDATE
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#home">首頁</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#features">特色</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#business">商家合作</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#download">下載APP</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">店家登入</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 登入區塊 -->
+    <section class="login-section">
+        <div class="container login-container">
+            <div class="login-card">
+                <div class="row g-0">
+                    <div class="col-lg-6 d-none d-lg-block">
+                        <div class="login-image">
+                            <div class="login-image-content">
+                                <h2>加入BREWDATE店家網絡</h2>
+                                <p>登入您的店家帳戶享受以下特權：</p>
+                                <ul class="benefits-list">
+                                    <li><i class="fas fa-check"></i> 接觸更多高質量潛在客戶</li>
+                                    <li><i class="fas fa-check"></i> 提高店面曝光度和客流量</li>
+                                    <li><i class="fas fa-check"></i> 獲得詳細的數據分析報告</li>
+                                    <li><i class="fas fa-check"></i> 輕鬆管理店家資訊和優惠</li>
+                                    <li><i class="fas fa-check"></i> 增強品牌形象與影響力</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-6">
+                        <div class="login-form-container">
+                            <div class="login-form-header">
+                                <h3>店家管理平台</h3>
+                                <p>管理店鋪資訊，建立優惠活動，吸引更多顧客</p>
+                            </div>
+                            
+                            <form id="businessLoginForm">
+                                <div class="form-group">
+                                    <label for="email">電子郵件</label>
+                                    <input type="email" class="form-control" id="email" placeholder="請輸入您的電子郵件" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="password">密碼</label>
+                                    <div class="password-field">
+                                        <input type="password" class="form-control" id="password" placeholder="請輸入您的密碼" required>
+                                        <button type="button" class="password-toggle" id="togglePassword">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="login-options">
+                                    <div class="remember-me">
+                                        <input class="form-check-input" type="checkbox" id="rememberMe">
+                                        <label class="form-check-label ms-2" for="rememberMe">
+                                            記住我的帳號
+                                        </label>
+                                    </div>
+                                    <a href="#" class="forgot-password">忘記密碼？</a>
+                                </div>
+                                
+                                <button type="submit" class="btn login-btn w-100">登入</button>
+                                <button type="button" class="btn register-btn w-100" id="registerBtn">註冊店家帳戶</button>
+                            </form>
+                            
+                            <!-- <div class="or-divider">
+                                <span>或使用以下方式</span>
+                            </div>
+                            
+                            <div class="social-login">
+                                <button type="button" class="social-btn google-btn">
+                                    <i class="fab fa-google"></i>
+                                </button>
+                                <button type="button" class="social-btn facebook-btn">
+                                    <i class="fab fa-facebook-f"></i>
+                                </button>
+                                <button type="button" class="social-btn apple-btn">
+                                    <i class="fab fa-apple"></i>
+                                </button>
+                            </div> -->
+                            
+                            <div class="login-footer">
+                                <p>還沒有帳戶？<a href="#" id="signupLink">立即註冊</a></p>
+                                <p>回到 <a href="index.html">首頁</a></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 優惠核銷資訊區塊（新增） -->
+            <div class="row mt-5">
+                <div class="col-lg-10 mx-auto">
+                    <div class="verification-info">
+                        <h4><i class="fas fa-ticket-alt"></i> 便捷店家優惠核銷系統</h4>
+                        <p>我們全新的優惠核銷系統讓店家能夠快速、輕鬆地驗證並核銷顧客的優惠，無需下載額外的應用程式！</p>
+                        
+                        <div class="verification-steps">
+                            <div class="verification-step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h5>顧客出示QR碼</h5>
+                                    <p>當顧客到店消費時，他們會在APP上出示優惠QR碼或6位數驗證碼。</p>
+                                </div>
+                            </div>
+                            
+                            <div class="verification-step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h5>掃描或輸入驗證碼</h5>
+                                    <p>使用任何手機相機掃描QR碼，或在網頁上輸入顯示的6位數驗證碼。</p>
+                                </div>
+                            </div>
+                            
+                            <div class="verification-step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h5>一鍵核銷完成</h5>
+                                    <p>驗證後，確認優惠詳情並點擊使用按鈕，系統自動記錄使用情況。</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="verification-cta">
+                            <a href="verify.html" class="try-verification-btn">
+                                <i class="fas fa-arrow-right me-2"></i>立即嘗試優惠核銷
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 頁腳 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="footer-info">
+                        <h3>BREWDATE</h3>
+                        <p>用一杯咖啡的時間，找到真實的火花</p>
+                        <div class="social-links">
+                            <a href="#"><i class="fab fa-facebook-f"></i></a>
+                            <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <div class="footer-links">
+                        <h4>快速連結</h4>
+                        <ul>
+                            <li><a href="index.html#home">首頁</a></li>
+                            <li><a href="index.html#features">特色</a></li>
+                            <li><a href="index.html#business">商家合作</a></li>
+                            <li><a href="index.html#download">下載應用</a></li>
+                            <li><a href="index.html#faq">常見問題</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="footer-links">
+                        <h4>聯絡我們</h4>
+                        <ul>
+                            <li><i class="fas fa-envelope"></i> <a href="mailto:info@brewdate.com">info@brewdate.com</a></li>
+                            <li><i class="fas fa-phone"></i> <a href="tel:+886912345678">+886 912 345 678</a></li>
+                            <li><i class="fas fa-map-marker-alt"></i> <span>台北市信義區松仁路 100 號</span></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="footer-newsletter">
+                        <h4>店家訂閱</h4>
+                        <p>訂閱我們的電子報，獲取最新的活動和合作信息</p>
+                        <form>
+                            <div class="input-group">
+                                <input type="email" name="email" class="form-control" placeholder="您的電子郵件">
+                                <button class="btn btn-primary" type="submit">訂閱</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="copyright">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p>&copy; 2025 BREWDATE. 保留所有權利.</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="footer-bottom-links">
+                            <a href="#">隱私政策</a>
+                            <a href="#">使用條款</a>
+                            <a href="#">Cookie 政策</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 載入 JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+    <!-- Firebase SDK 確保正確順序載入 -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+
+    <!-- Firebase config -->
+    <script src="firebase-config.js"></script>
+
+    <!-- 添加全局變數 -->
+    <script>
+        // 全局變數用於追蹤狀態
+        let statusMessageShown = false;
+    </script>
+    <script>
+        // 自動檢查登入狀態
+        auth.onAuthStateChanged(function(user) {
+            if (user) {
+                // 用戶已登入，檢查審核狀態
+                checkBusinessStatus(user.uid);
+            }
+        });
+
+        // 添加輸入清理函數
+        function sanitizeInput(input) {
+            return input.replace(/[<>&"']/g, function (match) {
+                return {
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '&': '&amp;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[match];
+            });
+        }
+
+        // 在處理用戶輸入時使用
+        const email = sanitizeInput(document.getElementById('email').value);
+
+        // 在登入成功後 檢查店家審核狀態
+        async function checkBusinessStatus(userId) {
+            try {
+                // 避免重複檢查
+                if (statusMessageShown) return;
+                
+                const businessDoc = await firebase.firestore().collection('businesses').doc(userId).get();
+                
+                if (businessDoc.exists) {
+                    const businessData = businessDoc.data();
+                    
+                    // 根據審核狀態處理
+                    if (businessData.status === 'approved') {
+                        // 添加日誌便於調試
+                        console.log('登入成功：商家已通過審核，重定向到儀表板');
+                        
+                        // 通過審核，重定向到店家後台
+                        window.location.href = 'business-dashboard.html';
+                    } else if (businessData.status === 'pending') {
+                        // 審核中，顯示等待訊息
+                        console.log('登入成功：商家審核中');
+                        showStatusMessage('pending');
+                    } else if (businessData.status === 'rejected') {
+                        // 審核未通過，顯示原因
+                        console.log('登入失敗：商家審核未通過');
+                        showStatusMessage('rejected', businessData.rejectReason || '未提供拒絕原因');
+                    }
+                } else {
+                    // 找不到店家資料，登出並顯示錯誤
+                    console.error('找不到店家資料');
+                    await firebase.auth().signOut();
+                    showError('找不到店家資料，請聯繫客服');
+                }
+            } catch (error) {
+                console.error('檢查審核狀態時發生錯誤:', error);
+                showError('檢查審核狀態時發生錯誤，請稍後再試');
+            }
+        }
+
+        // 處理登入
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const email = sanitizeInput(document.getElementById('email').value);
+            const password = document.getElementById('password').value;
+            const rememberMe = document.getElementById('rememberMe').checked;
+            
+            // 清除之前的錯誤訊息
+            clearErrorMessage();
+            
+            // 表單驗證
+            if (!email || !password) {
+                showError('請填寫所有必填欄位');
+                return;
+            }
+            
+            // 更新按鈕狀態
+            const submitButton = document.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.innerHTML;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 登入中...';
+            submitButton.disabled = true;
+            
+            try {
+                // 設置持久性
+                if (rememberMe) {
+                    await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                } else {
+                    await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION);
+                }
+                
+                // 嘗試登入
+                const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                // 清除之前的錯誤訊息
+                clearErrorMessage();
+                
+                // 檢查郵箱是否已驗證
+                if (!user.emailVerified) {
+                    // 未驗證，發送新的驗證郵件
+                    await user.sendEmailVerification();
+                    await firebase.auth().signOut();
+                    
+                    // 顯示錯誤訊息
+                    showError('您的電子郵件尚未驗證，我們已發送一封新的驗證郵件，請完成驗證後再登入');
+                    
+                    // 重置按鈕
+                    submitButton.innerHTML = originalButtonText;
+                    submitButton.disabled = false;
+                    
+                    return;
+                }
+                
+                // 檢查店家狀態
+                await checkBusinessStatus(user.uid);
+            } catch (error) {
+                console.error('登入時發生錯誤:', error);
+                
+                // 處理不同錯誤
+                let errorMessage = '登入失敗，請檢查您的電子郵件和密碼';
+                
+                if (error.code === 'auth/user-not-found') {
+                    errorMessage = '找不到該電子郵件對應的帳戶';
+                } else if (error.code === 'auth/wrong-password') {
+                    errorMessage = '密碼錯誤';
+                } else if (error.code === 'auth/too-many-requests') {
+                    errorMessage = '嘗試登入次數過多，請稍後再試';
+                } else if (error.code === 'auth/user-disabled') {
+                    errorMessage = '此帳戶已被停用，請聯繫客服';
+                }
+                
+                // 顯示錯誤訊息
+                showError(errorMessage);
+                
+                // 重置按鈕
+                submitButton.innerHTML = originalButtonText;
+                submitButton.disabled = false;
+            }
+        }
+
+        // 添加清除錯誤訊息的函數
+        function clearErrorMessage() {
+            const errorAlert = document.querySelector('.login-error-alert');
+            if (errorAlert) {
+                errorAlert.remove();
+            }
+        }
+
+
+        // 處理忘記密碼
+        async function handleResetPassword(e) {
+            e.preventDefault();
+            
+            // 創建模態對話框
+            const modalHtml = `
+                <div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">重設密碼</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>請輸入您的註冊電子郵件，我們將發送密碼重設信件給您。</p>
+                                <div class="form-group">
+                                    <label for="resetEmail">電子郵件</label>
+                                    <input type="email" class="form-control" id="resetEmail" required>
+                                </div>
+                                <div class="alert alert-info mt-3" style="display: none;" id="resetPasswordAlert"></div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                <button type="button" class="btn login-btn" id="sendResetEmailBtn">發送重設信件</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 添加到頁面
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // 顯示模態對話框
+            const resetModal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+            resetModal.show();
+            
+            // 處理發送重設郵件
+            document.getElementById('sendResetEmailBtn').addEventListener('click', async function() {
+                const resetEmail = document.getElementById('resetEmail').value;
+                
+                if (!resetEmail) {
+                    document.getElementById('resetPasswordAlert').style.display = 'block';
+                    document.getElementById('resetPasswordAlert').classList.add('alert-danger');
+                    document.getElementById('resetPasswordAlert').classList.remove('alert-success');
+                    document.getElementById('resetPasswordAlert').textContent = '請輸入電子郵件';
+                    return;
+                }
+                
+                try {
+                    // 發送重設密碼郵件
+                    await auth.sendPasswordResetEmail(resetEmail);
+                    
+                    // 顯示成功訊息
+                    document.getElementById('resetPasswordAlert').style.display = 'block';
+                    document.getElementById('resetPasswordAlert').classList.remove('alert-danger');
+                    document.getElementById('resetPasswordAlert').classList.add('alert-success');
+                    document.getElementById('resetPasswordAlert').textContent = '重設密碼郵件已發送，請查收您的信箱';
+                    
+                    // 禁用發送按鈕
+                    document.getElementById('sendResetEmailBtn').disabled = true;
+                    
+                    // 3秒後關閉模態對話框
+                    setTimeout(function() {
+                        resetModal.hide();
+                        
+                        // 移除模態對話框
+                        setTimeout(function() {
+                            document.getElementById('resetPasswordModal').remove();
+                        }, 500);
+                    }, 3000);
+                } catch (error) {
+                    console.error('發送重設密碼郵件時發生錯誤:', error);
+                    
+                    // 顯示錯誤訊息
+                    document.getElementById('resetPasswordAlert').style.display = 'block';
+                    document.getElementById('resetPasswordAlert').classList.add('alert-danger');
+                    document.getElementById('resetPasswordAlert').classList.remove('alert-success');
+                    
+                    if (error.code === 'auth/user-not-found') {
+                        document.getElementById('resetPasswordAlert').textContent = '找不到該電子郵件對應的帳戶';
+                    } else {
+                        document.getElementById('resetPasswordAlert').textContent = '發送重設密碼郵件時發生錯誤，請稍後再試';
+                    }
+                }
+            });
+        }
+
+        // 顯示錯誤訊息
+        function showError(message) {
+            // 先清除之前的錯誤訊息
+            clearErrorMessage();
+            
+            // 創建錯誤提示
+            const errorAlert = document.createElement('div');
+            errorAlert.className = 'alert alert-danger login-error-alert mt-3';
+            errorAlert.role = 'alert';
+            
+            // 插入到登入表單之前
+            const loginForm = document.getElementById('businessLoginForm');
+            loginForm.parentNode.insertBefore(errorAlert, loginForm);
+            
+            // 設置錯誤訊息
+            errorAlert.textContent = message;
+            
+            // 自動滾動到錯誤訊息
+            errorAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // 顯示狀態訊息
+        function showStatusMessage(status, reason = '') {
+            // 防止重複顯示狀態訊息
+            if (statusMessageShown) return;
+            statusMessageShown = true;
+            
+            // 創建狀態提示
+            let alertClass = 'alert-info';
+            let message = '';
+            let actionButton = '';
+            
+            if (status === 'pending') {
+                alertClass = 'alert-warning';
+                message = '您的店家帳戶正在審核中，請耐心等待。審核通過後我們將通過電子郵件通知您。';
+                actionButton = '<button class="btn btn-sm btn-outline-warning mt-2" id="logoutBtn">登出</button>';
+            } else if (status === 'rejected') {
+                alertClass = 'alert-danger';
+                message = `很抱歉，您的店家帳戶申請未通過審核。原因：${reason}`;
+                actionButton = `
+                    <div class="mt-3">
+                        <button class="btn btn-sm btn-outline-danger me-2" id="logoutBtn">登出</button>
+                        <button class="btn btn-sm btn-danger" id="reapplyBtn">重新申請</button>
+                    </div>
+                `;
+            }
+            
+            // 創建狀態提示容器
+            const statusAlert = document.createElement('div');
+            statusAlert.className = `alert ${alertClass} mt-4 status-alert`;
+            statusAlert.innerHTML = `
+                <h5>${status === 'pending' ? '審核中' : '審核未通過'}</h5>
+                <p>${message}</p>
+                ${actionButton}
+            `;
+            
+            try {
+                // 隱藏登入表單
+                const loginForm = document.getElementById('businessLoginForm');
+                if (loginForm) {
+                    loginForm.style.display = 'none';
+                }
+                
+                // 隱藏其他元素
+                const orDivider = document.querySelector('.or-divider');
+                if (orDivider) {
+                    orDivider.style.display = 'none';
+                }
+                
+                const socialLogin = document.querySelector('.social-login');
+                if (socialLogin) {
+                    socialLogin.style.display = 'none';
+                }
+                
+                const loginFooter = document.querySelector('.login-footer');
+                if (loginFooter) {
+                    loginFooter.style.display = 'none';
+                }
+                
+                // 插入狀態提示
+                const loginFormContainer = document.querySelector('.login-form-container');
+                if (loginFormContainer) {
+                    loginFormContainer.appendChild(statusAlert);
+                } else {
+                    // 如果找不到容器，添加到 body
+                    document.body.appendChild(statusAlert);
+                }
+                
+                // 添加登出按鈕事件處理
+                setTimeout(() => {
+                    const logoutBtn = document.getElementById('logoutBtn');
+                    if (logoutBtn) {
+                        logoutBtn.addEventListener('click', async function() {
+                            try {
+                                await firebase.auth().signOut();
+                                window.location.reload(); // 登出後重新加載頁面
+                            } catch (error) {
+                                console.error('登出時發生錯誤:', error);
+                            }
+                        });
+                    }
+                    
+                    // 添加重新申請按鈕事件處理
+                    const reapplyBtn = document.getElementById('reapplyBtn');
+                    if (reapplyBtn && status === 'rejected') {
+                        reapplyBtn.addEventListener('click', reapplyForApproval);
+                    }
+                }, 100);
+            } catch (error) {
+                console.error('顯示狀態訊息時發生錯誤:', error);
+            }
+        }
+
+        // 重新申請審核功能實現
+        async function reapplyForApproval() {
+            try {
+                const user = firebase.auth().currentUser;
+                
+                if (!user) {
+                    alert('請先登入');
+                    return;
+                }
+                
+                // 確認是否要重新申請
+                const confirmed = confirm('您確定要重新提交店家審核申請嗎？');
+                if (!confirmed) return;
+                
+                // 顯示處理中提示
+                const reapplyBtn = document.getElementById('reapplyBtn');
+                if (reapplyBtn) {
+                    reapplyBtn.disabled = true;
+                    reapplyBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 處理中...';
+                }
+                
+                // 獲取商家信息
+                const businessDoc = await firebase.firestore().collection('businesses').doc(user.uid).get();
+                
+                if (!businessDoc.exists) {
+                    alert('找不到商家信息');
+                    return;
+                }
+                
+                const businessData = businessDoc.data();
+                
+                // 檢查狀態是否為 rejected
+                if (businessData.status !== 'rejected') {
+                    alert('只有被拒絕的商家才能重新申請');
+                    return;
+                }
+                
+                // 重定向到重新申請頁面，帶上店家 ID
+                window.location.href = `business-reapply.html?id=${user.uid}`;
+                
+            } catch (error) {
+                console.error('準備重新申請時發生錯誤:', error);
+                alert('準備重新申請時發生錯誤: ' + error.message);
+                
+                // 恢復按鈕狀態
+                const reapplyBtn = document.getElementById('reapplyBtn');
+                if (reapplyBtn) {
+                    reapplyBtn.disabled = false;
+                    reapplyBtn.textContent = '重新申請';
+                }
+            }
+        }
+
+        // 重新申請頁面初始化
+        async function initReapplyPage() {
+            try {
+                // 從 URL 中獲取店家 ID
+                const urlParams = new URLSearchParams(window.location.search);
+                const businessId = urlParams.get('id');
+                
+                if (!businessId) {
+                    alert('缺少店家 ID');
+                    window.location.href = 'business-login.html';
+                    return;
+                }
+                
+                // 檢查用戶是否已登入
+                const user = firebase.auth().currentUser;
+                if (!user || user.uid !== businessId) {
+                    alert('請先登入店家帳號');
+                    window.location.href = 'business-login.html';
+                    return;
+                }
+                
+                // 獲取店家信息
+                const businessDoc = await firebase.firestore().collection('businesses').doc(businessId).get();
+                
+                if (!businessDoc.exists) {
+                    alert('找不到店家信息');
+                    window.location.href = 'business-login.html';
+                    return;
+                }
+                
+                const businessData = businessDoc.data();
+                
+                // 檢查狀態是否為 rejected
+                if (businessData.status !== 'rejected') {
+                    alert('只有被拒絕的商家才能重新申請');
+                    window.location.href = 'business-login.html';
+                    return;
+                }
+                
+                // 填充表單字段
+                document.getElementById('businessName').value = businessData.businessName || '';
+                
+                const businessTypeSelect = document.getElementById('businessType');
+                if (businessTypeSelect) {
+                    for (let i = 0; i < businessTypeSelect.options.length; i++) {
+                        if (businessTypeSelect.options[i].value === businessData.businessType) {
+                            businessTypeSelect.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+                
+                document.getElementById('businessAddress').value = businessData.address || '';
+                document.getElementById('businessPhone').value = businessData.phoneNumber || '';
+                document.getElementById('contactName').value = businessData.contactName || '';
+                document.getElementById('contactPhone').value = businessData.contactPhone || '';
+                
+                // 顯示拒絕原因
+                const rejectReasonEl = document.getElementById('rejectReason');
+                if (rejectReasonEl && businessData.rejectReason) {
+                    rejectReasonEl.textContent = businessData.rejectReason;
+                }
+                
+                // 加載已有的證照照片
+                const licenseUrls = businessData.licenseUrls || [];
+                
+                if (licenseUrls.length > 0 && window.loadExistingLicenses) {
+                    window.loadExistingLicenses(licenseUrls);
+                }
+                
+            } catch (error) {
+                console.error('初始化重新申請頁面時發生錯誤:', error);
+                alert('加載頁面時發生錯誤: ' + error.message);
+            }
+        }
+
+        // 提交重新申請
+        async function submitReapplication(e) {
+            e.preventDefault();
+            
+            try {
+                const user = firebase.auth().currentUser;
+                
+                if (!user) {
+                    alert('請先登入');
+                    return;
+                }
+                
+                // 檢查表單是否有效
+                if (!validateReapplyForm()) {
+                    return;
+                }
+                
+                // 禁用提交按鈕防止重複提交
+                const submitButton = document.querySelector('.btn-submit');
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 處理中...';
+                submitButton.disabled = true;
+                
+                // 獲取表單數據
+                const businessName = document.getElementById('businessName').value;
+                const businessType = document.getElementById('businessType').value;
+                const businessAddress = document.getElementById('businessAddress').value;
+                const businessPhone = document.getElementById('businessPhone').value;
+                const contactName = document.getElementById('contactName').value;
+                const contactPhone = document.getElementById('contactPhone').value;
+                
+                // 更新店家資訊
+                await firebase.firestore().collection('businesses').doc(user.uid).update({
+                    businessName: businessName,
+                    businessType: businessType,
+                    address: businessAddress,
+                    phoneNumber: businessPhone,
+                    contactName: contactName,
+                    contactPhone: contactPhone,
+                    status: 'pending', // 改為待審核狀態
+                    rejectReason: null, // 清除拒絕原因
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // 處理營業執照上傳
+                const uploadedFiles = getUploadedBusinessLicenseFiles();
+                let licenseUrls = [];
+                
+                if (uploadedFiles && uploadedFiles.length > 0) {
+                    // 刪除舊的照片
+                    try {
+                        const businessDoc = await firebase.firestore().collection('businesses').doc(user.uid).get();
+                        const oldLicenseUrls = businessDoc.data().licenseUrls || [];
+                        
+                        for (const oldUrl of oldLicenseUrls) {
+                            try {
+                                // 提取文件路徑並刪除
+                                const oldRef = firebase.storage().refFromURL(oldUrl);
+                                await oldRef.delete();
+                            } catch (error) {
+                                console.error('刪除舊照片錯誤:', error);
+                                // 繼續處理，不阻止整個流程
+                            }
+                        }
+                    } catch (error) {
+                        console.error('處理舊照片時發生錯誤:', error);
+                        // 繼續處理，不阻止整個流程
+                    }
+                    
+                    // 上傳新照片
+                    for (const uploadedFile of uploadedFiles) {
+                        const file = uploadedFile.file;
+                        const storageRef = firebase.storage().ref(`licenses/${user.uid}/${uploadedFile.fileName}`);
+                        
+                        const uploadTask = storageRef.put(file);
+                        
+                        // 顯示上傳進度
+                        uploadTask.on('state_changed', 
+                            (snapshot) => {
+                                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                const progressBar = document.querySelector('.progress-bar');
+                                if (progressBar) {
+                                    progressBar.style.width = progress + '%';
+                                }
+                            },
+                            (error) => {
+                                console.error('上傳文件失敗:', error);
+                            }
+                        );
+                        
+                        // 等待上傳完成
+                        await uploadTask;
+                        
+                        // 獲取下載 URL
+                        const licenseUrl = await storageRef.getDownloadURL();
+                        licenseUrls.push(licenseUrl);
+                    }
+                    
+                    // 更新店家文檔添加執照 URL 數組
+                    await firebase.firestore().collection('businesses').doc(user.uid).update({
+                        licenseUrls: licenseUrls
+                    });
+                }
+                
+                // 創建審核請求
+                await firebase.firestore().collection('businessApprovalRequests').doc(user.uid).set({
+                    userId: user.uid,
+                    businessName: businessName,
+                    businessType: businessType,
+                    address: businessAddress,
+                    phoneNumber: businessPhone,
+                    contactName: contactName,
+                    contactPhone: contactPhone,
+                    licenseUrls: licenseUrls,
+                    status: 'pending',
+                    rejectReason: null,
+                    isReapply: true, // 標記為重新申請
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // 顯示成功訊息
+                const successAlert = document.createElement('div');
+                successAlert.className = 'alert alert-success mt-4';
+                successAlert.innerHTML = `
+                    <h5>重新申請已成功提交！</h5>
+                    <p>我們將盡快審核您的申請，並通過電子郵件通知您結果。</p>
+                    <p>5秒後將自動跳轉到登入頁面...</p>
+                `;
+                
+                // 添加成功訊息
+                const formContainer = document.querySelector('.register-form-container') || document.body;
+                formContainer.appendChild(successAlert);
+                
+                // 登出用戶（需要等待審核）
+                await firebase.auth().signOut();
+                
+                // 5秒後跳轉到登入頁面
+                setTimeout(() => {
+                    window.location.href = 'business-login.html?status=reapplied';
+                }, 5000);
+                
+            } catch (error) {
+                console.error('重新申請時發生錯誤:', error);
+                
+                // 恢復按鈕狀態
+                const submitButton = document.querySelector('.btn-submit');
+                if (submitButton) {
+                    submitButton.innerHTML = '提交申請';
+                    submitButton.disabled = false;
+                }
+                
+                // 顯示錯誤訊息
+                alert('重新申請時發生錯誤: ' + error.message);
+            }
+        }
+
+        // 驗證重新申請表單
+        function validateReapplyForm() {
+            let isValid = true;
+            
+            // 驗證店家名稱
+            const businessName = document.getElementById('businessName');
+            if (!businessName.value) {
+                businessName.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                businessName.classList.remove('is-invalid');
+            }
+            
+            // 驗證店家類型
+            const businessType = document.getElementById('businessType');
+            if (!businessType.value) {
+                businessType.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                businessType.classList.remove('is-invalid');
+            }
+            
+            // 驗證店家地址
+            const businessAddress = document.getElementById('businessAddress');
+            if (!businessAddress.value) {
+                businessAddress.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                businessAddress.classList.remove('is-invalid');
+            }
+            
+            // 驗證店家電話
+            const businessPhone = document.getElementById('businessPhone');
+            if (!businessPhone.value || !isValidPhone(businessPhone.value)) {
+                businessPhone.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                businessPhone.classList.remove('is-invalid');
+            }
+            
+            // 驗證聯絡人姓名
+            const contactName = document.getElementById('contactName');
+            if (!contactName.value) {
+                contactName.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                contactName.classList.remove('is-invalid');
+            }
+            
+            // 驗證聯絡人手機
+            const contactPhone = document.getElementById('contactPhone');
+            if (!contactPhone.value || !isValidPhone(contactPhone.value)) {
+                contactPhone.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                contactPhone.classList.remove('is-invalid');
+            }
+            
+            // 驗證營業執照上傳
+            const uploadedFiles = getUploadedBusinessLicenseFiles();
+            if (!uploadedFiles || uploadedFiles.length === 0) {
+                // 檢查是否已有舊的證照
+                const licenseContainer = document.getElementById('photoPreviewContainer');
+                if (licenseContainer && licenseContainer.children.length === 0) {
+                    document.querySelector('.custom-file-upload').classList.add('is-invalid');
+                    isValid = false;
+                }
+            }
+            
+            // 驗證條款勾選
+            const termsCheck = document.getElementById('termsCheck');
+            if (!termsCheck.checked) {
+                termsCheck.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                termsCheck.classList.remove('is-invalid');
+            }
+            
+            if (!isValid) {
+                alert('請填寫所有必填欄位');
+            }
+            
+            return isValid;
+        }
+
+        // 為註冊按鈕和註冊鏈接添加事件處理
+        document.addEventListener('DOMContentLoaded', function() {
+            // 註冊按鈕事件
+            const registerBtn = document.getElementById('registerBtn');
+            if (registerBtn) {
+                registerBtn.addEventListener('click', function() {
+                    window.location.href = 'business-register.html';
+                });
+            }
+            
+            // 註冊鏈接事件
+            const signupLink = document.getElementById('signupLink');
+            if (signupLink) {
+                signupLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.location.href = 'business-register.html';
+                });
+            }
+            
+            // 顯示重新申請成功訊息
+            const urlParams = new URLSearchParams(window.location.search);
+            const statusParam = urlParams.get('status');
+            
+            if (statusParam === 'reapplied') {
+                // 顯示重新申請成功訊息
+                const successAlert = document.createElement('div');
+                successAlert.className = 'alert alert-success mt-3 mb-4';
+                successAlert.textContent = '重新申請已成功提交！我們將在審核後通過電子郵件通知您。';
+                
+                // 插入到表單前
+                const loginForm = document.getElementById('businessLoginForm');
+                if (loginForm) {
+                    loginForm.parentNode.insertBefore(successAlert, loginForm);
+                    
+                    // 自動滾動到成功訊息
+                    successAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    
+                    // 5秒後自動隱藏
+                    setTimeout(function() {
+                        successAlert.style.opacity = '0';
+                        setTimeout(function() {
+                            successAlert.remove();
+                        }, 500);
+                    }, 5000);
+                }
+            }
+        });
+
+        // 輔助函數：驗證電話號碼
+        function isValidPhone(phone) {
+            // 簡單的臺灣電話格式驗證，可根據需要調整
+            const phoneRegex = /^(0[2-9]\d{7,8}|09\d{8})$/;
+            return phoneRegex.test(phone);
+        }
+
+        // 獲取上傳的文件列表（確保函數可用）
+        function getUploadedBusinessLicenseFiles() {
+            return window.uploadedFiles || [];
+        }
+
+        // 初始化頁面
+        document.addEventListener('DOMContentLoaded', function() {
+            // 登入表單提交事件
+            document.getElementById('businessLoginForm').addEventListener('submit', handleLogin);
+            
+            // 忘記密碼點擊事件
+            document.querySelector('.forgot-password').addEventListener('click', handleResetPassword);
+            
+            // 切換密碼可見性
+            document.getElementById('togglePassword').addEventListener('click', function() {
+                const passwordInput = document.getElementById('password');
+                const icon = this.querySelector('i');
+                
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                } else {
+                    passwordInput.type = 'password';
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
+            });
+
+            // 驗證頁面元素是否存在
+            if (!document.querySelector('.login-form-container')) {
+                console.warn('警告: 找不到 login-form-container 元素，頁面可能未完全加載');
+            }            
+
+            // 自動檢查登入狀態 - 確保 DOM 已加載
+            firebase.auth().onAuthStateChanged(function(user) {
+                if (user) {
+                    console.log('檢測到用戶已登入:', user.email);
+                    // 用戶已登入，檢查審核狀態
+                    setTimeout(() => {
+                        checkBusinessStatus(user.uid);
+                    }, 500); // 延遲執行，確保 DOM 已完全準備好
+                } else {
+                    console.log('未檢測到已登入用戶');
+                }
+            });
+            
+            // 導航欄滾動效果
+            window.addEventListener('scroll', function() {
+                const navbar = document.querySelector('.navbar');
+                if (window.scrollY > 50) {
+                    navbar.classList.add('scrolled');
+                } else {
+                    navbar.classList.remove('scrolled');
+                }
+            });
+            
+            // 從 URL 獲取參數
+            const urlParams = new URLSearchParams(window.location.search);
+            const statusParam = urlParams.get('status');
+            
+            // 如果有狀態參數，顯示相應訊息
+            if (statusParam === 'registered') {
+                // 顯示註冊成功訊息
+                const successAlert = document.createElement('div');
+                successAlert.className = 'alert alert-success mt-3 mb-4';
+                successAlert.textContent = '註冊申請已成功提交！我們將在審核後通過電子郵件通知您。請查收驗證信以完成郵箱驗證。';
+                
+                // 插入到表單前
+                const loginForm = document.getElementById('businessLoginForm');
+                loginForm.parentNode.insertBefore(successAlert, loginForm);
+                
+                // 自動滾動到成功訊息
+                successAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                
+                // 5秒後自動隱藏
+                setTimeout(function() {
+                    successAlert.style.opacity = '0';
+                    setTimeout(function() {
+                        successAlert.remove();
+                    }, 500);
+                }, 5000);
+            } else if (statusParam === 'verified') {
+                // 顯示郵箱驗證成功訊息
+                const successAlert = document.createElement('div');
+                successAlert.className = 'alert alert-success mt-3 mb-4';
+                successAlert.textContent = '郵箱驗證成功！請使用您的帳號密碼登入。';
+                
+                // 插入到表單前
+                const loginForm = document.getElementById('businessLoginForm');
+                loginForm.parentNode.insertBefore(successAlert, loginForm);
+                
+                // 自動滾動到成功訊息
+                successAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                
+                // 5秒後自動隱藏
+                setTimeout(function() {
+                    successAlert.style.opacity = '0';
+                    setTimeout(function() {
+                        successAlert.remove();
+                    }, 500);
+                }, 5000);
+            }
+        });
+
+    </script>
+
+</body>
+</html>
