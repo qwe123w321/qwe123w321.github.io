@@ -324,6 +324,15 @@
         }
     </style>
     <Script>
+        
+    // 初始化全局上傳文件數組
+    window.uploadedFiles = window.uploadedFiles || [];
+
+    // 獲取上傳的文件列表 - 確保全局可用
+    window.getUploadedBusinessLicenseFiles = function() {
+        return window.uploadedFiles || [];
+    };    
+
     document.addEventListener('DOMContentLoaded', function() {
         const style = document.createElement('style');
         style.textContent = `
@@ -1263,7 +1272,7 @@
         window.getUploadedBusinessLicenseFiles = function() {
             return window.uploadedFiles || [];
         };
-        
+
         // 提交重新申請
         async function submitReapplication(e) {
             e.preventDefault();
