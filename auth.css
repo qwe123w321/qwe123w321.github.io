@@ -420,7 +420,7 @@
 /* 響應式調整 */
 @media (max-width: 991px) {
     .login-image {
-        min-height: 300px;
+        height: 600px;
         background-position: center;
     }
     
