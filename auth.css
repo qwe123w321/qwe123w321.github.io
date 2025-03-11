@@ -12,7 +12,7 @@
 }
 
 .login-container, .register-container  {
-    max-width: 650px;
+    max-width: 1000px;
     margin: 0 auto;
     position: relative;
     z-index: 1;
@@ -27,7 +27,7 @@
 }
 
 .login-image, .register-image  {
-    height: 1000px;
+    height: 650px;
     background-image: url('cafe-interior.jpg');
     background-size: cover;
     background-position: center;
