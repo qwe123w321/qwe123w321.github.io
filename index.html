@@ -18,6 +18,175 @@
     <!-- Favicon -->
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <script src="error-handler.js"></script>
+
+    <style>
+        /* 合作優勢橫向列表樣式 */
+        .benefit-list {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .benefit-item {
+            display: flex;
+            align-items: flex-start;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .benefit-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .benefit-item i {
+            color: #9D7F86;
+            margin-right: 20px;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .benefit-content {
+            flex: 1;
+        }
+
+        .benefit-content h4 {
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .benefit-content p {
+            color: #666;
+            margin-bottom: 0;
+        }
+
+        /* 活動輪播樣式 */
+        .activity-slider-container {
+            position: relative;
+            max-width: 100%;
+            margin: 30px auto;
+            padding: 0 50px;
+        }
+
+        .activity-slider {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+            padding: 10px 0;
+        }
+
+        .activity-slider::-webkit-scrollbar {
+            display: none; /* Chrome, Safari and Opera */
+        }
+
+        .activity-type {
+            min-width: 120px;
+            height: 120px;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            color: white;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .activity-type:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .activity-type i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .activity-type span {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .slider-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: white;
+            border: none;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        .slider-arrow:hover {
+            background-color: #f5f5f5;
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .prev-arrow {
+            left: 0;
+        }
+
+        .next-arrow {
+            right: 0;
+        }
+
+        /* 適應不同屏幕尺寸 */
+        @media (max-width: 768px) {
+            .activity-slider-container {
+                padding: 0 40px;
+            }
+            
+            .activity-type {
+                min-width: 100px;
+                height: 100px;
+            }
+            
+            .activity-type i {
+                font-size: 1.75rem;
+            }
+            
+            .activity-type span {
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .activity-slider-container {
+                padding: 0 30px;
+            }
+            
+            .activity-type {
+                min-width: 90px;
+                height: 90px;
+            }
+            
+            .activity-type i {
+                font-size: 1.5rem;
+            }
+            
+            .slider-arrow {
+                width: 30px;
+                height: 30px;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- 導航欄 -->
@@ -692,5 +861,103 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="script.js"></script>
+
+    <script>
+        // 活動輪播控制
+        document.addEventListener('DOMContentLoaded', function() {
+            const activitySlider = document.querySelector('.activity-slider');
+            const prevBtn = document.getElementById('prevActivity');
+            const nextBtn = document.getElementById('nextActivity');
+            
+            // 檢查是否找到了元素
+            if (!activitySlider || !prevBtn || !nextBtn) return;
+            
+            // 滑動距離
+            const scrollAmount = 250;
+            
+            // 左滑按鈕點擊事件
+            prevBtn.addEventListener('click', function() {
+                activitySlider.scrollBy({
+                    left: -scrollAmount,
+                    behavior: 'smooth'
+                });
+            });
+            
+            // 右滑按鈕點擊事件
+            nextBtn.addEventListener('click', function() {
+                activitySlider.scrollBy({
+                    left: scrollAmount,
+                    behavior: 'smooth'
+                });
+            });
+            
+            // 觸摸滑動處理（適用於移動設備）
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+            
+            activitySlider.addEventListener('mousedown', (e) => {
+                isDown = true;
+                activitySlider.classList.add('active');
+                startX = e.pageX - activitySlider.offsetLeft;
+                scrollLeft = activitySlider.scrollLeft;
+            });
+            
+            activitySlider.addEventListener('mouseleave', () => {
+                isDown = false;
+                activitySlider.classList.remove('active');
+            });
+            
+            activitySlider.addEventListener('mouseup', () => {
+                isDown = false;
+                activitySlider.classList.remove('active');
+            });
+            
+            activitySlider.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - activitySlider.offsetLeft;
+                const walk = (x - startX) * 2; // 滑動速度
+                activitySlider.scrollLeft = scrollLeft - walk;
+            });
+            
+            // 觸摸事件（移動設備）
+            activitySlider.addEventListener('touchstart', (e) => {
+                isDown = true;
+                startX = e.touches[0].pageX - activitySlider.offsetLeft;
+                scrollLeft = activitySlider.scrollLeft;
+            }, { passive: true });
+            
+            activitySlider.addEventListener('touchend', () => {
+                isDown = false;
+            }, { passive: true });
+            
+            activitySlider.addEventListener('touchmove', (e) => {
+                if (!isDown) return;
+                const x = e.touches[0].pageX - activitySlider.offsetLeft;
+                const walk = (x - startX) * 2;
+                activitySlider.scrollLeft = scrollLeft - walk;
+            }, { passive: true });
+            
+            // 檢查箭頭顯示狀態
+            function updateArrowVisibility() {
+                const isAtStart = activitySlider.scrollLeft <= 10;
+                const isAtEnd = activitySlider.scrollLeft >= (activitySlider.scrollWidth - activitySlider.clientWidth - 10);
+                
+                prevBtn.style.opacity = isAtStart ? '0.5' : '1';
+                nextBtn.style.opacity = isAtEnd ? '0.5' : '1';
+            }
+            
+            // 初始更新箭頭狀態
+            updateArrowVisibility();
+            
+            // 滾動時更新箭頭狀態
+            activitySlider.addEventListener('scroll', updateArrowVisibility);
+            
+            // 窗口大小改變時更新箭頭狀態
+            window.addEventListener('resize', updateArrowVisibility);
+        });
+    </script>
+
 </body>
 </html>
