@@ -697,6 +697,92 @@
                 font-size: 0.8rem;
             }
         }
+
+        /* 熱門約會活動區塊樣式 */
+        .activities-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px 0;
+        }
+
+        .activity-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .activity-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1/1;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        .activity-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12);
+        }
+
+        .activity-item i {
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+
+        .activity-item span {
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+
+        .activities-description {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .activities-description p {
+            font-size: 1.1rem;
+            color: #6c757d;
+            line-height: 1.6;
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 992px) {
+            .activity-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .activity-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .activity-item i {
+                font-size: 1.7rem;
+            }
+            
+            .activity-item span {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .activity-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .activities-description p {
+                font-size: 1rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -904,6 +990,61 @@
                         <h3>專注聊天</h3>
                         <p>採用一對一配對機制，不同時與多人對話，讓每次互動都更真實、高效率。</p>
                     </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 熱門約會活動區塊 -->
+    <section id="popular-activities" class="section-padding bg-light">
+        <div class="container">
+            <div class="section-title" data-aos="fade-up">
+                <h2>熱門約會活動</h2>
+                <p>探索我們用戶最喜愛的約會體驗</p>
+            </div>
+            
+            <div class="activities-container" data-aos="fade-up">
+                <div class="activity-grid">
+                    <div class="activity-item" style="background-color: #9D7F86;">
+                        <i class="fas fa-utensils"></i>
+                        <span>吃飯</span>
+                    </div>
+                    <div class="activity-item" style="background-color: #A1A8B7;">
+                        <i class="fas fa-shopping-bag"></i>
+                        <span>逛街</span>
+                    </div>
+                    <div class="activity-item" style="background-color: #8C96A7;">
+                        <i class="fas fa-film"></i>
+                        <span>看電影</span>
+                    </div>
+                    <div class="activity-item" style="background-color: #D8CAB8;">
+                        <i class="fas fa-coffee"></i>
+                        <span>咖啡廳</span>
+                    </div>
+                    <div class="activity-item" style="background-color: #C7B7A7;">
+                        <i class="fas fa-book"></i>
+                        <span>讀書</span>
+                    </div>
+                    <div class="activity-item" style="background-color: #9E7F7F;">
+                        <i class="fas fa-glass-martini-alt"></i>
+                        <span>喝酒</span>
+                    </div>
+                    <div class="activity-item" style="background-color: #A1A8B7;">
+                        <i class="fas fa-running"></i>
+                        <span>運動</span>
+                    </div>
+                    <div class="activity-item" style="background-color: #CBC2C1;">
+                        <i class="fas fa-comment"></i>
+                        <span>聊天</span>
+                    </div>
+                    <div class="activity-item" style="background-color: #919295;">
+                        <i class="fas fa-gamepad"></i>
+                        <span>娛樂</span>
+                    </div>
+                </div>
+                
+                <div class="activities-description" data-aos="fade-up">
+                    <p>在 BREWDATE，我們鼓勵用戶體驗各種互動方式，發現真實的約會樂趣。無論您的商家提供哪種體驗，都可以成為我們的合作夥伴！</p>
                 </div>
             </div>
         </div>
