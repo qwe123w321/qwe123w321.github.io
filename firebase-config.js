@@ -1,3 +1,15 @@
+<>
+// 確保加載 App Check 腳本
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-check.js"></script>
+
+// 您現有的 Firebase 腳本
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js"></script>
+
+</>
+
 // Firebase 配置
 const firebaseConfig = {
     apiKey: "AIzaSyDslE4rgN8ZiUam3MCT_bJiSfusUxZS-wU",
