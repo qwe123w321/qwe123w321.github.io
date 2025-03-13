@@ -13,15 +13,16 @@ const firebaseConfig = {
 // 初始化 Firebase
 firebase.initializeApp(firebaseConfig);
 
-// 初始化 App Check (在初始化其他服務之前)
-const appCheck = firebase.appCheck();
-appCheck.activate('6LfRXvMqAAAAAGA0CuAxE_e6k_Kg_67Tn_fSCx6e', true);
-
-// 然後再初始化其他服務
+// 設置一些安全性選項
 const auth = firebase.auth();
+auth.useDeviceLanguage();
+auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+
+// 初始化其他服務
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-// 設置一些安全性選項
-auth.useDeviceLanguage();
-auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+// 將服務暴露至全局範圍
+window.auth = auth;
+window.db = db;
+window.storage = storage;
