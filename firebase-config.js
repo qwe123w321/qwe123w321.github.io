@@ -1,11 +1,11 @@
-// firebase-config.js - 使用 ES 模組方式
+// firebase-config.js - 使用 ES 模組方式 (CDN 版本)
 
-// 引入需要的 Firebase 套件
-import { initializeApp } from 'firebase/app';
-import { getAuth, setPersistence, browserSessionPersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+// 引入需要的 Firebase 套件 (使用 CDN)
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
+import { getAuth, setPersistence, browserSessionPersistence, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
+import { getStorage } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-check.js';
 
 // Firebase 配置
 const firebaseConfig = {
@@ -38,4 +38,4 @@ auth.useDeviceLanguage();
 setPersistence(auth, browserSessionPersistence);
 
 // 導出服務以便其他模組使用
-export { auth, db, storage, appCheck };
+export { auth, db, storage, appCheck, onAuthStateChanged, doc, getDoc, collection };
