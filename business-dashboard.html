@@ -23,6 +23,18 @@
     
     <!-- 添加Firebase ES 模組 script 標籤 -->
     <script type="module" src="firebase-config.js"></script>
+
+    <script type="module">
+        import { auth, db, storage } from './firebase-config.js';
+        import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
+        
+        // 將 auth 和其他變數暴露給全局範圍
+        window.auth = auth;
+        window.db = db;
+        window.storage = storage;
+    
+    // 其他初始化代碼...
+    </script>
     
     <!-- 錯誤處理 -->
     <script src="error-handler.js"></script>
@@ -1985,29 +1997,56 @@
                     </div>
                 </div>
             </div>
+
             <script type="module">
                 import { auth } from './firebase-config.js';
                 import { signOut } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
-            
-                document.getElementById('logoutLink').addEventListener('click', async function(e) {
+                
+                // 等待 DOM 加載完成
+                document.addEventListener('DOMContentLoaded', function() {
+                // 側邊欄登出按鈕
+                const logoutLink = document.querySelector('.sidebar-menu li a[href="index.html"]');
+                if (logoutLink) {
+                    logoutLink.setAttribute('href', '#');
+                    logoutLink.id = 'sidebarLogoutBtn';
+                    
+                    logoutLink.addEventListener('click', async function(e) {
                     e.preventDefault();
                     await performLogout();
+                    });
+                }
+                
+                // 頂部導航登出按鈕 (如果有的話)
+                const navLogoutBtn = document.querySelector('.dropdown-menu a[href="index.html"]');
+                if (navLogoutBtn) {
+                    navLogoutBtn.setAttribute('href', '#');
+                    navLogoutBtn.id = 'navLogoutBtn';
+                    
+                    navLogoutBtn.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    await performLogout();
+                    });
+                }
                 });
-            
+                
+                // 登出功能
                 async function performLogout() {
-                    try {
-                        // 1. 調用 Firebase Auth 登出
-                        await signOut(auth);
-                        
-                        // 2. 清除可能存儲的 token 或其他狀態
-                        localStorage.removeItem('firebase:authUser:' + firebase.app().options.apiKey + ':[DEFAULT]');
-                        sessionStorage.clear();
-                        
-                        // 3. 導航到登入頁面，添加時間戳防止快取
-                        window.location.href = 'business-login.html?t=' + new Date().getTime();
-                    } catch (error) {
-                        console.error('登出時發生錯誤:', error);
-                    }
+                try {
+                    console.log('開始登出流程...');
+                    // 登出 Firebase
+                    await signOut(auth);
+                    
+                    // 清除本地存儲
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    
+                    console.log('登出成功，重定向到登入頁面...');
+                    // 添加時間戳防止快取
+                    window.location.href = 'business-login.html?t=' + new Date().getTime();
+                } catch (error) {
+                    console.error('登出時發生錯誤:', error);
+                    alert('登出失敗，請重新嘗試或重新載入頁面');
+                }
                 }
             </script>
             <script>
