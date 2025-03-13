@@ -16,6 +16,15 @@
     <link rel="stylesheet" href="base.css">
     <!-- Favicon -->
     <link rel="icon" href="favicon.ico" type="image/x-icon">
+                
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/3.35.0/apexcharts.min.js"></script>
+    
+    <!-- 添加Firebase ES 模組 script 標籤 -->
+    <script type="module" src="firebase-config.js"></script>
+    
+    <!-- 錯誤處理 -->
     <script src="error-handler.js"></script>
 
     <style>
@@ -1976,16 +1985,31 @@
                     </div>
                 </div>
             </div>
+            <script type="module">
+                import { auth } from './firebase-config.js';
+                import { signOut } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
             
-            <!-- JavaScript -->
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/3.35.0/apexcharts.min.js"></script>
+                document.getElementById('logoutLink').addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    await performLogout();
+                });
             
-            <!-- 添加Firebase ES 模組 script 標籤 -->
-            <script type="module" src="firebase-config.js"></script>
-            
-            <!-- 錯誤處理 -->
-            <script src="error-handler.js"></script>
+                async function performLogout() {
+                    try {
+                        // 1. 調用 Firebase Auth 登出
+                        await signOut(auth);
+                        
+                        // 2. 清除可能存儲的 token 或其他狀態
+                        localStorage.removeItem('firebase:authUser:' + firebase.app().options.apiKey + ':[DEFAULT]');
+                        sessionStorage.clear();
+                        
+                        // 3. 導航到登入頁面，添加時間戳防止快取
+                        window.location.href = 'business-login.html?t=' + new Date().getTime();
+                    } catch (error) {
+                        console.error('登出時發生錯誤:', error);
+                    }
+                }
+            </script>
             <script>
                 document.addEventListener('DOMContentLoaded', function() {
                     // 登出功能
