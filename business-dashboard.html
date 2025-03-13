@@ -747,7 +747,7 @@
                         <li><a class="dropdown-item" href="#profile"><i class="fas fa-user"></i> 店家資料</a></li>
                         <li><a class="dropdown-item" href="#settings"><i class="fas fa-cog"></i> 帳戶設定</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="index.html"><i class="fas fa-sign-out-alt"></i> 登出</a></li>
+                        <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> 登出</a>
                     </ul>
                 </div>
             </div>
@@ -2006,6 +2006,25 @@
                         });
                     }
                 });
+
+                async function performLogout() {
+                    try {
+                        // 1. 調用 Firebase Auth 登出
+                        await signOut(auth);
+                        
+                        // 2. 清除可能存儲的 token 或其他狀態
+                        localStorage.removeItem('firebase:authUser:' + firebase.app().options.apiKey + ':[DEFAULT]');
+                        sessionStorage.clear();
+                        
+                        // 3. 導航到登入頁面
+                        window.location.href = 'business-login.html';
+                        
+                        // 4. 防止頁面快取
+                        window.location.href = 'business-login.html?t=' + new Date().getTime();
+                    } catch (error) {
+                        console.error('登出時發生錯誤:', error);
+                    }
+                }
 
                 document.addEventListener('DOMContentLoaded', function() {
                     // 側邊欄切換
