@@ -1,3 +1,12 @@
+// firebase-config.js - 使用 ES 模組方式
+
+// 引入需要的 Firebase 套件
+import { initializeApp } from 'firebase/app';
+import { getAuth, setPersistence, browserSessionPersistence } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+
 // Firebase 配置
 const firebaseConfig = {
     apiKey: "AIzaSyDslE4rgN8ZiUam3MCT_bJiSfusUxZS-wU",
@@ -11,18 +20,22 @@ const firebaseConfig = {
 };
 
 // 初始化 Firebase
-firebase.initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
 
-// 設置一些安全性選項
-const auth = firebase.auth();
+// 初始化 App Check
+const appCheck = initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider('6LfRXvMqAAAAAGA0CuAxE_e6k_Kg_67Tn_fSCx6e'),
+    isTokenAutoRefreshEnabled: true
+});
+
+// 初始化服務
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+// 設置安全性選項
 auth.useDeviceLanguage();
-auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+setPersistence(auth, browserSessionPersistence);
 
-// 初始化其他服務
-const db = firebase.firestore();
-const storage = firebase.storage();
-
-// 將服務暴露至全局範圍
-window.auth = auth;
-window.db = db;
-window.storage = storage;
+// 導出服務以便其他模組使用
+export { auth, db, storage, appCheck };
