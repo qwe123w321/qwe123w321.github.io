@@ -1,6 +1,8 @@
 // firebase-config.js - 使用 ES 模組方式 (CDN 版本)
 
 // 引入需要的 Firebase 套件 (使用 CDN)
+// import { initializeApp } from "firebase/app";
+
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
 import { getAuth, setPersistence, browserSessionPersistence, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
@@ -17,14 +19,14 @@ const firebaseConfig = {
     messagingSenderId: "1010412789448",
     appId: "1:1010412789448:web:2843afa459b3644d118ffd",
     measurementId: "G-X7RQ8DRZ7P"
-};
+  };
 
 // 初始化 Firebase
 const app = initializeApp(firebaseConfig);
 
 // 初始化 App Check
 const appCheck = initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider('6LfRXvMqAAAAAGA0CuAxE_e6k_Kg_67Tn_fSCx6e'),
+    provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
     isTokenAutoRefreshEnabled: true
 });
 
