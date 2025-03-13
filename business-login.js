@@ -1,7 +1,9 @@
-// business-login.js - 使用 ES 模組方式
-import { auth, db } from './firebase-config.js';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, collection } from 'firebase/firestore';
+// business-login.js - 使用 ES 模組方式 (CDN 版本)
+import { auth, db, onAuthStateChanged, doc, getDoc } from './firebase-config.js';
+import { signInWithEmailAndPassword, signOut, sendEmailVerification, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
+
+// 全局變數用於追蹤狀態
+let statusMessageShown = false;
 
 // DOM 元素綁定
 document.addEventListener('DOMContentLoaded', function() {
@@ -52,6 +54,19 @@ document.addEventListener('DOMContentLoaded', function() {
     if (forgotPassword) {
         forgotPassword.addEventListener('click', handleResetPassword);
     }
+    
+    // 自動檢查登入狀態
+    onAuthStateChanged(auth, function(user) {
+        if (user) {
+            console.log('檢測到用戶已登入:', user.email);
+            // 用戶已登入，檢查審核狀態
+            setTimeout(() => {
+                checkBusinessStatus(user.uid);
+            }, 500); // 延遲執行，確保 DOM 已完全準備好
+        } else {
+            console.log('未檢測到已登入用戶');
+        }
+    });
 });
 
 // 登入處理函數
@@ -86,7 +101,7 @@ async function handleLogin(e) {
         // 檢查郵箱是否已驗證
         if (!user.emailVerified) {
             // 未驗證，發送新的驗證郵件
-            await user.sendEmailVerification();
+            await sendEmailVerification(user);
             await signOut(auth);
             
             // 顯示錯誤訊息
@@ -202,7 +217,7 @@ async function handleResetPassword(e) {
         
         try {
             // 發送重設密碼郵件
-            await auth.sendPasswordResetEmail(resetEmail);
+            await sendPasswordResetEmail(auth, resetEmail);
             
             // 顯示成功訊息
             document.getElementById('resetPasswordAlert').style.display = 'block';
@@ -237,6 +252,46 @@ async function handleResetPassword(e) {
             }
         }
     });
+}
+
+// 在登入成功後 檢查店家審核狀態
+async function checkBusinessStatus(userId) {
+    try {
+        // 避免重複檢查
+        if (statusMessageShown) return;
+        
+        const businessDocRef = doc(db, 'businesses', userId);
+        const businessDoc = await getDoc(businessDocRef);
+        
+        if (businessDoc.exists()) {
+            const businessData = businessDoc.data();
+            
+            // 根據審核狀態處理
+            if (businessData.status === 'approved') {
+                // 添加日誌便於調試
+                console.log('登入成功：商家已通過審核，重定向到儀表板');
+                
+                // 通過審核，重定向到店家後台
+                window.location.href = 'business-dashboard.html';
+            } else if (businessData.status === 'pending') {
+                // 審核中，顯示等待訊息
+                console.log('登入成功：商家審核中');
+                showStatusMessage('pending');
+            } else if (businessData.status === 'rejected') {
+                // 審核未通過，顯示原因
+                console.log('登入失敗：商家審核未通過');
+                showStatusMessage('rejected', businessData.rejectReason || '未提供拒絕原因');
+            }
+        } else {
+            // 找不到店家資料，登出並顯示錯誤
+            console.error('找不到店家資料');
+            await signOut(auth);
+            showError('找不到店家資料，請聯繫客服');
+        }
+    } catch (error) {
+        console.error('檢查審核狀態時發生錯誤:', error);
+        showError('檢查審核狀態時發生錯誤，請稍後再試');
+    }
 }
 
 // 輸入清理函數
@@ -354,7 +409,7 @@ function showStatusMessage(status, reason = '') {
             if (logoutBtn) {
                 logoutBtn.addEventListener('click', async function() {
                     try {
-                        await firebase.auth().signOut();
+                        await signOut(auth);
                         window.location.reload(); // 登出後重新加載頁面
                     } catch (error) {
                         console.error('登出時發生錯誤:', error);
@@ -373,5 +428,48 @@ function showStatusMessage(status, reason = '') {
     }
 }
 
-// 導出函數，以便其他模組使用
-export { handleLogin, handleResetPassword, showError, clearErrorMessage, showStatusMessage };
+// 重新申請審核函數
+async function reapplyForApproval() {
+    try {
+        const user = auth.currentUser;
+        
+        if (!user) {
+            alert('請先登入');
+            return;
+        }
+        
+        // 確認是否要重新申請
+        const confirmed = confirm('您確定要重新提交店家審核申請嗎？');
+        if (!confirmed) return;
+        
+        // 顯示處理中提示
+        const reapplyBtn = document.getElementById('reapplyBtn');
+        if (reapplyBtn) {
+            reapplyBtn.disabled = true;
+            reapplyBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 處理中...';
+        }
+        
+        // 重定向到重新申請頁面，帶上店家 ID
+        window.location.href = `business-reapply.html?id=${user.uid}`;
+        
+    } catch (error) {
+        console.error('準備重新申請時發生錯誤:', error);
+        alert('準備重新申請時發生錯誤: ' + error.message);
+        
+        // 恢復按鈕狀態
+        const reapplyBtn = document.getElementById('reapplyBtn');
+        if (reapplyBtn) {
+            reapplyBtn.disabled = false;
+            reapplyBtn.textContent = '重新申請';
+        }
+    }
+}
+
+// 使輔助函數可在全局範圍內使用
+window.sanitizeInput = sanitizeInput;
+window.handleLogin = handleLogin;
+window.handleResetPassword = handleResetPassword;
+window.showError = showError;
+window.clearErrorMessage = clearErrorMessage;
+window.checkBusinessStatus = checkBusinessStatus;
+window.reapplyForApproval = reapplyForApproval;
