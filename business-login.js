@@ -25,25 +25,6 @@ let statusMessageShown = false;
 
 // DOM 元素綁定
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('正在初始化商家登入頁面...');
-    
-    // 檢查 App Check 狀態
-    setTimeout(async () => {
-        console.log('正在檢查 App Check 狀態...');
-        try {
-            const result = await checkAppCheckStatus();
-            if (result.success) {
-                console.log('App Check 驗證成功！');
-            } else {
-                console.error('App Check 驗證失敗，可能導致未經驗證的請求錯誤');
-                // 添加錯誤提示到頁面
-                addAppCheckWarning();
-            }
-        } catch (error) {
-            console.error('檢查 App Check 狀態時發生錯誤:', error);
-        }
-    }, 1000);
-    
     // 登入表單處理
     const loginForm = document.getElementById('businessLoginForm');
     if (loginForm) {
@@ -95,58 +76,60 @@ document.addEventListener('DOMContentLoaded', function() {
     // 自動檢查登入狀態
     onAuthStateChanged(auth, function(user) {
         if (user) {
-            console.log('檢測到用戶已登入:', user.email);
             // 用戶已登入，檢查審核狀態
             setTimeout(() => {
                 checkBusinessStatus(user.uid);
-            }, 500); // 延遲執行，確保 DOM 已完全準備好
-        } else {
-            console.log('未檢測到已登入用戶');
+            }, 500); // 延遲執行，確保DOM已完全準備好
         }
     });
 });
 
 // 添加 App Check 警告
-function addAppCheckWarning() {
-    const warningDiv = document.createElement('div');
-    warningDiv.className = 'alert alert-warning alert-dismissible fade show mt-3';
-    warningDiv.id = 'appCheckWarning';
-    warningDiv.innerHTML = `
-        <strong>注意:</strong> App Check 驗證未完成，這可能導致請求被拒絕。
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>
-        <div class="mt-2">
-            <button class="btn btn-sm btn-warning" id="retryAppCheck">重試 App Check 驗證</button>
-        </div>
-    `;
+// function addAppCheckWarning() {
+//     const warningDiv = document.createElement('div');
+//     warningDiv.className = 'alert alert-warning alert-dismissible fade show mt-3';
+//     warningDiv.id = 'appCheckWarning';
+//     warningDiv.innerHTML = `
+//         <strong>注意:</strong> App Check 驗證未完成，這可能導致請求被拒絕。
+//         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>
+//         <div class="mt-2">
+//             <button class="btn btn-sm btn-warning" id="retryAppCheck">重試 App Check 驗證</button>
+//         </div>
+//     `;
     
-    // 添加到登入表單前
-    const loginForm = document.getElementById('businessLoginForm');
-    if (loginForm) {
-        loginForm.parentNode.insertBefore(warningDiv, loginForm);
+//     // 添加到登入表單前
+//     const loginForm = document.getElementById('businessLoginForm');
+//     if (loginForm) {
+//         loginForm.parentNode.insertBefore(warningDiv, loginForm);
         
-        // 添加重試按鈕事件
-        setTimeout(() => {
-            const retryBtn = document.getElementById('retryAppCheck');
-            if (retryBtn) {
-                retryBtn.addEventListener('click', async function() {
-                    this.disabled = true;
-                    this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 驗證中...';
+//         // 添加重試按鈕事件
+//         setTimeout(() => {
+//             const retryBtn = document.getElementById('retryAppCheck');
+//             if (retryBtn) {
+//                 retryBtn.addEventListener('click', async function() {
+//                     this.disabled = true;
+//                     this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 驗證中...';
                     
-                    const result = await checkAppCheckStatus();
-                    if (result.success) {
-                        // 移除警告並顯示成功訊息
-                        document.getElementById('appCheckWarning').remove();
-                        showSuccess('App Check 驗證成功！您現在可以嘗試登入。');
-                    } else {
-                        // 更新警告
-                        this.disabled = false;
-                        this.textContent = '重試 App Check 驗證';
-                        showError('App Check 驗證仍然失敗，請刷新頁面或檢查網絡連接。');
-                    }
-                });
-            }
-        }, 100);
-    }
+//                     const result = await checkAppCheckStatus();
+//                     if (result.success) {
+//                         // 移除警告並顯示成功訊息
+//                         document.getElementById('appCheckWarning').remove();
+//                         showSuccess('App Check 驗證成功！您現在可以嘗試登入。');
+//                     } else {
+//                         // 更新警告
+//                         this.disabled = false;
+//                         this.textContent = '重試 App Check 驗證';
+//                         showError('App Check 驗證仍然失敗，請刷新頁面或檢查網絡連接。');
+//                     }
+//                 });
+//             }
+//         }, 100);
+//     }
+// }
+// 移除addAppCheckWarning函數的實際內容，保留函數但不執行任何操作
+function addAppCheckWarning() {
+    // 不執行任何操作，隱藏App Check警告
+    return;
 }
 
 // 顯示成功訊息
@@ -168,14 +151,14 @@ function showSuccess(message) {
     }, 5000);
 }
 
-// 登入處理函數 - 添加 App Check 令牌
+// 登入處理函數 - 添加 App Check 令牌  // const rememberMe = document.getElementById('rememberMe').checked;
 async function handleLogin(e) {
     e.preventDefault();
     
     // 獲取輸入值
     const email = sanitizeInput(document.getElementById('email').value);
     const password = document.getElementById('password').value;
-    const rememberMe = document.getElementById('rememberMe').checked;
+    const rememberMe = false; // 默認為false，因為我們隱藏了選項
     
     // 清除之前的錯誤訊息
     clearErrorMessage();
@@ -192,26 +175,17 @@ async function handleLogin(e) {
     submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 登入中...';
     submitButton.disabled = true;
     
-    // 先檢查 App Check
+    // App Check檢查（保留功能但減少日誌輸出）
     try {
-        console.log('登入前檢查 App Check 狀態...');
-        const appCheckResult = await checkAppCheckStatus();
-        
-        if (!appCheckResult.success) {
-            console.warn('App Check 驗證失敗，但仍將嘗試登入');
-        } else {
-            console.log('App Check 驗證成功，繼續登入流程');
-            
-            // 設置 XHR 攔截器來添加 App Check 令牌
-            installXHRInterceptor();
-        }
+        // 靜默檢查App Check
+        await checkAppCheckStatus();
+        installXHRInterceptor();
     } catch (error) {
-        console.error('App Check 檢查失敗:', error);
-        // 仍然繼續嘗試登入
+        // 不需要告知用戶App Check狀態
     }
     
     try {
-        // 使用 Firebase Auth 登入
+        // 使用Firebase Auth登入
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         
@@ -273,21 +247,7 @@ async function handleLogin(e) {
         } else if (error.code === 'auth/user-disabled') {
             errorMessage = '此帳戶已被停用，請聯繫客服';
         } else if (error.code === 'auth/network-request-failed') {
-            errorMessage = '網絡請求失敗，請檢查您的網絡連接並重試。可能是 App Check 驗證問題。';
-            
-            // 添加重試 App Check 的按鈕
-            setTimeout(() => {
-                const errorAlert = document.querySelector('.login-error-alert');
-                if (errorAlert) {
-                    const retryBtn = document.createElement('button');
-                    retryBtn.className = 'btn btn-sm btn-warning mt-2';
-                    retryBtn.textContent = '重試 App Check 驗證';
-                    retryBtn.addEventListener('click', async function() {
-                        await checkAppCheckStatus();
-                    });
-                    errorAlert.appendChild(retryBtn);
-                }
-            }, 100);
+            errorMessage = '網絡請求失敗，請檢查您的網絡連接並重試';
         }
         
         // 顯示錯誤訊息
