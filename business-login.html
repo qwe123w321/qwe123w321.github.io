@@ -16,11 +16,49 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
-    <!-- 添加Firebase ES 模組 script 標籤 -->
-    <script type="module" src="firebase-config.js"></script>
-    <script type="module" src="business-login.js"></script>
-    <!-- 添加 App Check 調試工具 -->
-    <script type="module" src="app-check-debug.js"></script>
+   <!-- 1. 首先加載 reCAPTCHA 腳本 (非常重要) -->
+   <script src="https://www.google.com/recaptcha/api.js?render=6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G"></script>
+    
+   <!-- 2. 然後加載 Firebase 模組，確保 App Check 首先初始化 -->
+   <script type="module">
+       // 動態加載腳本，確保按正確順序執行
+       import './firebase-config.js';
+       import './fetch-with-appcheck.js';
+       import './business-login.js';
+       import './app-check-debug.js';
+   </script>
+   
+   <!-- 3. 準備頁面載入時顯示的調試標記 -->
+   <style>
+       #appCheckStatus {
+           position: fixed;
+           top: 10px;
+           right: 10px;
+           padding: 5px 10px;
+           border-radius: 4px;
+           font-size: 12px;
+           z-index: 9999;
+           display: none;
+       }
+       
+       #appCheckStatus.initializing {
+           background-color: #ffeeba;
+           color: #856404;
+           display: block;
+       }
+       
+       #appCheckStatus.success {
+           background-color: #d4edda;
+           color: #155724;
+           display: block;
+       }
+       
+       #appCheckStatus.error {
+           background-color: #f8d7da;
+           color: #721c24;
+           display: block;
+       }
+   </style>
     
     <script src="error-handler.js"></script>
     
