@@ -1,12 +1,10 @@
-// business-login.js - 使用 ES 模組方式 (CDN 版本)
 import { 
     auth, 
     db, 
+    appCheck,
     onAuthStateChanged, 
     doc, 
-    getDoc, 
-    printAppCheckStatus,  // 確保導入此函數
-    getAndAttachAppCheckToken  
+    getDoc
 } from './firebase-config.js';
 import { 
     signInWithEmailAndPassword, 
@@ -15,8 +13,69 @@ import {
     sendPasswordResetEmail 
 } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
 
+import { getToken } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-check.js';
+
 // 全局變數用於追蹤狀態
 let statusMessageShown = false;
+
+async function checkAppCheckStatus() {
+    console.log('App Check 狀態檢查開始');
+    
+    if (!appCheck) {
+        console.error('App Check 物件未初始化');
+        return { success: false, error: 'App Check 物件未初始化' };
+    }
+    
+    try {
+        console.log('App Check 物件狀態:', appCheck);
+        
+        // 嘗試獲取令牌
+        console.log('嘗試獲取 App Check 令牌...');
+        const tokenResult = await getToken(appCheck, /* forceRefresh */ true);
+        
+        console.log('App Check 令牌獲取成功！');
+        console.log('令牌詳情:', {
+            token: tokenResult.token.substring(0, 10) + '...[已隱藏]', // 只顯示令牌前10個字符
+            expireTimeMillis: new Date(tokenResult.expireTimeMillis).toLocaleString(),
+            isValid: !!tokenResult.token
+        });
+        
+        return {
+            success: true,
+            token: tokenResult.token,
+            expireTimeMillis: tokenResult.expireTimeMillis
+        };
+    } catch (error) {
+        console.error('App Check 令牌獲取失敗:', error);
+        console.log('錯誤詳情:', {
+            code: error.code,
+            message: error.message,
+            stack: error.stack
+        });
+        
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+// 獲取 App Check 令牌的輔助函數
+async function getAppCheckToken() {
+    if (!appCheck) {
+        console.error('App Check 物件未初始化');
+        return null;
+    }
+    
+    try {
+        const tokenResult = await getToken(appCheck);
+        console.log('成功獲取 App Check 令牌');
+        return tokenResult.token;
+    } catch (error) {
+        console.error('獲取 App Check 令牌時發生錯誤:', error);
+        return null;
+    }
+}
 
 // DOM 元素綁定
 document.addEventListener('DOMContentLoaded', function() {
@@ -26,18 +85,13 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(async () => {
         console.log('正在檢查 App Check 狀態...');
         try {
-            // 確保 printAppCheckStatus 已定義
-            if (typeof printAppCheckStatus === 'function') {
-                const result = await printAppCheckStatus();
-                if (result.success) {
-                    console.log('App Check 驗證成功！');
-                } else {
-                    console.error('App Check 驗證失敗，可能導致未經驗證的請求錯誤');
-                    // 添加錯誤提示到頁面
-                    addAppCheckWarning();
-                }
+            const result = await checkAppCheckStatus();
+            if (result.success) {
+                console.log('App Check 驗證成功！');
             } else {
-                console.error('printAppCheckStatus 函數未定義，請檢查 firebase-config.js');
+                console.error('App Check 驗證失敗，可能導致未經驗證的請求錯誤');
+                // 添加錯誤提示到頁面
+                addAppCheckWarning();
             }
         } catch (error) {
             console.error('檢查 App Check 狀態時發生錯誤:', error);
@@ -105,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
-
+    
 // 添加 App Check 警告
 function addAppCheckWarning() {
     const warningDiv = document.createElement('div');
@@ -132,7 +186,7 @@ function addAppCheckWarning() {
                     this.disabled = true;
                     this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 驗證中...';
                     
-                    const result = await printAppCheckStatus();
+                    const result = await checkAppCheckStatus();
                     if (result.success) {
                         // 移除警告並顯示成功訊息
                         document.getElementById('appCheckWarning').remove();
@@ -168,7 +222,7 @@ function showSuccess(message) {
     }, 5000);
 }
 
-// 登入處理函數 - 確保 App Check 令牌已獲取並用於身份驗證
+// 登入處理函數 - 添加 App Check 令牌
 async function handleLogin(e) {
     e.preventDefault();
     
@@ -192,64 +246,31 @@ async function handleLogin(e) {
     submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 登入中...';
     submitButton.disabled = true;
     
+    // 先檢查 App Check
     try {
-        // 步驟 1: 確保 App Check 令牌已獲取 - 這是關鍵步驟
-        console.log('第一步: 獲取 App Check 令牌');
-        let appCheckToken = null;
-        try {
-            // 強制刷新令牌並等待獲取
-            const appCheck = await import('./firebase-config.js').then(module => module.appCheck);
-            const getToken = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-app-check.js')
-                .then(module => module.getToken);
-            
-            const tokenResult = await getToken(appCheck, true); // forceRefresh=true
-            appCheckToken = tokenResult.token;
-            console.log('App Check 令牌獲取成功，將用於身份驗證請求');
-        } catch (error) {
-            console.error('App Check 令牌獲取失敗，但仍將嘗試登入:', error);
+        console.log('登入前檢查 App Check 狀態...');
+        const appCheckResult = await checkAppCheckStatus();
+        
+        if (!appCheckResult.success) {
+            console.warn('App Check 驗證失敗，但仍將嘗試登入');
+        } else {
+            console.log('App Check 驗證成功，繼續登入流程');
+        }
+    } catch (error) {
+        console.error('App Check 檢查失敗:', error);
+        // 仍然繼續嘗試登入
+    }
+    
+    try {
+        // 設置 XHR 攔截器來添加 App Check 令牌
+        const token = await getAppCheckToken();
+        if (token) {
+            setupXHRInterceptor(token);
         }
         
-        // 步驟 2: 先設置 XHR 攔截器來添加 App Check 令牌到每個請求
-        // 這會影響所有 XMLHttpRequest，包括 Firebase 使用的
-        if (appCheckToken) {
-            const originalXHROpen = XMLHttpRequest.prototype.open;
-            XMLHttpRequest.prototype.open = function() {
-                const result = originalXHROpen.apply(this, arguments);
-                
-                // 監聽 readystatechange 事件
-                this.addEventListener('readystatechange', function() {
-                    if (this.readyState === 1) { // OPENED
-                        // 為前往 identitytoolkit.googleapis.com 的請求添加 App Check 令牌
-                        // 這是 Firebase 身份驗證服務的 URL
-                        const url = arguments[1];
-                        if (url && (
-                            url.includes('identitytoolkit.googleapis.com') || 
-                            url.includes('securetoken.googleapis.com')
-                        )) {
-                            this.setRequestHeader('X-Firebase-AppCheck', appCheckToken);
-                            console.log('為身份驗證請求添加了 App Check 令牌');
-                        }
-                    }
-                });
-                
-                return result;
-            };
-            
-            // 設置一個超時器來恢復原始 XHR
-            setTimeout(() => {
-                XMLHttpRequest.prototype.open = originalXHROpen;
-                console.log('已恢復原始 XHR 設置');
-            }, 10000); // 10秒後恢復
-        }
-        
-        // 步驟 3: 使用 Firebase Auth 登入
-        console.log('第二步: 嘗試登入');
-        const { signInWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js');
-        const { auth } = await import('./firebase-config.js');
-        
+        // 使用 Firebase Auth 登入
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-        console.log('登入成功:', user.uid);
         
         // 檢查郵箱是否已驗證
         if (!user.emailVerified) {
@@ -319,7 +340,7 @@ async function handleLogin(e) {
                     retryBtn.className = 'btn btn-sm btn-warning mt-2';
                     retryBtn.textContent = '重試 App Check 驗證';
                     retryBtn.addEventListener('click', async function() {
-                        await printAppCheckStatus();
+                        await checkAppCheckStatus();
                     });
                     errorAlert.appendChild(retryBtn);
                 }
@@ -333,6 +354,41 @@ async function handleLogin(e) {
         submitButton.innerHTML = originalButtonText;
         submitButton.disabled = false;
     }
+}
+
+// 設置 XHR 攔截器
+function setupXHRInterceptor(token) {
+    if (!token) return;
+    
+    console.log('設置 XHR 攔截器來添加 App Check 令牌到請求...');
+    
+    const originalXHROpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function() {
+        const oldSend = this.send;
+        const url = arguments[1];
+        
+        // 如果是 Firebase Auth 相關請求，添加 App Check 令牌
+        if (url && (
+            url.includes('identitytoolkit.googleapis.com') || 
+            url.includes('securetoken.googleapis.com') ||
+            url.includes('firebaseapp.com')
+        )) {
+            this.send = function() {
+                this.setRequestHeader('X-Firebase-AppCheck', token);
+                console.log('已為請求添加 App Check 令牌:', url);
+                return oldSend.apply(this, arguments);
+            };
+        }
+        
+        const result = originalXHROpen.apply(this, arguments);
+        return result;
+    };
+    
+    // 5秒後恢復原始 XHR
+    setTimeout(() => {
+        XMLHttpRequest.prototype.open = originalXHROpen;
+        console.log('已恢復原始 XHR 設置');
+    }, 5000);
 }
 
 // 處理忘記密碼
