@@ -2,16 +2,16 @@
 
 // 引入需要的 Firebase 套件 (使用 CDN)
 
-// import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
-// import { getAuth, setPersistence, browserSessionPersistence, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
-// import { getFirestore, doc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
-// import { getStorage } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
-// import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-check.js';
-import { initializeApp } from 'firebase/app';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
-import { getAuth, setPersistence, browserSessionPersistence, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, getDoc, collection } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase/app.js';
+import { getAuth, setPersistence, browserSessionPersistence, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase/auth.js';
+import { getFirestore, doc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase/firestore.js';
+import { getStorage } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase/storage.js';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase/app-check.js';
+// import { initializeApp } from 'firebase/app';
+// import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+// import { getAuth, setPersistence, browserSessionPersistence, onAuthStateChanged } from 'firebase/auth';
+// import { getFirestore, doc, getDoc, collection } from 'firebase/firestore';
+// import { getStorage } from 'firebase/storage';
 
 // Firebase 配置
 const firebaseConfig = {
