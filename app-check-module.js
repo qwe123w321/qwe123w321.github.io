@@ -51,39 +51,56 @@ try {
 }
 
 // 檢查 App Check 狀態，並返回狀態信息
+// async function checkAppCheckStatus() {
+//     console.log('【AppCheckModule】檢查 App Check 狀態開始');
+    
+//     if (!appCheck) {
+//         console.error('【AppCheckModule】App Check 物件未初始化');
+//         return { success: false, error: 'App Check 物件未初始化' };
+//     }
+    
+//     try {
+//         // 嘗試獲取令牌
+//         console.log('【AppCheckModule】嘗試獲取 App Check 令牌...');
+//         const tokenResult = await getToken(appCheck, /* forceRefresh */ true);
+        
+//         console.log('【AppCheckModule】App Check 令牌獲取成功！');
+//         console.log('【AppCheckModule】令牌詳情:', {
+//             token: tokenResult.token.substring(0, 10) + '...[已隱藏]', // 只顯示令牌前10個字符
+//             expireTimeMillis: new Date(tokenResult.expireTimeMillis).toLocaleString(),
+//             isValid: !!tokenResult.token
+//         });
+        
+//         return {
+//             success: true,
+//             token: tokenResult.token,
+//             expireTimeMillis: tokenResult.expireTimeMillis
+//         };
+//     } catch (error) {
+//         console.error('【AppCheckModule】App Check 令牌獲取失敗:', error);
+//         console.log('【AppCheckModule】錯誤詳情:', {
+//             code: error.code,
+//             message: error.message,
+//             stack: error.stack
+//         });
+        
+//         return {
+//             success: false,
+//             error: error.message
+//         };
+//     }
+// }
 async function checkAppCheckStatus() {
-    console.log('【AppCheckModule】檢查 App Check 狀態開始');
-    
-    if (!appCheck) {
-        console.error('【AppCheckModule】App Check 物件未初始化');
-        return { success: false, error: 'App Check 物件未初始化' };
-    }
-    
+    // 靜默檢查App Check狀態
     try {
-        // 嘗試獲取令牌
-        console.log('【AppCheckModule】嘗試獲取 App Check 令牌...');
+        // 嘗試獲取令牌（保留功能，減少日誌）
         const tokenResult = await getToken(appCheck, /* forceRefresh */ true);
-        
-        console.log('【AppCheckModule】App Check 令牌獲取成功！');
-        console.log('【AppCheckModule】令牌詳情:', {
-            token: tokenResult.token.substring(0, 10) + '...[已隱藏]', // 只顯示令牌前10個字符
-            expireTimeMillis: new Date(tokenResult.expireTimeMillis).toLocaleString(),
-            isValid: !!tokenResult.token
-        });
-        
         return {
             success: true,
             token: tokenResult.token,
             expireTimeMillis: tokenResult.expireTimeMillis
         };
     } catch (error) {
-        console.error('【AppCheckModule】App Check 令牌獲取失敗:', error);
-        console.log('【AppCheckModule】錯誤詳情:', {
-            code: error.code,
-            message: error.message,
-            stack: error.stack
-        });
-        
         return {
             success: false,
             error: error.message
@@ -242,76 +259,78 @@ installFetchInterceptor();
 
 // 檢查 App Check 狀態並添加診斷信息到頁面
 function addDiagnosticsPanel() {
-    // 創建診斷面板
-    const panel = document.createElement('div');
-    panel.id = 'appCheckDiagnostics';
-    panel.style.position = 'fixed';
-    panel.style.bottom = '20px';
-    panel.style.right = '20px';
-    panel.style.backgroundColor = 'white';
-    panel.style.padding = '15px';
-    panel.style.borderRadius = '8px';
-    panel.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-    panel.style.zIndex = '9999';
-    panel.style.maxWidth = '300px';
-    panel.style.fontSize = '14px';
+    // // 創建診斷面板
+    // const panel = document.createElement('div');
+    // panel.id = 'appCheckDiagnostics';
+    // panel.style.position = 'fixed';
+    // panel.style.bottom = '20px';
+    // panel.style.right = '20px';
+    // panel.style.backgroundColor = 'white';
+    // panel.style.padding = '15px';
+    // panel.style.borderRadius = '8px';
+    // panel.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+    // panel.style.zIndex = '9999';
+    // panel.style.maxWidth = '300px';
+    // panel.style.fontSize = '14px';
     
-    panel.innerHTML = `
-        <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-            <strong>App Check 診斷</strong>
-            <button id="closeAppCheckPanel" style="background: none; border: none; cursor: pointer; font-size: 16px;">✕</button>
-        </div>
-        <div id="appCheckStatus">檢查中...</div>
-        <div style="margin-top: 10px;">
-            <button id="checkAppCheck" style="padding: 5px 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">檢查狀態</button>
-            <button id="installInterceptors" style="padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">安裝攔截器</button>
-        </div>
-    `;
+    // panel.innerHTML = `
+    //     <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+    //         <strong>App Check 診斷</strong>
+    //         <button id="closeAppCheckPanel" style="background: none; border: none; cursor: pointer; font-size: 16px;">✕</button>
+    //     </div>
+    //     <div id="appCheckStatus">檢查中...</div>
+    //     <div style="margin-top: 10px;">
+    //         <button id="checkAppCheck" style="padding: 5px 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px;">檢查狀態</button>
+    //         <button id="installInterceptors" style="padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">安裝攔截器</button>
+    //     </div>
+    // `;
     
-    // 添加到頁面
-    document.body.appendChild(panel);
+    // // 添加到頁面
+    // document.body.appendChild(panel);
     
-    // 添加事件處理
-    document.getElementById('closeAppCheckPanel').addEventListener('click', () => {
-        panel.remove();
-    });
+    // // 添加事件處理
+    // document.getElementById('closeAppCheckPanel').addEventListener('click', () => {
+    //     panel.remove();
+    // });
     
-    document.getElementById('checkAppCheck').addEventListener('click', async () => {
-        const statusDiv = document.getElementById('appCheckStatus');
-        statusDiv.textContent = '檢查中...';
+    // document.getElementById('checkAppCheck').addEventListener('click', async () => {
+    //     const statusDiv = document.getElementById('appCheckStatus');
+    //     statusDiv.textContent = '檢查中...';
         
-        try {
-            const result = await checkAppCheckStatus();
-            if (result.success) {
-                statusDiv.innerHTML = `
-                    <div style="color: green;">✅ 令牌獲取成功</div>
-                    <div>有效期至: ${new Date(result.expireTimeMillis).toLocaleString()}</div>
-                    <div>令牌: ${result.token.substring(0, 10)}...</div>
-                `;
-            } else {
-                statusDiv.innerHTML = `
-                    <div style="color: red;">❌ 令牌獲取失敗</div>
-                    <div>${result.error}</div>
-                `;
-            }
-        } catch (error) {
-            statusDiv.innerHTML = `
-                <div style="color: red;">❌ 檢查時發生錯誤</div>
-                <div>${error.message}</div>
-            `;
-        }
-    });
+    //     try {
+    //         const result = await checkAppCheckStatus();
+    //         if (result.success) {
+    //             statusDiv.innerHTML = `
+    //                 <div style="color: green;">✅ 令牌獲取成功</div>
+    //                 <div>有效期至: ${new Date(result.expireTimeMillis).toLocaleString()}</div>
+    //                 <div>令牌: ${result.token.substring(0, 10)}...</div>
+    //             `;
+    //         } else {
+    //             statusDiv.innerHTML = `
+    //                 <div style="color: red;">❌ 令牌獲取失敗</div>
+    //                 <div>${result.error}</div>
+    //             `;
+    //         }
+    //     } catch (error) {
+    //         statusDiv.innerHTML = `
+    //             <div style="color: red;">❌ 檢查時發生錯誤</div>
+    //             <div>${error.message}</div>
+    //         `;
+    //     }
+    // });
     
-    document.getElementById('installInterceptors').addEventListener('click', () => {
-        installXHRInterceptor();
-        installFetchInterceptor();
-        document.getElementById('appCheckStatus').innerHTML = `
-            <div style="color: green;">✅ 攔截器已重新安裝</div>
-        `;
-    });
+    // document.getElementById('installInterceptors').addEventListener('click', () => {
+    //     installXHRInterceptor();
+    //     installFetchInterceptor();
+    //     document.getElementById('appCheckStatus').innerHTML = `
+    //         <div style="color: green;">✅ 攔截器已重新安裝</div>
+    //     `;
+    // });
     
-    // 自動檢查狀態
-    document.getElementById('checkAppCheck').click();
+    // // 自動檢查狀態
+    // document.getElementById('checkAppCheck').click();
+    console.log('診斷功能已禁用');
+    return;
 }
 
 // 自動檢查 App Check 狀態
