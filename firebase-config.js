@@ -1,15 +1,31 @@
-// firebase-config.js - 使用 ES 模組方式 (CDN 版本)
-
-// 引入需要的 Firebase 套件 (使用 CDN)
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
-import { getAuth, setPersistence, browserSessionPersistence, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
+import { 
+    getAuth, 
+    setPersistence, 
+    browserSessionPersistence,
+    onAuthStateChanged,
+    connectAuthEmulator // 用於本地測試
+} from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
+import { 
+    getFirestore, 
+    doc, 
+    getDoc, 
+    collection,
+    connectFirestoreEmulator // 用於本地測試
+} from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
 import { getStorage } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
 import { 
     initializeAppCheck, 
     ReCaptchaV3Provider,
-    getToken
+    getToken,
+    setTokenAutoRefreshEnabled // 確保令牌自動刷新
 } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-check.js';
+
+// 檢測是否為開發環境
+const isDevelopment = 
+    window.location.hostname === 'localhost' || 
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.includes('192.168.');
 
 // Firebase 配置
 const firebaseConfig = {
@@ -24,134 +40,172 @@ const firebaseConfig = {
 };
 
 // 初始化 Firebase
+console.log('初始化 Firebase 應用...');
 const app = initializeApp(firebaseConfig);
 
-// 啟用 App Check 偵錯模式 (僅用於開發環境)
-if (window.location.hostname === 'localhost' || 
-    window.location.hostname === '127.0.0.1' || 
-    window.location.hostname.includes('192.168.')) {
-    console.log('啟用 App Check 偵錯模式');
+// 重要: 在初始化任何服務之前設置 App Check
+console.log('初始化 App Check...');
+
+// 在開發環境中啟用 App Check 調試模式
+if (isDevelopment) {
+    console.log('開發環境檢測到: 啟用 App Check 調試模式');
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
 }
 
 // 初始化 App Check
-const appCheck = initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
-    isTokenAutoRefreshEnabled: true
-});
+let appCheck = null;
+try {
+    // 使用 reCAPTCHA v3
+    appCheck = initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
+        isTokenAutoRefreshEnabled: true
+    });
+    
+    // 確保令牌自動刷新
+    setTokenAutoRefreshEnabled(appCheck, true);
+    
+    console.log('App Check 初始化成功');
+} catch (error) {
+    console.error('App Check 初始化失敗:', error);
+    
+    // 在開發環境中可以選擇繼續而不使用 App Check
+    if (isDevelopment) {
+        console.log('在開發環境中繼續而不使用 App Check');
+    } else {
+        // 在生產環境中可以顯示錯誤訊息給用戶
+        alert('應用驗證初始化失敗，某些功能可能無法正常使用。請刷新頁面或稍後再試。');
+    }
+}
 
-// 打印 App Check 狀態函數
-async function printAppCheckStatus() {
-    console.log('App Check 狀態檢查開始');
+// 只有在 App Check 初始化成功後才初始化其他服務
+console.log('初始化 Firebase 服務 (Auth, Firestore, Storage)...');
+
+// 初始化 Auth 服務
+const auth = getAuth(app);
+
+// 初始化 Firestore 服務
+const db = getFirestore(app);
+
+// 初始化 Storage 服務
+const storage = getStorage(app);
+
+// 設置安全性選項
+auth.useDeviceLanguage();
+
+// 根據是否勾選"記住我"設置持久性
+async function setAuthPersistence(rememberMe = false) {
+    try {
+        // 如果勾選了"記住我"，使用 browserLocalPersistence
+        // 否則使用 browserSessionPersistence
+        const { browserLocalPersistence } = await import('https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js');
+        await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+        console.log(`已設置身份驗證持久性: ${rememberMe ? 'local' : 'session'}`);
+    } catch (error) {
+        console.error('設置持久性失敗:', error);
+    }
+}
+
+// 等待 App Check 初始化完成，然後預先獲取令牌
+async function ensureAppCheckTokenIsReady() {
+    if (!appCheck) {
+        console.log('App Check 未初始化，無法獲取令牌');
+        return null;
+    }
     
     try {
-        console.log('App Check 物件狀態:', appCheck);
-        
-        // 嘗試獲取令牌
-        console.log('嘗試獲取 App Check 令牌...');
+        console.log('預先獲取 App Check 令牌...');
         const tokenResult = await getToken(appCheck, /* forceRefresh */ true);
-        
-        console.log('App Check 令牌獲取成功！');
-        console.log('令牌詳情:', {
-            token: tokenResult.token.substring(0, 10) + '...[已隱藏]', // 只顯示令牌前10個字符
-            expireTimeMillis: new Date(tokenResult.expireTimeMillis).toLocaleString(),
-            isValid: !!tokenResult.token
-        });
-        
-        return {
-            success: true,
-            token: tokenResult.token,
-            expireTimeMillis: tokenResult.expireTimeMillis
-        };
+        console.log('App Check 令牌預先獲取成功，有效期至:', new Date(tokenResult.expireTimeMillis).toLocaleString());
+        return tokenResult.token;
     } catch (error) {
-        console.error('App Check 令牌獲取失敗:', error);
-        console.log('錯誤詳情:', {
-            code: error.code,
-            message: error.message,
-            stack: error.stack
-        });
-        
-        // 檢查常見的 App Check 錯誤
-        if (error.code === 'app-check/throttled') {
-            console.log('提示: App Check 請求被限流，請稍後再試');
-        } else if (error.code === 'app-check/invalid-recaptcha-token') {
-            console.log('提示: reCAPTCHA 令牌無效，可能需要檢查 reCAPTCHA 站點密鑰');
-        } else if (error.code === 'app-check/internal-error') {
-            console.log('提示: App Check 內部錯誤，可能需要檢查網絡連接或更新 Firebase SDK');
-        }
-        
-        return {
-            success: false,
-            error: error.message
-        };
+        console.error('預先獲取 App Check 令牌失敗:', error);
+        return null;
     }
 }
 
 // 獲取並附加 App Check 令牌的輔助函數
 async function getAndAttachAppCheckToken() {
+    if (!appCheck) {
+        console.log('App Check 未初始化，無法獲取令牌');
+        return null;
+    }
+    
     try {
         const tokenResult = await getToken(appCheck);
         console.log('成功獲取 App Check 令牌，可用於請求');
-        return `Bearer ${tokenResult.token}`; // 需要的格式
+        return tokenResult.token;
     } catch (error) {
         console.error("獲取 App Check 令牌時發生錯誤:", error);
-        return null;  // 或適當地處理錯誤
+        return null;
     }
 }
 
-// 使用 App Check 令牌進行請求的示例函數
-async function fetchDataWithAppCheck(url, options = {}) {
-    const appCheckToken = await getAndAttachAppCheckToken();
+// 將 App Check 令牌添加到發送請求的函數
+async function fetchWithAppCheck(url, options = {}) {
+    const token = await getAndAttachAppCheckToken();
+    if (!token) {
+        console.warn('無法獲取 App Check 令牌，請求將繼續但可能被拒絕');
+    }
     
-    if (appCheckToken) {
-        // 合併標頭
-        const headers = {
-            'Authorization': appCheckToken,
-            ...options.headers
-        };
-        
-        // 發送請求
-        try {
-            const response = await fetch(url, {
-                ...options,
-                headers
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP 錯誤! 狀態: ${response.status}`);
-            }
-            
-            return await response.json();
-        } catch (error) {
-            console.error('使用 App Check 令牌發送請求失敗:', error);
-            throw error;
-        }
-    } else {
-        console.error('App Check 令牌獲取失敗，無法發送請求');
-        throw new Error('App Check 驗證失敗');
-    }
+    const headers = {
+        ...options.headers,
+        ...(token && { 'X-Firebase-AppCheck': token })
+    };
+    
+    return fetch(url, {
+        ...options,
+        headers
+    });
 }
 
-// 初始化服務
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+// 調用預先獲取令牌函數
+ensureAppCheckTokenIsReady().then(token => {
+    if (token) {
+        console.log('App Check 令牌已預先獲取，應用已準備好進行驗證請求');
+        
+        // 將令牌保存在全局變量中，以便其他模塊可以使用
+        window._appCheckToken = token;
+        
+        // 設置一個 XHR 攔截器，自動為所有 Firebase 身份驗證請求添加令牌
+        setupXHRInterceptor(token);
+    }
+});
 
-// 設置安全性選項
-auth.useDeviceLanguage();
-setPersistence(auth, browserSessionPersistence);
-
-// 立即執行 App Check 狀態檢查 (用於調試)
-console.log('正在初始化 Firebase 服務...');
-setTimeout(() => {
-    console.log('Firebase 服務初始化完成，正在檢查 App Check 狀態...');
-    printAppCheckStatus().then(result => {
-        console.log('App Check 狀態檢查完成:', result.success ? '成功' : '失敗');
-    });
-}, 2000);
+// 設置 XHR 攔截器來添加 App Check 令牌
+function setupXHRInterceptor(token) {
+    if (!token) return;
+    
+    const originalXHROpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function() {
+        const result = originalXHROpen.apply(this, arguments);
+        
+        // 獲取 URL (第二個參數)
+        const url = arguments[1];
+        
+        // 檢查是否是 Firebase Auth 請求
+        if (url && (
+            url.includes('identitytoolkit.googleapis.com') || 
+            url.includes('securetoken.googleapis.com')
+        )) {
+            // 為 readystatechange 添加一個處理器
+            this.addEventListener('readystatechange', function() {
+                if (this.readyState === 1) { // OPENED
+                    // 添加 App Check 令牌到請求頭
+                    this.setRequestHeader('X-Firebase-AppCheck', token);
+                    console.log('為身份驗證請求添加了 App Check 令牌');
+                }
+            });
+        }
+        
+        return result;
+    };
+    
+    console.log('已設置 XHR 攔截器來添加 App Check 令牌到身份驗證請求');
+}
 
 // 導出服務以便其他模組使用
 export { 
+    app, 
     auth, 
     db, 
     storage, 
@@ -160,7 +214,8 @@ export {
     doc, 
     getDoc, 
     collection, 
-    printAppCheckStatus, 
+    ensureAppCheckTokenIsReady,
     getAndAttachAppCheckToken,
-    fetchDataWithAppCheck
+    fetchWithAppCheck,
+    setAuthPersistence
 };
