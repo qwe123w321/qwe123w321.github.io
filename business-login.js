@@ -1,7 +1,7 @@
+// business-login.js - 使用 ES 模組方式 (CDN 版本)
 import { 
     auth, 
     db, 
-    appCheck,
     onAuthStateChanged, 
     doc, 
     getDoc
@@ -13,69 +13,15 @@ import {
     sendPasswordResetEmail 
 } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
 
-import { getToken } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-check.js';
+// 從統一的 App Check 模組導入需要的函數
+import { 
+    checkAppCheckStatus,
+    getAppCheckToken,
+    installXHRInterceptor
+} from './app-check-module.js';
 
 // 全局變數用於追蹤狀態
 let statusMessageShown = false;
-
-async function checkAppCheckStatus() {
-    console.log('App Check 狀態檢查開始');
-    
-    if (!appCheck) {
-        console.error('App Check 物件未初始化');
-        return { success: false, error: 'App Check 物件未初始化' };
-    }
-    
-    try {
-        console.log('App Check 物件狀態:', appCheck);
-        
-        // 嘗試獲取令牌
-        console.log('嘗試獲取 App Check 令牌...');
-        const tokenResult = await getToken(appCheck, /* forceRefresh */ true);
-        
-        console.log('App Check 令牌獲取成功！');
-        console.log('令牌詳情:', {
-            token: tokenResult.token.substring(0, 10) + '...[已隱藏]', // 只顯示令牌前10個字符
-            expireTimeMillis: new Date(tokenResult.expireTimeMillis).toLocaleString(),
-            isValid: !!tokenResult.token
-        });
-        
-        return {
-            success: true,
-            token: tokenResult.token,
-            expireTimeMillis: tokenResult.expireTimeMillis
-        };
-    } catch (error) {
-        console.error('App Check 令牌獲取失敗:', error);
-        console.log('錯誤詳情:', {
-            code: error.code,
-            message: error.message,
-            stack: error.stack
-        });
-        
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-// 獲取 App Check 令牌的輔助函數
-async function getAppCheckToken() {
-    if (!appCheck) {
-        console.error('App Check 物件未初始化');
-        return null;
-    }
-    
-    try {
-        const tokenResult = await getToken(appCheck);
-        console.log('成功獲取 App Check 令牌');
-        return tokenResult.token;
-    } catch (error) {
-        console.error('獲取 App Check 令牌時發生錯誤:', error);
-        return null;
-    }
-}
 
 // DOM 元素綁定
 document.addEventListener('DOMContentLoaded', function() {
@@ -159,7 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
-    
+
 // 添加 App Check 警告
 function addAppCheckWarning() {
     const warningDiv = document.createElement('div');
@@ -255,6 +201,9 @@ async function handleLogin(e) {
             console.warn('App Check 驗證失敗，但仍將嘗試登入');
         } else {
             console.log('App Check 驗證成功，繼續登入流程');
+            
+            // 設置 XHR 攔截器來添加 App Check 令牌
+            installXHRInterceptor();
         }
     } catch (error) {
         console.error('App Check 檢查失敗:', error);
@@ -262,12 +211,6 @@ async function handleLogin(e) {
     }
     
     try {
-        // 設置 XHR 攔截器來添加 App Check 令牌
-        const token = await getAppCheckToken();
-        if (token) {
-            setupXHRInterceptor(token);
-        }
-        
         // 使用 Firebase Auth 登入
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
@@ -356,41 +299,6 @@ async function handleLogin(e) {
     }
 }
 
-// 設置 XHR 攔截器
-function setupXHRInterceptor(token) {
-    if (!token) return;
-    
-    console.log('設置 XHR 攔截器來添加 App Check 令牌到請求...');
-    
-    const originalXHROpen = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.open = function() {
-        const oldSend = this.send;
-        const url = arguments[1];
-        
-        // 如果是 Firebase Auth 相關請求，添加 App Check 令牌
-        if (url && (
-            url.includes('identitytoolkit.googleapis.com') || 
-            url.includes('securetoken.googleapis.com') ||
-            url.includes('firebaseapp.com')
-        )) {
-            this.send = function() {
-                this.setRequestHeader('X-Firebase-AppCheck', token);
-                console.log('已為請求添加 App Check 令牌:', url);
-                return oldSend.apply(this, arguments);
-            };
-        }
-        
-        const result = originalXHROpen.apply(this, arguments);
-        return result;
-    };
-    
-    // 5秒後恢復原始 XHR
-    setTimeout(() => {
-        XMLHttpRequest.prototype.open = originalXHROpen;
-        console.log('已恢復原始 XHR 設置');
-    }, 5000);
-}
-
 // 處理忘記密碼
 async function handleResetPassword(e) {
     e.preventDefault();
@@ -442,7 +350,7 @@ async function handleResetPassword(e) {
         
         // 檢查 App Check 狀態
         try {
-            await printAppCheckStatus();
+            await checkAppCheckStatus();
         } catch (error) {
             console.warn('重設密碼前檢查 App Check 失敗:', error);
         }
@@ -659,3 +567,49 @@ function showStatusMessage(status, reason = '') {
         console.error('顯示狀態訊息時發生錯誤:', error);
     }
 }
+
+// 重新申請審核函數
+async function reapplyForApproval() {
+    try {
+        const user = auth.currentUser;
+        
+        if (!user) {
+            alert('請先登入');
+            return;
+        }
+        
+        // 確認是否要重新申請
+        const confirmed = confirm('您確定要重新提交店家審核申請嗎？');
+        if (!confirmed) return;
+        
+        // 顯示處理中提示
+        const reapplyBtn = document.getElementById('reapplyBtn');
+        if (reapplyBtn) {
+            reapplyBtn.disabled = true;
+            reapplyBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 處理中...';
+        }
+        
+        // 重定向到重新申請頁面，帶上店家 ID
+        window.location.href = `business-reapply.html?id=${user.uid}`;
+        
+    } catch (error) {
+        console.error('準備重新申請時發生錯誤:', error);
+        alert('準備重新申請時發生錯誤: ' + error.message);
+        
+        // 恢復按鈕狀態
+        const reapplyBtn = document.getElementById('reapplyBtn');
+        if (reapplyBtn) {
+            reapplyBtn.disabled = false;
+            reapplyBtn.textContent = '重新申請';
+        }
+    }
+}
+
+// 使輔助函數可在全局範圍內使用
+window.sanitizeInput = sanitizeInput;
+window.handleLogin = handleLogin;
+window.handleResetPassword = handleResetPassword;
+window.showError = showError;
+window.clearErrorMessage = clearErrorMessage;
+window.checkBusinessStatus = checkBusinessStatus;
+window.reapplyForApproval = reapplyForApproval;
