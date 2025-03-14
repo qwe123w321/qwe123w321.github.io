@@ -5,8 +5,8 @@ import {
     onAuthStateChanged, 
     doc, 
     getDoc, 
-    printAppCheckStatus,
-    getAndAttachAppCheckToken 
+    printAppCheckStatus,  // 確保導入此函數
+    getAndAttachAppCheckToken  
 } from './firebase-config.js';
 import { 
     signInWithEmailAndPassword, 
@@ -26,13 +26,18 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(async () => {
         console.log('正在檢查 App Check 狀態...');
         try {
-            const result = await printAppCheckStatus();
-            if (result.success) {
-                console.log('App Check 驗證成功！');
+            // 確保 printAppCheckStatus 已定義
+            if (typeof printAppCheckStatus === 'function') {
+                const result = await printAppCheckStatus();
+                if (result.success) {
+                    console.log('App Check 驗證成功！');
+                } else {
+                    console.error('App Check 驗證失敗，可能導致未經驗證的請求錯誤');
+                    // 添加錯誤提示到頁面
+                    addAppCheckWarning();
+                }
             } else {
-                console.error('App Check 驗證失敗，可能導致未經驗證的請求錯誤');
-                // 添加錯誤提示到頁面
-                addAppCheckWarning();
+                console.error('printAppCheckStatus 函數未定義，請檢查 firebase-config.js');
             }
         } catch (error) {
             console.error('檢查 App Check 狀態時發生錯誤:', error);
