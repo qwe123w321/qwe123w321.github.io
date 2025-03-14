@@ -1,6 +1,22 @@
-// fetch-with-appcheck.js - 使用全局 fetch 攔截器確保所有請求都有 App Check 令牌
+import { appCheck } from './firebase-config.js';
+import { getToken } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-check.js';
 
-import { getAndAttachAppCheckToken } from './firebase-config.js';
+// 獲取 App Check 令牌的函數（本地實現，不再依賴從 firebase-config.js 導入）
+async function getAppCheckToken() {
+    if (!appCheck) {
+        console.error('App Check 物件未初始化');
+        return null;
+    }
+    
+    try {
+        const tokenResult = await getToken(appCheck);
+        console.log('成功獲取 App Check 令牌，可用於請求');
+        return tokenResult.token;
+    } catch (error) {
+        console.error("獲取 App Check 令牌時發生錯誤:", error);
+        return null;
+    }
+}
 
 // 保存原始的 fetch 函數
 const originalFetch = window.fetch;
@@ -27,7 +43,7 @@ window.fetch = async function(resource, options = {}) {
         
         try {
             // 獲取 App Check 令牌
-            const token = await getAndAttachAppCheckToken();
+            const token = await getAppCheckToken();
             
             if (token) {
                 console.log('成功獲取 App Check 令牌，將添加到請求中');
