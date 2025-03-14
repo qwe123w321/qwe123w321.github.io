@@ -19,16 +19,53 @@
    <!-- 1. 首先加載 reCAPTCHA 腳本 (非常重要) -->
    <script src="https://www.google.com/recaptcha/api.js?render=6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G"></script>
     
-   <!-- 2. 然後加載 Firebase 模組，確保 App Check 首先初始化 -->
+   <!-- 2. 然後加載 Firebase 和 App Check 模組 -->
    <script type="module">
-       // 動態加載腳本，確保按正確順序執行
+       // 先導入 Firebase 配置
        import './firebase-config.js';
-       import './fetch-with-appcheck.js';
+       
+       // 導入統一的 App Check 模組
+       import { addDiagnosticsPanel } from './app-check-module.js';
+       
+       // 添加診斷按鈕
+       document.addEventListener('DOMContentLoaded', () => {
+           // 創建診斷按鈕
+           const diagnosticsBtn = document.createElement('button');
+           diagnosticsBtn.id = 'appCheckDiagnosticsBtn';
+           diagnosticsBtn.innerHTML = '🔍';
+           diagnosticsBtn.title = 'App Check 診斷';
+           diagnosticsBtn.style.position = 'fixed';
+           diagnosticsBtn.style.bottom = '20px';
+           diagnosticsBtn.style.right = '20px';
+           diagnosticsBtn.style.width = '50px';
+           diagnosticsBtn.style.height = '50px';
+           diagnosticsBtn.style.borderRadius = '50%';
+           diagnosticsBtn.style.backgroundColor = '#007bff';
+           diagnosticsBtn.style.color = 'white';
+           diagnosticsBtn.style.border = 'none';
+           diagnosticsBtn.style.fontSize = '20px';
+           diagnosticsBtn.style.display = 'flex';
+           diagnosticsBtn.style.alignItems = 'center';
+           diagnosticsBtn.style.justifyContent = 'center';
+           diagnosticsBtn.style.cursor = 'pointer';
+           diagnosticsBtn.style.zIndex = '9999';
+           diagnosticsBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+           
+           // 添加點擊事件
+           diagnosticsBtn.addEventListener('click', () => {
+               addDiagnosticsPanel();
+               diagnosticsBtn.style.display = 'none';
+           });
+           
+           // 添加到頁面
+           document.body.appendChild(diagnosticsBtn);
+       });
+       
+       // 導入其他需要的模組
        import './business-login.js';
-       import './app-check-debug.js';
    </script>
    
-   <!-- 3. 準備頁面載入時顯示的調試標記 -->
+   <!-- 添加 App Check 狀態指示器的樣式 -->
    <style>
        #appCheckStatus {
            position: fixed;
@@ -149,6 +186,8 @@
 
 </head>
 <body>
+    <!-- 在頁面頂部添加 App Check 狀態指示器 -->
+    <div id="appCheckStatus" class="initializing">App Check: 初始化中...</div>
     <!-- 導航欄 -->
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
         <div class="container">
@@ -377,7 +416,57 @@
             </div>
         </div>
     </footer>
-
+    <!-- 在頁面最後添加初始化腳本 -->
+    <script type="module">
+        // 從 App Check 模組導入需要的函數
+        import { checkAppCheckStatus } from './app-check-module.js';
+        
+        // 獲取狀態指示器元素
+        const statusElement = document.getElementById('appCheckStatus');
+        
+        // 設置超時以防卡在初始化狀態
+        setTimeout(() => {
+            if (statusElement.className === 'initializing') {
+                statusElement.className = 'error';
+                statusElement.textContent = 'App Check: 初始化超時';
+                
+                // 5秒後隱藏
+                setTimeout(() => {
+                    statusElement.style.display = 'none';
+                }, 5000);
+            }
+        }, 8000); // 8秒後視為超時
+        
+        // 嘗試初始化 App Check
+        checkAppCheckStatus().then(result => {
+            if (result.success) {
+                statusElement.className = 'success';
+                statusElement.textContent = 'App Check: 已驗證 ✓';
+                
+                // 3秒後隱藏
+                setTimeout(() => {
+                    statusElement.style.display = 'none';
+                }, 3000);
+            } else {
+                statusElement.className = 'error';
+                statusElement.textContent = 'App Check: 驗證失敗 ✗';
+                
+                // 5秒後隱藏
+                setTimeout(() => {
+                    statusElement.style.display = 'none';
+                }, 5000);
+            }
+        }).catch(error => {
+            statusElement.className = 'error';
+            statusElement.textContent = 'App Check: 發生錯誤 ✗';
+            console.error('App Check 初始化錯誤:', error);
+            
+            // 5秒後隱藏
+            setTimeout(() => {
+                statusElement.style.display = 'none';
+            }, 5000);
+        });
+    </script>
 
 </body>
 </html>
