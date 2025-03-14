@@ -22,18 +22,48 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/3.35.0/apexcharts.min.js"></script>
     
     <!-- 添加Firebase ES 模組 script 標籤 -->
-    <script type="module" src="firebase-config.js"></script>
-
     <script type="module">
-        import { auth, db, storage } from './firebase-config.js';
+        // 從 firebase-config.js 導入所有需要的模組
+        import { auth, db, storage, appCheck } from './firebase-config.js';
         import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
         
-        // 將 auth 和其他變數暴露給全局範圍
+        // 將變數暴露給全局範圍
         window.auth = auth;
         window.db = db;
         window.storage = storage;
-    
-    // 其他初始化代碼...
+        window.appCheck = appCheck;
+        
+        // 暴露 Firebase Auth 方法到全局範圍
+        window.firebase = {
+            auth: {
+                signOut: () => signOut(auth)
+            },
+            firestore: () => db,
+            storage: () => storage
+        };
+        
+        // 創建一個事件，通知頁面 Firebase 已初始化完成
+        window.addEventListener('DOMContentLoaded', () => {
+            // 等待初始化完成，確保全局變數已賦值
+            setTimeout(() => {
+                const event = new CustomEvent('firebase-ready');
+                document.dispatchEvent(event);
+                console.log('Firebase 已初始化完成，全局變數已設置');
+            }, 500);
+        });
+        
+        // 驗證用戶身份
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                console.log('用戶已登入:', user.email);
+                // 觸發用戶登入事件
+                const event = new CustomEvent('user-authenticated', { detail: user });
+                document.dispatchEvent(event);
+            } else {
+                console.log('用戶未登入，重定向到登入頁面');
+                window.location.href = 'business-login.html';
+            }
+        });
     </script>
     
     <!-- 錯誤處理 -->
@@ -1998,97 +2028,8 @@
                 </div>
             </div>
 
-            <script type="module">
-                import { auth } from './firebase-config.js';
-                import { signOut } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
-                
-                // 等待 DOM 加載完成
-                document.addEventListener('DOMContentLoaded', function() {
-                // 側邊欄登出按鈕
-                const logoutLink = document.querySelector('.sidebar-menu li a[href="index.html"]');
-                if (logoutLink) {
-                    logoutLink.setAttribute('href', '#');
-                    logoutLink.id = 'sidebarLogoutBtn';
-                    
-                    logoutLink.addEventListener('click', async function(e) {
-                    e.preventDefault();
-                    await performLogout();
-                    });
-                }
-                
-                // 頂部導航登出按鈕 (如果有的話)
-                const navLogoutBtn = document.querySelector('.dropdown-menu a[href="index.html"]');
-                if (navLogoutBtn) {
-                    navLogoutBtn.setAttribute('href', '#');
-                    navLogoutBtn.id = 'navLogoutBtn';
-                    
-                    navLogoutBtn.addEventListener('click', async function(e) {
-                    e.preventDefault();
-                    await performLogout();
-                    });
-                }
-                });
-                
-                // 登出功能
-                async function performLogout() {
-                try {
-                    console.log('開始登出流程...');
-                    // 登出 Firebase
-                    await signOut(auth);
-                    
-                    // 清除本地存儲
-                    localStorage.clear();
-                    sessionStorage.clear();
-                    
-                    console.log('登出成功，重定向到登入頁面...');
-                    // 添加時間戳防止快取
-                    window.location.href = 'business-login.html?t=' + new Date().getTime();
-                } catch (error) {
-                    console.error('登出時發生錯誤:', error);
-                    alert('登出失敗，請重新嘗試或重新載入頁面');
-                }
-                }
-            </script>
+            
             <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    // 登出功能
-                    const logoutLink = document.getElementById('logoutLink');
-                    if (logoutLink) {
-                        logoutLink.addEventListener('click', async function(e) {
-                            e.preventDefault();
-                            
-                            try {
-                                await firebase.auth().signOut();
-                                console.log('已成功登出');
-                                // 登出後導向到登入頁面
-                                window.location.href = 'business-login.html';
-                            } catch (error) {
-                                console.error('登出時發生錯誤:', error);
-                                alert('登出失敗，請稍後再試');
-                            }
-                        });
-                    }
-                });
-
-                async function performLogout() {
-                    try {
-                        // 1. 調用 Firebase Auth 登出
-                        await signOut(auth);
-                        
-                        // 2. 清除可能存儲的 token 或其他狀態
-                        localStorage.removeItem('firebase:authUser:' + firebase.app().options.apiKey + ':[DEFAULT]');
-                        sessionStorage.clear();
-                        
-                        // 3. 導航到登入頁面
-                        window.location.href = 'business-login.html';
-                        
-                        // 4. 防止頁面快取
-                        window.location.href = 'business-login.html?t=' + new Date().getTime();
-                    } catch (error) {
-                        console.error('登出時發生錯誤:', error);
-                    }
-                }
-
                 document.addEventListener('DOMContentLoaded', function() {
                     // 側邊欄切換
                     const sidebar = document.querySelector('.sidebar');
@@ -5093,6 +5034,155 @@
             return code;
         }
         </script>
+
+<script>
+    // 等待 Firebase 初始化完成後再綁定事件
+    document.addEventListener('firebase-ready', function() {
+        console.log('Firebase 初始化完成，開始綁定登出按鈕');
+        
+        // 綁定所有登出按鈕
+        const logoutButtons = document.querySelectorAll('#logoutLink, a[href="#"][id="logoutLink"]');
+        logoutButtons.forEach(btn => {
+            if (btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    performLogout();
+                });
+                console.log('已綁定登出按鈕:', btn);
+            }
+        });
+    });
+    
+    // 改進的登出功能
+    function performLogout() {
+        console.log('開始登出流程...');
+        
+        // 顯示加載狀態
+        const logoutButtons = document.querySelectorAll('#logoutLink, a[href="#"][id="logoutLink"]');
+        logoutButtons.forEach(btn => {
+            if (btn) {
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 登出中...';
+                btn.disabled = true;
+                // 保存原始文本以便恢復
+                btn.setAttribute('data-original-text', originalText);
+            }
+        });
+        
+        // 使用全局 auth 物件
+        try {
+            if (window.auth) {
+                // 使用模組化方式登出
+                window.auth.signOut().then(() => {
+                    logoutSuccess();
+                }).catch(error => {
+                    logoutError(error);
+                });
+            } else if (window.firebase && window.firebase.auth) {
+                // 使用全局 firebase 物件登出 (後備方案)
+                window.firebase.auth.signOut().then(() => {
+                    logoutSuccess();
+                }).catch(error => {
+                    logoutError(error);
+                });
+            } else {
+                // 兩種方法都失敗，嘗試直接重定向
+                console.error('找不到登出方法，嘗試直接重定向');
+                forceRedirect();
+            }
+        } catch (error) {
+            console.error('登出過程中發生錯誤:', error);
+            logoutError(error);
+        }
+        
+        // 設置超時，防止無限等待
+        setTimeout(() => {
+            forceRedirect();
+        }, 5000);
+    }
+    
+    // 登出成功處理
+    function logoutSuccess() {
+        console.log('登出成功');
+        
+        // 清除本地存儲
+        try {
+            localStorage.clear();
+            sessionStorage.clear();
+        } catch (e) {
+            console.warn('清除存儲時出錯:', e);
+        }
+        
+        // 顯示成功消息
+        showAlert('登出成功，正在跳轉...', 'success');
+        
+        // 延遲重定向以顯示訊息
+        setTimeout(() => {
+            // 添加時間戳防止快取
+            window.location.href = 'business-login.html?t=' + new Date().getTime();
+        }, 1000);
+    }
+    
+    // 登出錯誤處理
+    function logoutError(error) {
+        console.error('登出時發生錯誤:', error);
+        
+        // 恢復按鈕狀態
+        const logoutButtons = document.querySelectorAll('#logoutLink, a[href="#"][id="logoutLink"]');
+        logoutButtons.forEach(btn => {
+            if (btn) {
+                const originalText = btn.getAttribute('data-original-text') || '<i class="fas fa-sign-out-alt"></i> 登出';
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+        
+        // 顯示錯誤訊息
+        showAlert('登出失敗，請重新嘗試', 'danger');
+    }
+    
+    // 強制重定向（最後的後備方案）
+    function forceRedirect() {
+        console.warn('強制重定向到登入頁面');
+        showAlert('重新導向到登入頁面...', 'warning');
+        
+        setTimeout(() => {
+            document.cookie = ""; // 清除 cookies
+            window.location.href = 'business-login.html?forced=true&t=' + new Date().getTime();
+        }, 1000);
+    }
+    
+    // 顯示提示訊息
+    function showAlert(message, type = 'info') {
+        // 檢查是否已有提示，避免重複
+        const existingAlerts = document.querySelectorAll('.alert-floating');
+        existingAlerts.forEach(alert => alert.remove());
+        
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show alert-floating`;
+        alertDiv.style.position = 'fixed';
+        alertDiv.style.top = '15px';
+        alertDiv.style.left = '50%';
+        alertDiv.style.transform = 'translateX(-50%)';
+        alertDiv.style.zIndex = '9999';
+        alertDiv.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+        alertDiv.style.minWidth = '300px';
+        alertDiv.role = 'alert';
+        
+        alertDiv.innerHTML = `
+            <strong>${type === 'success' ? '✓' : type === 'danger' ? '✗' : 'ℹ'}</strong> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // 自動關閉
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.remove(), 300);
+        }, 3000);
+    }
+    </script>
 </body>
 </html>
 
