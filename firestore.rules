@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 基本函數: 檢查用戶是否已認證
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // 基本函數: 檢查是否是管理員 IP 地址
+    function isAdminIP() {
+      // 這裡列出您所有管理員可能訪問的 IP 地址
+      // 注意: 請替換為您實際的管理員 IP 地址
+      return request.ip == '192.168.171.83'   
+        || request.ip.matches('192.168.171.*'); // 支援 IP 範圍匹配
+    }
+    
+    // 通用規則: 已認證用戶或管理員 IP 可讀寫
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}
+
+// 可選: Storage 儲存空間規則
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      // 基礎圖片訪問權限
+      allow read: if true;  // 允許公開讀取所有圖片
+      allow write: if request.auth != null;  // 僅認證用戶可上傳
+      
+      // 驗證相關圖片的特殊規則
+      match /verification_photos/{userId}/{photoId} {
+        // 允許用戶上傳自己的驗證照片
+        allow write: if request.auth != null && request.auth.uid == userId;
+        
+        // 允許管理員或用戶本人讀取
+        allow read: if request.auth != null 
+                   || request.auth.uid == userId 
+                   || isAdminIP();
+      }
+    }
+  }
+  
+  // 管理員 IP 檢查函數 (與 Firestore 相同)
+  function isAdminIP() {
+    return request.ip == '192.168.171.83'
+    	|| request.ip == '192.168.50.206'
+      || request.ip.matches('192.168.171.*');
+  }
+}
