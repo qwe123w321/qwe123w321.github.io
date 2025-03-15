@@ -1039,142 +1039,140 @@
                                                     </div>
                                                 </div>
                                             </div>
-
-                                            <div class="mb-3">
-                                                <label class="form-label">營業狀態</label>
-                                                <div class="d-flex align-items-center">
-                                                    <label class="toggle-switch me-3">
-                                                        <input type="checkbox" checked>
-                                                        <span class="toggle-slider"></span>
-                                                    </label>
-                                                    <span class="text-success">營業中</span>
-                                                </div>
-                                            </div>
                                         </div>
-                                    </div>
-                                    
-                                    <div class="mb-4">
-                                        <label class="form-label">營業時間</label>
-                                        <div class="row g-3" id="businessHoursContainer"></div>
-                                    </div>
-                                    
-                                    <script>
-                                        // 假設整點與半點
-                                        const timeSlots = [
-                                            '08:00','08:30','09:00','09:30','10:00','10:30',
-                                            '11:00','11:30','12:00','12:30','13:00','13:30',
-                                            '14:00','14:30','15:00','15:30','16:00','16:30',
-                                            '17:00','17:30','18:00','18:30','19:00','19:30',
-                                            '20:00','20:30','21:00','21:30','22:00','22:30',
-                                            '23:00','23:30'
-                                        ];
-                                        
-                                        const days = [
-                                            { label: '星期一', value: 1 },
-                                            { label: '星期二', value: 2 },
-                                            { label: '星期三', value: 3 },
-                                            { label: '星期四', value: 4 },
-                                            { label: '星期五', value: 5 },
-                                            { label: '星期六', value: 6 },
-                                            { label: '星期日', value: 7 }
-                                        ];
-                                        
-                                        const container = document.getElementById('businessHoursContainer');
-                                        
-                                        days.forEach(dayObj => {
-                                            // 建立一個 col-md-6
-                                            const col = document.createElement('div');
-                                            col.classList.add('col-md-6');
-                                        
-                                            // 生成 day-label
-                                            const dayLabel = document.createElement('div');
-                                            dayLabel.classList.add('day-label');
-                                            dayLabel.textContent = dayObj.label;
-                                        
-                                            // 生成「起始時間」的 select
-                                            const startSelect = document.createElement('select');
-                                            startSelect.classList.add('form-select', 'form-select-sm', 'business-hours');
-                                            // 可用 data-* 來記錄是第幾天、屬於 open 之類
-                                            startSelect.setAttribute('data-day', dayObj.value);
-                                            startSelect.setAttribute('data-type', 'start');
-                                            // 動態插入所有 options
-                                            timeSlots.forEach(t => {
-                                                const option = document.createElement('option');
-                                                option.value = t;
-                                                option.textContent = t;
-                                                startSelect.appendChild(option);
-                                            });
-                                        
-                                            // 生成「結束時間」的 select
-                                            const endSelect = document.createElement('select');
-                                            endSelect.classList.add('form-select', 'form-select-sm', 'business-hours');
-                                            endSelect.setAttribute('data-day', dayObj.value);
-                                            endSelect.setAttribute('data-type', 'end');
-                                            timeSlots.forEach(t => {
-                                                const option = document.createElement('option');
-                                                option.value = t;
-                                                option.textContent = t;
-                                                endSelect.appendChild(option);
-                                            });
-                                        
-                                            // 組合成排版
-                                            const timeInputsDiv = document.createElement('div');
-                                            timeInputsDiv.classList.add('time-inputs');
-                                            timeInputsDiv.appendChild(startSelect);
-                                        
-                                            const separator = document.createElement('span');
-                                            separator.classList.add('time-separator');
-                                            separator.textContent = '至';
-                                            timeInputsDiv.appendChild(separator);
-                                        
-                                            timeInputsDiv.appendChild(endSelect);
-                                        
-                                            const hoursSelectionDiv = document.createElement('div');
-                                            hoursSelectionDiv.classList.add('hours-selection');
-                                            hoursSelectionDiv.appendChild(dayLabel);
-                                            hoursSelectionDiv.appendChild(timeInputsDiv);
-                                        
-                                            col.appendChild(hoursSelectionDiv);
-                                            container.appendChild(col);
-                                        });
-                                    </script>
+                                    </div>                              
                                 </form>
                             </div>
                         </div>
                         
+                        <div class="dashboard-card mt-4">
+                            <div class="card-header">
+                                <h5>營業時間設置</h5>
+                                <button class="btn btn-primary">儲存營業時間</button>
+                            </div>
+                            <div class="card-body">
+                                <!-- 營業時間設置 -->
+                                <div class="row g-3" id="businessHoursContainer"></div>
+                            </div>
+                            <script>
+                                // 假設整點與半點
+                                const timeSlots = [
+                                    '08:00','08:30','09:00','09:30','10:00','10:30',
+                                    '11:00','11:30','12:00','12:30','13:00','13:30',
+                                    '14:00','14:30','15:00','15:30','16:00','16:30',
+                                    '17:00','17:30','18:00','18:30','19:00','19:30',
+                                    '20:00','20:30','21:00','21:30','22:00','22:30',
+                                    '23:00','23:30'
+                                ];
+                                
+                                const days = [
+                                    { label: '星期一', value: 1 },
+                                    { label: '星期二', value: 2 },
+                                    { label: '星期三', value: 3 },
+                                    { label: '星期四', value: 4 },
+                                    { label: '星期五', value: 5 },
+                                    { label: '星期六', value: 6 },
+                                    { label: '星期日', value: 7 }
+                                ];
+                                
+                                const container = document.getElementById('businessHoursContainer');
+                                
+                                days.forEach(dayObj => {
+                                    // 建立一個 col-md-6
+                                    const col = document.createElement('div');
+                                    col.classList.add('col-md-6');
+                                
+                                    // 生成 day-label
+                                    const dayLabel = document.createElement('div');
+                                    dayLabel.classList.add('day-label');
+                                    dayLabel.textContent = dayObj.label;
+                                
+                                    // 生成「起始時間」的 select
+                                    const startSelect = document.createElement('select');
+                                    startSelect.classList.add('form-select', 'form-select-sm', 'business-hours');
+                                    // 可用 data-* 來記錄是第幾天、屬於 open 之類
+                                    startSelect.setAttribute('data-day', dayObj.value);
+                                    startSelect.setAttribute('data-type', 'start');
+                                    // 動態插入所有 options
+                                    timeSlots.forEach(t => {
+                                        const option = document.createElement('option');
+                                        option.value = t;
+                                        option.textContent = t;
+                                        startSelect.appendChild(option);
+                                    });
+                                
+                                    // 生成「結束時間」的 select
+                                    const endSelect = document.createElement('select');
+                                    endSelect.classList.add('form-select', 'form-select-sm', 'business-hours');
+                                    endSelect.setAttribute('data-day', dayObj.value);
+                                    endSelect.setAttribute('data-type', 'end');
+                                    timeSlots.forEach(t => {
+                                        const option = document.createElement('option');
+                                        option.value = t;
+                                        option.textContent = t;
+                                        endSelect.appendChild(option);
+                                    });
+                                
+                                    // 組合成排版
+                                    const timeInputsDiv = document.createElement('div');
+                                    timeInputsDiv.classList.add('time-inputs');
+                                    timeInputsDiv.appendChild(startSelect);
+                                
+                                    const separator = document.createElement('span');
+                                    separator.classList.add('time-separator');
+                                    separator.textContent = '至';
+                                    timeInputsDiv.appendChild(separator);
+                                
+                                    timeInputsDiv.appendChild(endSelect);
+                                
+                                    const hoursSelectionDiv = document.createElement('div');
+                                    hoursSelectionDiv.classList.add('hours-selection');
+                                    hoursSelectionDiv.appendChild(dayLabel);
+                                    hoursSelectionDiv.appendChild(timeInputsDiv);
+                                
+                                    col.appendChild(hoursSelectionDiv);
+                                    container.appendChild(col);
+                                });
+                            </script>
+                        </div>
+
                         <!-- 店家主圖區 -->
                         <div class="dashboard-card mt-4">
                             <div class="card-header">
-                                <h5>店家主圖</h5>
+                                <h5>店家照片設置</h5>
                             </div>
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-md-6">
+                                        <h6 class="mb-3">店家頭像/Logo</h6>
                                         <div class="image-preview">
-                                            <img src="https://via.placeholder.com/500x300" alt="店家主圖">
-                                            <div class="remove-image">
-                                                <i class="fas fa-times"></i>
+                                            <div class="upload-placeholder">
+                                                <i class="fas fa-image"></i>
+                                                <p>上傳店家頭像或Logo</p>
                                             </div>
                                         </div>
                                         <div class="mb-3">
-                                            <label for="mainImageUpload" class="form-label">更換主圖</label>
                                             <input class="form-control" type="file" id="mainImageUpload" accept="image/*">
-                                            <div class="form-text">建議尺寸：1200 x 600 像素，檔案大小不超過 2MB</div>
+                                            <div class="form-text">建議尺寸：400 x 400 像素，檔案大小不超過 2MB</div>
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <h6>主圖設置提示</h6>
-                                        <ul class="text-muted">
-                                            <li>上傳高品質、清晰的店面主圖可以提高曝光率</li>
-                                            <li>主圖將顯示在推薦列表和詳情頁頂部</li>
-                                            <li>建議選擇店家LOGO或能代表店面特色的照片</li>
-                                            <li>避免使用過度編輯或與實際環境差異較大的照片</li>
-                                        </ul>
+                                </div>
+                                
+                                <hr class="my-4">
+                                
+                                <h6 class="mb-3">店內環境照片</h6>
+                                <p class="text-muted">上傳高品質的店內環境照片，讓用戶更全面了解您的店鋪環境與氛圍</p>
+                                
+                                <div class="gallery-preview">
+                                    <!-- 上傳按鈕 -->
+                                    <div class="add-gallery-item">
+                                        <i class="fas fa-plus"></i>
+                                        <p>添加環境照片</p>
+                                        <input type="file" class="d-none" id="addEnvironmentImage" accept="image/*" multiple>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
                     
                     <!-- 活動類型與標籤區塊 -->
                     <div class="content-section" id="activities-section">
@@ -1191,11 +1189,11 @@
                                 <p>請選擇您的店家適合的活動類型，這將有助於我們向用戶推薦您的店鋪。</p>
                                 
                                 <div class="activity-type-grid">
-                                    <div class="activity-type-card selected">
+                                    <div class="activity-type-card">
                                         <i class="fas fa-coffee"></i>
                                         <p>咖啡廳</p>
                                     </div>
-                                    <div class="activity-type-card selected">
+                                    <div class="activity-type-card">
                                         <i class="fas fa-utensils"></i>
                                         <p>吃飯</p>
                                     </div>
@@ -1211,7 +1209,7 @@
                                         <i class="fas fa-book"></i>
                                         <p>讀書</p>
                                     </div>
-                                    <div class="activity-type-card selected">
+                                    <div class="activity-type-card">
                                         <i class="fas fa-glass-cheers"></i>
                                         <p>喝酒</p>
                                     </div>
@@ -1341,156 +1339,32 @@
                                         <p>尚未添加任何商品類別</p>
                                         <p>點擊「新增類別」按鈕開始建立您的菜單</p>
                                     </div>
-                                </div><div id="categoryList">
-                                    <!-- 咖啡類別 -->
-                                    <div class="product-item">
-                                        <div class="product-category">
-                                            <span>經典咖啡</span>
-                                            <div class="actions">
-                                                <button class="btn btn-sm btn-outline-primary add-product-btn" data-category="coffee">新增項目</button>
-                                                <button class="btn btn-sm btn-outline-secondary">編輯</button>
-                                                <button class="btn btn-sm btn-outline-danger">刪除</button>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- 商品項目列表 -->
-                                        <div class="product-item-list">
-                                            <!-- 商品項目表單 -->
-                                            <div class="menu-item-form" id="coffeeItemForm">
-                                                <h6>新增咖啡項目</h6>
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="mb-3">
-                                                            <label for="coffeeName" class="form-label">商品名稱</label>
-                                                            <input type="text" class="form-control" id="coffeeName" placeholder="輸入咖啡名稱">
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="mb-3">
-                                                            <label for="coffeePrice" class="form-label">價格</label>
-                                                            <input type="number" class="form-control" id="coffeePrice" placeholder="輸入價格">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="coffeeDesc" class="form-label">描述</label>
-                                                    <textarea class="form-control" id="coffeeDesc" rows="2" placeholder="描述商品特色或口味"></textarea>
-                                                </div>
-                                                <div class="d-flex gap-2">
-                                                    <button type="button" class="btn btn-primary">儲存項目</button>
-                                                    <button type="button" class="btn btn-outline-secondary cancel-add-item">取消</button>
-                                                </div>
-                                            </div>
-                                            
-                                            <!-- 商品項目 -->
-                                            <div class="product-subitem">
-                                                <div>
-                                                    <span class="product-name">美式咖啡</span>
-                                                    <span class="product-description">醇厚的烘焙風味，帶有微微的焦糖香氣</span>
-                                                </div>
-                                                <div class="d-flex align-items-center gap-3">
-                                                    <span class="text-primary fw-bold">$100</span>
-                                                    <button class="btn btn-sm btn-outline-secondary">編輯</button>
-                                                    <button class="btn btn-sm btn-outline-danger">刪除</button>
-                                                </div>
-                                            </div>
-                                            <div class="product-subitem">
-                                                <div>
-                                                    <span class="product-name">拿鐵</span>
-                                                    <span class="product-description">濃郁的義式濃縮與絲滑奶泡的完美結合</span>
-                                                </div>
-                                                <div class="d-flex align-items-center gap-3">
-                                                    <span class="text-primary fw-bold">$130</span>
-                                                    <button class="btn btn-sm btn-outline-secondary">編輯</button>
-                                                    <button class="btn btn-sm btn-outline-danger">刪除</button>
-                                                </div>
-                                            </div>
-                                            <div class="product-subitem">
-                                                <div>
-                                                    <span class="product-name">卡布奇諾</span>
-                                                    <span class="product-description">完美比例的義式濃縮、牛奶與奶泡</span>
-                                                </div>
-                                                <div class="d-flex align-items-center gap-3">
-                                                    <span class="text-primary fw-bold">$130</span>
-                                                    <button class="btn btn-sm btn-outline-secondary">編輯</button>
-                                                    <button class="btn btn-sm btn-outline-danger">刪除</button>
-                                                </div>
-                                            </div>
-                                        </div>
+                                </div>
+                                <!-- 商品項目表單 -->
+                                <div class="menu-item-form" id="coffeeItemForm">
+                                    <h6>新增項目</h6>
+                                    <div class="mb-3">
+                                        <label for="itemName" class="form-label">商品名稱</label>
+                                        <input type="text" class="form-control" id="itemName" placeholder="輸入商品名稱">
                                     </div>
-                                    
-                                    <!-- 甜點類別 -->
-                                    <div class="product-item mt-4">
-                                        <div class="product-category">
-                                            <span>手工甜點</span>
-                                            <div class="actions">
-                                                <button class="btn btn-sm btn-outline-primary add-product-btn" data-category="dessert">新增項目</button>
-                                                <button class="btn btn-sm btn-outline-secondary">編輯</button>
-                                                <button class="btn btn-sm btn-outline-danger">刪除</button>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="product-item-list">
-                                            <div class="product-subitem">
-                                                <div>
-                                                    <span class="product-name">紐約起司蛋糕</span>
-                                                    <span class="product-description">濃郁奶香的紐約起司蛋糕，口感綿密香甜</span>
-                                                </div>
-                                                <div class="d-flex align-items-center gap-3">
-                                                    <span class="text-primary fw-bold">$150</span>
-                                                    <button class="btn btn-sm btn-outline-secondary">編輯</button>
-                                                    <button class="btn btn-sm btn-outline-danger">刪除</button>
-                                                </div>
-                                            </div>
-                                            <div class="product-subitem">
-                                                <div>
-                                                    <span class="product-name">提拉米蘇</span>
-                                                    <span class="product-description">義式經典甜點，咖啡與馬斯卡彭起司的完美融合</span>
-                                                </div>
-                                                <div class="d-flex align-items-center gap-3">
-                                                    <span class="text-primary fw-bold">$160</span>
-                                                    <button class="btn btn-sm btn-outline-secondary">編輯</button>
-                                                    <button class="btn btn-sm btn-outline-danger">刪除</button>
-                                                </div>
-                                            </div>
-                                        </div>
+                                    <div class="mb-3">
+                                        <label for="itemDesc" class="form-label">描述</label>
+                                        <textarea class="form-control" id="itemDesc" rows="3" placeholder="描述商品特色或口味"></textarea>
                                     </div>
-                                    
-                                    <!-- 經典調酒 -->
-                                    <div class="product-item mt-4">
-                                        <div class="product-category">
-                                            <span>經典調酒</span>
-                                            <div class="actions">
-                                                <button class="btn btn-sm btn-outline-primary add-product-btn" data-category="cocktail">新增項目</button>
-                                                <button class="btn btn-sm btn-outline-secondary">編輯</button>
-                                                <button class="btn btn-sm btn-outline-danger">刪除</button>
+                                    <div class="mb-3">
+                                        <label for="itemImage" class="form-label">商品圖片</label>
+                                        <div class="image-preview mb-2" id="itemImagePreview">
+                                            <div class="upload-placeholder">
+                                                <i class="fas fa-image"></i>
+                                                <p>上傳商品圖片</p>
                                             </div>
                                         </div>
-                                        
-                                        <div class="product-item-list">
-                                            <div class="product-subitem">
-                                                <div>
-                                                    <span class="product-name">GIMLET</span>
-                                                    <span class="product-description">琴酒酸甜平衡的經典調酒</span>
-                                                </div>
-                                                <div class="d-flex align-items-center gap-3">
-                                                    <span class="text-primary fw-bold">$220</span>
-                                                    <button class="btn btn-sm btn-outline-secondary">編輯</button>
-                                                    <button class="btn btn-sm btn-outline-danger">刪除</button>
-                                                </div>
-                                            </div>
-                                            <div class="product-subitem">
-                                                <div>
-                                                    <span class="product-name">莫希托</span>
-                                                    <span class="product-description">清爽的萊姆酒與薄荷葉完美結合</span>
-                                                </div>
-                                                <div class="d-flex align-items-center gap-3">
-                                                    <span class="text-primary fw-bold">$240</span>
-                                                    <button class="btn btn-sm btn-outline-secondary">編輯</button>
-                                                    <button class="btn btn-sm btn-outline-danger">刪除</button>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <input type="file" class="form-control" id="itemImage" accept="image/*">
+                                        <div class="form-text">建議尺寸：600 x 400 像素，優質的商品照片可提高顧客興趣</div>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-primary">儲存項目</button>
+                                        <button type="button" class="btn btn-outline-secondary cancel-add-item">取消</button>
                                     </div>
                                 </div>
                             </div>
