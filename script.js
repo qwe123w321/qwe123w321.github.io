@@ -122,3 +122,103 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 }); 
+
+// 處理即將推出的功能點擊
+function showComingSoonMessage(event) {
+    event.preventDefault();
+    
+    // 創建一個彈出提示
+    const toast = document.createElement('div');
+    toast.className = 'coming-soon-toast';
+    toast.innerHTML = `
+        <div class="toast-content">
+            <i class="fas fa-info-circle"></i>
+            <span>iOS 版本即將推出，敬請期待！</span>
+        </div>
+    `;
+    
+    // 添加樣式
+    toast.style.position = 'fixed';
+    toast.style.bottom = '20px';
+    toast.style.left = '50%';
+    toast.style.transform = 'translateX(-50%)';
+    toast.style.backgroundColor = 'rgba(52, 58, 64, 0.9)';
+    toast.style.color = 'white';
+    toast.style.padding = '12px 20px';
+    toast.style.borderRadius = '30px';
+    toast.style.boxShadow = '0 5px 15px rgba(0, 0, 0, 0.2)';
+    toast.style.zIndex = '1000';
+    toast.style.display = 'flex';
+    toast.style.alignItems = 'center';
+    toast.style.justifyContent = 'center';
+    toast.style.minWidth = '250px';
+    toast.style.maxWidth = '80%';
+    
+    // 添加到頁面
+    document.body.appendChild(toast);
+    
+    // 3秒後自動移除
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.5s ease';
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 500);
+    }, 3000);
+}
+
+// 監聽下載按鈕點擊事件
+document.addEventListener('DOMContentLoaded', function() {
+    const downloadBtn = document.querySelector('a[href="app-debug.apk"]');
+    
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', function() {
+            // Google Analytics 追蹤下載事件 (如果有使用 GA)
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'download', {
+                    'event_category': 'app_download',
+                    'event_label': 'Android APK'
+                });
+            }
+            
+            // 顯示下載已開始的提示
+            const toast = document.createElement('div');
+            toast.className = 'download-toast';
+            toast.innerHTML = `
+                <div class="toast-content">
+                    <i class="fas fa-download"></i>
+                    <span>下載已開始，請按照安裝指南進行安裝</span>
+                </div>
+            `;
+            
+            // 添加樣式
+            toast.style.position = 'fixed';
+            toast.style.bottom = '20px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.backgroundColor = 'rgba(157, 127, 134, 0.9)';
+            toast.style.color = 'white';
+            toast.style.padding = '12px 20px';
+            toast.style.borderRadius = '30px';
+            toast.style.boxShadow = '0 5px 15px rgba(0, 0, 0, 0.2)';
+            toast.style.zIndex = '1000';
+            toast.style.display = 'flex';
+            toast.style.alignItems = 'center';
+            toast.style.justifyContent = 'center';
+            toast.style.minWidth = '250px';
+            toast.style.maxWidth = '80%';
+            
+            // 添加到頁面
+            document.body.appendChild(toast);
+            
+            // 3秒後自動移除
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.5s ease';
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 500);
+            }, 3000);
+        });
+    }
+});
