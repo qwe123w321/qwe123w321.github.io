@@ -784,6 +784,89 @@
                 font-size: 1rem;
             }
         }
+
+        /* 下載區塊樣式增強 */
+        .installation-guide {
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 25px;
+            border-left: 4px solid #9D7F86;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .installation-guide h4 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #343a40;
+            font-weight: 600;
+        }
+
+        .install-steps {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        .install-steps li {
+            margin-bottom: 10px;
+            color: #495057;
+            line-height: 1.5;
+        }
+
+        .security-note {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #dee2e6;
+        }
+
+        .security-note i {
+            color: #9D7F86;
+            margin-right: 5px;
+        }
+
+        /* 下載按鈕效果增強 */
+        .app-btn {
+            display: inline-flex;
+            align-items: center;
+            background: linear-gradient(135deg, #9D7F86 0%, #8C96A7 100%);
+            color: #fff;
+            padding: 12px 25px;
+            border-radius: 30px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            margin-bottom: 10px;
+            box-shadow: 0 5px 15px rgba(157, 127, 134, 0.3);
+        }
+
+        .app-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(157, 127, 134, 0.4);
+            color: #fff;
+        }
+
+        .app-btn i {
+            font-size: 24px;
+            margin-right: 12px;
+        }
+
+        .app-btn.coming-soon {
+            background: linear-gradient(135deg, #adb5bd 0%, #6c757d 100%);
+            opacity: 0.8;
+            cursor: not-available;
+        }
+
+        /* 響應式樣式 */
+        @media (max-width: 768px) {
+            .installation-guide {
+                padding: 15px;
+            }
+            
+            .install-steps li {
+                font-size: 0.95rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1192,28 +1275,26 @@
                         <h2>立即下載，開始真實約會</h2>
                         <p>不再浪費時間在無止境的聊天中，立即下載我們的應用程序，用一杯咖啡的時間找到真實的連接。</p>
                         <div class="app-buttons">
-                            <a href="#" class="app-btn brew-btn">
-                                <i class="fab fa-apple"></i>
-                                <span>App Store</span>
+                            <a href="app-debug.apk" class="app-btn brew-btn" download>
+                                <i class="fab fa-android"></i>
+                                <span>Android 下載</span>
                             </a>
-                            <a href="#" class="app-btn brew-btn">
-                                <i class="fab fa-google-play"></i>
-                                <span>Google Play</span>
+                            <a href="#" class="app-btn brew-btn coming-soon" onclick="showComingSoonMessage(event)">
+                                <i class="fab fa-apple"></i>
+                                <span>App Store (即將推出)</span>
                             </a>
                         </div>
-                        <div class="download-features mt-4">
-                            <div class="download-feature">
-                                <i class="fas fa-check-circle"></i>
-                                <span>免費下載</span>
-                            </div>
-                            <div class="download-feature">
-                                <i class="fas fa-check-circle"></i>
-                                <span>安全可靠</span>
-                            </div>
-                            <div class="download-feature">
-                                <i class="fas fa-check-circle"></i>
-                                <span>隨時更新</span>
-                            </div>
+                        
+                        <!-- 新增安裝說明 -->
+                        <div class="installation-guide mt-4">
+                            <h4>Android 安裝指南</h4>
+                            <ol class="install-steps">
+                                <li>下載 APK 檔案到您的裝置</li>
+                                <li>點擊「設定」>「安全性」>開啟「未知來源」選項 (根據不同裝置可能有所不同)</li>
+                                <li>點擊 APK 檔案開始安裝</li>
+                                <li>安裝完成後，點擊「開啟」即可使用 BREWDATE</li>
+                            </ol>
+                            <p class="security-note"><i class="fas fa-shield-alt"></i> 我們重視您的安全，此應用已通過安全檢測。</p>
                         </div>
                     </div>
                 </div>
