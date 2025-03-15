@@ -373,7 +373,7 @@
     transform: translateY(-5px);
 }
 
-.footer-links h4, .footer-newsletter h4 {
+.footer-links h4 {
     font-size: 20px;
     margin-bottom: 25px;
     color: var(--primary-color);
