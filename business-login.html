@@ -27,39 +27,39 @@
        // 導入統一的 App Check 模組
        import { addDiagnosticsPanel } from './app-check-module.js';
        
-       // 添加診斷按鈕
-       document.addEventListener('DOMContentLoaded', () => {
-           // 創建診斷按鈕
-           const diagnosticsBtn = document.createElement('button');
-           diagnosticsBtn.id = 'appCheckDiagnosticsBtn';
-           diagnosticsBtn.innerHTML = '🔍';
-           diagnosticsBtn.title = 'App Check 診斷';
-           diagnosticsBtn.style.position = 'fixed';
-           diagnosticsBtn.style.bottom = '20px';
-           diagnosticsBtn.style.right = '20px';
-           diagnosticsBtn.style.width = '50px';
-           diagnosticsBtn.style.height = '50px';
-           diagnosticsBtn.style.borderRadius = '50%';
-           diagnosticsBtn.style.backgroundColor = '#007bff';
-           diagnosticsBtn.style.color = 'white';
-           diagnosticsBtn.style.border = 'none';
-           diagnosticsBtn.style.fontSize = '20px';
-           diagnosticsBtn.style.display = 'flex';
-           diagnosticsBtn.style.alignItems = 'center';
-           diagnosticsBtn.style.justifyContent = 'center';
-           diagnosticsBtn.style.cursor = 'pointer';
-           diagnosticsBtn.style.zIndex = '9999';
-           diagnosticsBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+    //    // 添加診斷按鈕
+    //    document.addEventListener('DOMContentLoaded', () => {
+    //        // 創建診斷按鈕
+    //        const diagnosticsBtn = document.createElement('button');
+    //        diagnosticsBtn.id = 'appCheckDiagnosticsBtn';
+    //        diagnosticsBtn.innerHTML = '🔍';
+    //        diagnosticsBtn.title = 'App Check 診斷';
+    //        diagnosticsBtn.style.position = 'fixed';
+    //        diagnosticsBtn.style.bottom = '20px';
+    //        diagnosticsBtn.style.right = '20px';
+    //        diagnosticsBtn.style.width = '50px';
+    //        diagnosticsBtn.style.height = '50px';
+    //        diagnosticsBtn.style.borderRadius = '50%';
+    //        diagnosticsBtn.style.backgroundColor = '#007bff';
+    //        diagnosticsBtn.style.color = 'white';
+    //        diagnosticsBtn.style.border = 'none';
+    //        diagnosticsBtn.style.fontSize = '20px';
+    //        diagnosticsBtn.style.display = 'flex';
+    //        diagnosticsBtn.style.alignItems = 'center';
+    //        diagnosticsBtn.style.justifyContent = 'center';
+    //        diagnosticsBtn.style.cursor = 'pointer';
+    //        diagnosticsBtn.style.zIndex = '9999';
+    //        diagnosticsBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
            
-           // 添加點擊事件
-           diagnosticsBtn.addEventListener('click', () => {
-               addDiagnosticsPanel();
-               diagnosticsBtn.style.display = 'none';
-           });
+    //        // 添加點擊事件
+    //        diagnosticsBtn.addEventListener('click', () => {
+    //            addDiagnosticsPanel();
+    //            diagnosticsBtn.style.display = 'none';
+    //        });
            
-           // 添加到頁面
-           document.body.appendChild(diagnosticsBtn);
-       });
+    //        // 添加到頁面
+    //        document.body.appendChild(diagnosticsBtn);
+    //    });
        
        // 導入其他需要的模組
        import './business-login.js';
@@ -187,7 +187,7 @@
 </head>
 <body>
     <!-- 在頁面頂部添加 App Check 狀態指示器 -->
-    <div id="appCheckStatus" class="initializing style="display: none !important;">App Check: 初始化中...</div>
+    <!-- <div id="appCheckStatus" class="initializing style="display: none !important;">App Check: 初始化中...</div> -->
     <!-- 導航欄 -->
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
         <div class="container">
