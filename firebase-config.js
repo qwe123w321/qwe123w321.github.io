@@ -31,22 +31,21 @@ if (window.location.hostname === 'localhost' ||
 }
 
 // 初始化 App Check
-// 初始化 App Check
 let appCheck;
 try {
-    // 增加超時時間
+    // 增加超時時間至 15 秒
     const reCaptchaTimeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("reCAPTCHA初始化超時")), 15000); // 從5秒增加到15秒
+        setTimeout(() => reject(new Error("reCAPTCHA初始化超時")), 15000);
     });
     
-    // 使用 Promise.race 來正確處理超時
+    // 使用 Promise.race 正確處理超時和初始化
     const initAppCheckPromise = Promise.race([
         (async () => {
-            appCheck = initializeAppCheck(app, {
+            const check = initializeAppCheck(app, {
                 provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
                 isTokenAutoRefreshEnabled: true
             });
-            return appCheck;
+            return check;
         })(),
         reCaptchaTimeoutPromise
     ]);
@@ -54,6 +53,7 @@ try {
     // 等待 Promise 解析
     initAppCheckPromise.then(result => {
         appCheck = result;
+        window.appCheck = appCheck; // 存儲至全局，讓 app-check-module.js 可以檢測
         console.log('App Check 初始化成功');
     }).catch(error => {
         console.error('App Check 初始化失敗:', error);
