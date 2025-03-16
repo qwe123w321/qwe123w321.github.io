@@ -23,33 +23,49 @@ const firebaseConfig = {
 // 初始化 Firebase App（如果尚未初始化）
 let app;
 try {
-    // 嘗試獲取已存在的 app
-    app = firebase.app();
+    // 嘗試從全局範圍獲取已初始化的 app
+    if (window.firebaseApp) {
+        app = window.firebaseApp;
+        console.log('【AppCheckModule】檢測到已存在的 Firebase App 實例');
+    } else {
+        console.log('【AppCheckModule】未檢測到已存在的 Firebase App 實例，創建新實例');
+        app = initializeApp(firebaseConfig);
+        window.firebaseApp = app; // 存儲到全局
+    }
 } catch (e) {
-    // 如果不存在，初始化新的 app
-    app = initializeApp(firebaseConfig);
+    console.error('【AppCheckModule】獲取或創建 Firebase App 實例失敗:', e);
+    // 嘗試創建新實例作為備用
+    try {
+        app = initializeApp(firebaseConfig);
+        console.log('【AppCheckModule】創建了新的 Firebase App 實例');
+    } catch (initError) {
+        console.error('【AppCheckModule】創建新 Firebase App 實例失敗:', initError);
+    }
 }
 
-// 啟用 App Check 偵錯模式（僅開發環境）
-if (window.location.hostname === 'localhost' || 
-    window.location.hostname === '127.0.0.1' || 
-    window.location.hostname.includes('192.168.')) {
-    console.log('【AppCheckModule】啟用 App Check 偵錯模式');
-    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-}
-
-// 初始化 App Check (如果尚未初始化)
+// 初始化 App Check (優先使用全局實例)
 let appCheck;
 try {
-    // 檢查是否已初始化
+    // 優先檢查是否已在全局範圍初始化
     if (window.appCheck) {
         appCheck = window.appCheck;
-        console.log('【AppCheckModule】檢測到已存在的 App Check 實例');
+        console.log('【AppCheckModule】檢測到已存在的 App Check 實例，將使用此實例');
     } else {
-        appCheck = initializeAppCheck(app, {
-            provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
-            isTokenAutoRefreshEnabled: true
+        console.log('【AppCheckModule】未檢測到全局 App Check 實例，嘗試初始化新實例');
+        // 使用 Promise.race 處理超時
+        const initPromise = new Promise((resolve) => {
+            appCheck = initializeAppCheck(app, {
+                provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
+                isTokenAutoRefreshEnabled: true
+            });
+            resolve(appCheck);
         });
+        
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error("App Check 初始化超時")), 10000);
+        });
+        
+        appCheck = await Promise.race([initPromise, timeoutPromise]);
         window.appCheck = appCheck; // 存儲至全局
         console.log('【AppCheckModule】成功初始化 App Check');
     }
