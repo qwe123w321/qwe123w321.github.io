@@ -95,19 +95,34 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 自動檢查登入狀態
     onAuthStateChanged(auth, function(user) {
+        // 確認當前頁面是否為登入頁面
+        const isLoginPage = window.location.pathname.endsWith('business-login.html') || 
+                            window.location.pathname.endsWith('/');
+        
         if (user) {
             console.log('檢測到用戶已登入:', user.email);
-            // 避免在初始加載時就檢查狀態，這可能導致循環
-            if (!window.initialAuthCheckComplete) {
-                window.initialAuthCheckComplete = true;
-                // 使用 setTimeout 延遲執行，避免與其他操作競爭
-                setTimeout(() => {
-                    checkBusinessStatus(user.uid);
-                }, 1000);
+            
+            // 只在登入頁面才執行狀態檢查和重定向
+            if (isLoginPage) {
+                // 使用標記防止重複檢查
+                if (!window.initialAuthCheckComplete) {
+                    window.initialAuthCheckComplete = true;
+                    console.log('執行店家狀態檢查...');
+                    // 延遲執行檢查
+                    setTimeout(() => {
+                        checkBusinessStatus(user.uid);
+                    }, 1000);
+                }
             }
         } else {
             console.log('未檢測到已登入用戶');
             window.initialAuthCheckComplete = false;
+            
+            // 如果是在儀表板頁面但未登入，重定向到登入頁面
+            if (window.location.pathname.includes('business-dashboard')) {
+                console.log('用戶未登入但嘗試訪問儀表板，重定向到登入頁面');
+                window.location.href = 'business-login.html';
+            }
         }
     });
 });
@@ -418,8 +433,10 @@ async function checkBusinessStatus(userId) {
             // 根據審核狀態處理
             if (businessData.status === 'approved') {
                 console.log('登入成功：商家已通過審核，重定向到儀表板');
+                // 標記為已進行重定向，避免循環
+                localStorage.setItem('redirected_to_dashboard', 'true');
                 // 使用絕對路徑確保正確重定向
-                window.location.href = window.location.origin + '/business-dashboard.html';
+                window.location.href = 'business-dashboard.html';
                 return; // 防止繼續執行
             } else if (businessData.status === 'pending') {
                 console.log('登入成功：商家審核中');
