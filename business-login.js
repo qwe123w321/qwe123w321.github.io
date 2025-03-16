@@ -175,7 +175,7 @@ async function handleLogin(e) {
     // 獲取輸入值
     const email = sanitizeInput(document.getElementById('email').value);
     const password = document.getElementById('password').value;
-    const rememberMe = document.getElementById('rememberMe').checked;
+    const rememberMe = document.getElementById('rememberMe') ? document.getElementById('rememberMe').checked : false;
     
     // 清除之前的錯誤訊息
     clearErrorMessage();
