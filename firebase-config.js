@@ -33,34 +33,66 @@ if (window.location.hostname === 'localhost' ||
 // 初始化 App Check
 let appCheck;
 try {
-    // 增加超時時間至 15 秒
+    // 改進 reCAPTCHA 超時處理
     const reCaptchaTimeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("reCAPTCHA初始化超時")), 15000);
+        setTimeout(() => {
+            const error = new Error("reCAPTCHA初始化超時 (15秒)");
+            console.error('reCAPTCHA 初始化超時:', error, new Date().toISOString());
+            reject(error);
+        }, 15000);
     });
     
-    // 使用 Promise.race 正確處理超時和初始化
-    const initAppCheckPromise = Promise.race([
-        (async () => {
-            const check = initializeAppCheck(app, {
-                provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
-                isTokenAutoRefreshEnabled: true
-            });
-            return check;
-        })(),
-        reCaptchaTimeoutPromise
-    ]);
+    // 添加 reCAPTCHA 腳本加載檢查
+    const checkRecaptchaLoaded = () => {
+        console.log('檢查 reCAPTCHA 腳本加載狀態');
+        if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.ready === 'function') {
+            console.log('reCAPTCHA 腳本已加載');
+            return true;
+        }
+        console.warn('reCAPTCHA 腳本尚未加載');
+        return false;
+    };
     
-    // 等待 Promise 解析
-    initAppCheckPromise.then(result => {
-        appCheck = result;
-        window.appCheck = appCheck; // 存儲至全局，讓 app-check-module.js 可以檢測
-        console.log('App Check 初始化成功');
-    }).catch(error => {
-        console.error('App Check 初始化失敗:', error);
-        appCheck = null;
-    });
+    // 等待 reCAPTCHA 加載完成
+    console.log('等待 reCAPTCHA 腳本加載...');
+    
+    // 定期檢查 reCAPTCHA 是否加載
+    let recaptchaCheckInterval = setInterval(() => {
+        if (checkRecaptchaLoaded()) {
+            clearInterval(recaptchaCheckInterval);
+            console.log('reCAPTCHA 腳本已加載，繼續初始化 App Check');
+            
+            // 嘗試初始化 App Check
+            try {
+                appCheck = initializeAppCheck(app, {
+                    provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
+                    isTokenAutoRefreshEnabled: true
+                });
+                
+                window.appCheck = appCheck; // 存儲到全局以便模組訪問
+                console.log('App Check 初始化成功');
+            } catch (initError) {
+                console.error('App Check 初始化失敗:', initError, initError.stack);
+                appCheck = null;
+            }
+        }
+    }, 1000);
+    
+    // 確保超時後清除 interval
+    setTimeout(() => {
+        if (recaptchaCheckInterval) {
+            clearInterval(recaptchaCheckInterval);
+            console.error('reCAPTCHA 腳本加載檢查超時');
+        }
+    }, 15000);
+    
 } catch (error) {
-    console.error('App Check 初始化立即失敗:', error);
+    console.error('App Check 初始化過程中發生錯誤:', error);
+    console.error('錯誤詳情:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+    });
     appCheck = null;
 }
 
