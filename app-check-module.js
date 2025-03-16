@@ -83,14 +83,21 @@ async function checkAppCheckStatus() {
     }
     
     try {
-        // 嘗試獲取令牌
-        console.log('【AppCheckModule】嘗試獲取 App Check 令牌...');
-        const tokenResult = await getToken(appCheck, /* forceRefresh */ true);
+        // 添加超時處理
+        const tokenPromise = getToken(appCheck, /* forceRefresh */ true);
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('獲取 App Check 令牌超時 (20秒)')), 20000);
+        });
         
-        console.log('【AppCheckModule】App Check 令牌獲取成功！');
+        console.log('【AppCheckModule】嘗試獲取 App Check 令牌...', new Date().toISOString());
+        
+        // 使用 Promise.race 處理潛在的卡住問題
+        const tokenResult = await Promise.race([tokenPromise, timeoutPromise]);
+        
+        console.log('【AppCheckModule】App Check 令牌獲取成功！', new Date().toISOString());
         console.log('【AppCheckModule】令牌詳情:', {
-            token: tokenResult.token.substring(0, 10) + '...[已隱藏]', // 只顯示令牌前10個字符
-            expireTimeMillis: new Date(tokenResult.expireTimeMillis).toLocaleString(),
+            token: tokenResult.token ? (tokenResult.token.substring(0, 10) + '...[已隱藏]') : 'null', 
+            expireTimeMillis: tokenResult.expireTimeMillis ? new Date(tokenResult.expireTimeMillis).toLocaleString() : 'null',
             isValid: !!tokenResult.token
         });
         
@@ -100,34 +107,158 @@ async function checkAppCheckStatus() {
             expireTimeMillis: tokenResult.expireTimeMillis
         };
     } catch (error) {
-        console.error('【AppCheckModule】App Check 令牌獲取失敗:', error);
-        console.log('【AppCheckModule】錯誤詳情:', {
-            code: error.code,
-            message: error.message,
-            stack: error.stack
+        console.error('【AppCheckModule】App Check 令牌獲取失敗:', error, new Date().toISOString());
+        console.error('【AppCheckModule】錯誤類型:', error.constructor.name);
+        console.error('【AppCheckModule】錯誤詳情:', {
+            code: error.code || '無錯誤代碼',
+            name: error.name || '無錯誤名稱',
+            message: error.message || '無錯誤訊息',
+            stack: error.stack || '無堆疊追蹤'
         });
+        
+        // 檢查是否為網絡錯誤
+        if (error.name === 'TypeError' && error.message.includes('NetworkError')) {
+            console.error('【AppCheckModule】檢測到網絡錯誤，可能是跨域問題或網絡連接問題');
+        }
+        
+        // 檢查是否為 reCAPTCHA 錯誤
+        if (error.message && error.message.includes('reCAPTCHA')) {
+            console.error('【AppCheckModule】檢測到 reCAPTCHA 錯誤，可能是 reCAPTCHA 未正確加載或配置錯誤');
+        }
+        
+        // 試著獲取更多 reCAPTCHA 信息
+        try {
+            console.log('【AppCheckModule】嘗試檢查 reCAPTCHA 狀態:', {
+                grecaptchaLoaded: typeof grecaptcha !== 'undefined',
+                grecaptchaReady: typeof grecaptcha !== 'undefined' && typeof grecaptcha.ready === 'function',
+                windowRecaptchaObject: window.recaptcha ? 'exists' : 'not found'
+            });
+        } catch (rcError) {
+            console.error('【AppCheckModule】檢查 reCAPTCHA 狀態時出錯:', rcError);
+        }
         
         return {
             success: false,
-            error: error.message
+            error: error.message,
+            fullError: error,
+            errorType: error.constructor.name
         };
     }
 }
 
 // 獲取 App Check 令牌
 async function getAppCheckToken() {
+    console.log('【AppCheckModule】開始獲取 App Check 令牌', new Date().toISOString());
+    
     if (!appCheck) {
         console.error('【AppCheckModule】App Check 物件未初始化');
         return null;
     }
     
     try {
-        const tokenResult = await getToken(appCheck);
-        console.log('【AppCheckModule】成功獲取 App Check 令牌');
+        // 跟踪獲取過程開始時間
+        const startTime = performance.now();
+        
+        // 添加超時處理
+        const tokenPromise = getToken(appCheck);
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('獲取 App Check 令牌超時 (15秒)')), 15000);
+        });
+        
+        // 使用 Promise.race 處理潛在的卡住問題
+        const tokenResult = await Promise.race([tokenPromise, timeoutPromise]);
+        
+        // 計算耗時
+        const duration = performance.now() - startTime;
+        
+        console.log(`【AppCheckModule】成功獲取 App Check 令牌，耗時 ${duration.toFixed(2)}ms`, new Date().toISOString());
         return tokenResult.token;
     } catch (error) {
         console.error('【AppCheckModule】獲取 App Check 令牌時發生錯誤:', error);
+        console.error('【AppCheckModule】錯誤詳情:', {
+            name: error.name || '未知',
+            code: error.code || '未知',
+            message: error.message || '未知',
+            stack: error.stack || '未知'
+        });
+        
+        // 檢查 reCAPTCHA
+        try {
+            if (typeof grecaptcha !== 'undefined') {
+                console.log('【AppCheckModule】reCAPTCHA 看起來已加載，嘗試檢查其狀態');
+                if (typeof grecaptcha.execute === 'function') {
+                    console.log('【AppCheckModule】grecaptcha.execute 函數存在');
+                } else {
+                    console.error('【AppCheckModule】grecaptcha.execute 函數不存在');
+                }
+            } else {
+                console.error('【AppCheckModule】grecaptcha 未定義，reCAPTCHA 可能未正確加載');
+            }
+        } catch (rcError) {
+            console.error('【AppCheckModule】檢查 reCAPTCHA 時出錯:', rcError);
+        }
+        
         return null;
+    }
+}
+
+// 添加 reCAPTCHA 狀態檢查函數
+function checkRecaptchaStatus() {
+    console.log('【AppCheckModule】檢查 reCAPTCHA 狀態');
+    
+    try {
+        // 檢查 grecaptcha 是否存在
+        const grecaptchaExists = typeof grecaptcha !== 'undefined';
+        console.log('【AppCheckModule】grecaptcha 對象存在:', grecaptchaExists);
+        
+        if (grecaptchaExists) {
+            // 檢查 grecaptcha.ready 方法
+            const readyMethodExists = typeof grecaptcha.ready === 'function';
+            console.log('【AppCheckModule】grecaptcha.ready 方法存在:', readyMethodExists);
+            
+            // 檢查 grecaptcha.execute 方法
+            const executeMethodExists = typeof grecaptcha.execute === 'function';
+            console.log('【AppCheckModule】grecaptcha.execute 方法存在:', executeMethodExists);
+            
+            // 獲取 grecaptcha 版本信息（如果有）
+            const version = grecaptcha.version || 'unknown';
+            console.log('【AppCheckModule】grecaptcha 版本:', version);
+            
+            // 如果 ready 方法存在，嘗試使用它
+            if (readyMethodExists) {
+                grecaptcha.ready(() => {
+                    console.log('【AppCheckModule】grecaptcha.ready 回調執行');
+                    console.log('【AppCheckModule】reCAPTCHA 已準備好');
+                });
+            }
+        } else {
+            // 檢查 script 是否已加載
+            const recaptchaScripts = Array.from(document.scripts).filter(script => 
+                script.src && script.src.includes('recaptcha'));
+            
+            console.log('【AppCheckModule】找到 reCAPTCHA 腳本:', recaptchaScripts.length);
+            recaptchaScripts.forEach((script, index) => {
+                console.log(`【AppCheckModule】reCAPTCHA 腳本 ${index + 1}:`, {
+                    src: script.src,
+                    async: script.async,
+                    defer: script.defer,
+                    loaded: script.readyState === 'complete' || script.readyState === 'loaded',
+                });
+            });
+        }
+        
+        // 檢查全局回調
+        const hasRecaptchaCallback = typeof window.__recaptchaCallback === 'function';
+        console.log('【AppCheckModule】全局 __recaptchaCallback 存在:', hasRecaptchaCallback);
+        
+        return {
+            grecaptchaExists,
+            scriptsFound: Array.from(document.scripts).filter(script => 
+                script.src && script.src.includes('recaptcha')).length
+        };
+    } catch (error) {
+        console.error('【AppCheckModule】檢查 reCAPTCHA 狀態時出錯:', error);
+        return { error: error.message };
     }
 }
 
@@ -259,6 +390,62 @@ function installFetchInterceptor() {
     console.log('【AppCheckModule】fetch 攔截器安裝完成');
 }
 
+// 在模組加載後自動檢查 reCAPTCHA 狀態
+setTimeout(() => {
+    console.log('【AppCheckModule】延遲檢查 reCAPTCHA 狀態');
+    checkRecaptchaStatus();
+}, 3000);
+
+// 另一次延遲檢查，確保捕獲延遲加載的情況
+setTimeout(() => {
+    console.log('【AppCheckModule】再次檢查 reCAPTCHA 狀態');
+    checkRecaptchaStatus();
+}, 7000);
+
+// 監控 fetch 請求的成功與失敗
+const originalFetch = window.fetch;
+window.fetch = async function(...args) {
+    const url = typeof args[0] === 'string' ? args[0] : args[0].url;
+    
+    // 只記錄 App Check 相關的請求
+    if (url && url.includes('firebaseappcheck')) {
+        console.log(`【AppCheckModule】發起 fetch 請求: ${url.substring(0, 100)}...`, new Date().toISOString());
+        
+        try {
+            const startTime = performance.now();
+            const response = await originalFetch.apply(this, args);
+            const duration = performance.now() - startTime;
+            
+            console.log(`【AppCheckModule】fetch 請求完成: ${url.substring(0, 100)}...`, {
+                status: response.status,
+                ok: response.ok,
+                duration: `${duration.toFixed(2)}ms`
+            }, new Date().toISOString());
+            
+            // 如果狀態不是 200-299，記錄詳細錯誤
+            if (!response.ok) {
+                console.error(`【AppCheckModule】fetch 請求失敗: ${response.status} ${response.statusText}`);
+                
+                try {
+                    // 嘗試複製響應並讀取內容（這可能會消耗原始響應）
+                    const clonedResponse = response.clone();
+                    const text = await clonedResponse.text();
+                    console.error('【AppCheckModule】響應內容:', text.substring(0, 500));
+                } catch (textError) {
+                    console.error('【AppCheckModule】無法讀取響應內容:', textError);
+                }
+            }
+            
+            return response;
+        } catch (error) {
+            console.error(`【AppCheckModule】fetch 請求錯誤: ${url.substring(0, 100)}...`, error, new Date().toISOString());
+            throw error;
+        }
+    }
+    
+    return originalFetch.apply(this, args);
+};
+
 // 立即安裝攔截器
 installXHRInterceptor();
 installFetchInterceptor();
@@ -337,12 +524,102 @@ function addDiagnosticsPanel() {
     document.getElementById('checkAppCheck').click();
 }
 
+
 // 自動檢查 App Check 狀態
 setTimeout(async () => {
     console.log('【AppCheckModule】自動檢查 App Check 狀態');
     const result = await checkAppCheckStatus();
     console.log('【AppCheckModule】自動檢查結果:', result.success ? '成功' : '失敗');
 }, 1000);
+
+// 添加完整診斷函數
+function runFullDiagnostics() {
+    console.log('===== 開始 App Check 完整診斷 =====');
+    
+    // 檢查環境
+    console.log('【診斷】檢查環境:');
+    console.log('- 當前 URL:', window.location.href);
+    console.log('- 主機名:', window.location.hostname);
+    console.log('- 使用者代理:', navigator.userAgent);
+    console.log('- 是否為開發環境:', 
+        window.location.hostname === 'localhost' || 
+        window.location.hostname === '127.0.0.1' || 
+        window.location.hostname.includes('192.168.'));
+    
+    // 檢查 Firebase 初始化
+    console.log('【診斷】檢查 Firebase 初始化:');
+    console.log('- firebase 全局對象:', typeof firebase !== 'undefined' ? '存在' : '不存在');
+    console.log('- app 對象:', app ? '已初始化' : '未初始化');
+    console.log('- appCheck 對象:', appCheck ? '已初始化' : '未初始化');
+    
+    // 檢查 reCAPTCHA
+    console.log('【診斷】檢查 reCAPTCHA:');
+    const recaptchaStatus = checkRecaptchaStatus();
+    
+    // 檢查網絡連接
+    console.log('【診斷】檢查網絡連接:');
+    console.log('- 在線狀態:', navigator.onLine ? '在線' : '離線');
+    
+    // 嘗試 ping Firebase
+    console.log('【診斷】嘗試 ping Firebase:');
+    fetch('https://firebaseapp.com/ping', { 
+        mode: 'no-cors',
+        cache: 'no-cache',
+        headers: { 'Cache-Control': 'no-cache' }
+    })
+    .then(() => console.log('- Firebase ping: 成功'))
+    .catch(err => console.error('- Firebase ping: 失敗', err));
+    
+    // 嘗試 ping Google
+    console.log('【診斷】嘗試 ping Google:');
+    fetch('https://www.google.com/generate_204', { 
+        mode: 'no-cors',
+        cache: 'no-cache',
+        headers: { 'Cache-Control': 'no-cache' }
+    })
+    .then(() => console.log('- Google ping: 成功'))
+    .catch(err => console.error('- Google ping: 失敗', err));
+    
+    // 檢查 localStorage 存取
+    console.log('【診斷】檢查 localStorage:');
+    try {
+        localStorage.setItem('app_check_test', 'test');
+        const testValue = localStorage.getItem('app_check_test');
+        console.log('- localStorage 存取:', testValue === 'test' ? '成功' : '失敗');
+        localStorage.removeItem('app_check_test');
+    } catch (error) {
+        console.error('- localStorage 存取: 失敗', error);
+    }
+    
+    // 檢查是否存在阻止跨域的擴展或設置
+    console.log('【診斷】檢查潛在的跨域問題:');
+    const testImage = new Image();
+    testImage.onload = () => console.log('- 跨域圖片加載: 成功');
+    testImage.onerror = (err) => console.error('- 跨域圖片加載: 失敗', err);
+    testImage.src = 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg';
+    
+    console.log('===== 診斷完成 =====');
+    return {
+        timestamp: new Date().toISOString(),
+        environment: {
+            url: window.location.href,
+            hostname: window.location.hostname,
+            userAgent: navigator.userAgent,
+            isDevEnvironment: window.location.hostname === 'localhost' || 
+                            window.location.hostname === '127.0.0.1' || 
+                            window.location.hostname.includes('192.168.')
+        },
+        firebase: {
+            firebaseGlobalExists: typeof firebase !== 'undefined',
+            appInitialized: !!app,
+            appCheckInitialized: !!appCheck
+        },
+        recaptcha: recaptchaStatus,
+        network: {
+            online: navigator.onLine
+        }
+    };
+}
 
 // 導出所有函數和對象
 export {
@@ -351,7 +628,9 @@ export {
     getAppCheckToken,
     installXHRInterceptor,
     installFetchInterceptor,
-    addDiagnosticsPanel
+    addDiagnosticsPanel,
+    runFullDiagnostics,
+    checkRecaptchaStatus
 };
 
 // 打印模塊初始化完成消息
