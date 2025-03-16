@@ -31,10 +31,25 @@ if (window.location.hostname === 'localhost' ||
 }
 
 // 初始化 App Check
-const appCheck = initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
-    isTokenAutoRefreshEnabled: true
-});
+let appCheck;
+try {
+    // 添加 reCAPTCHA 超時處理
+    const reCaptchaTimeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("reCAPTCHA初始化超時")), 5000);
+    });
+    
+    // 嘗試初始化 App Check
+    appCheck = initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
+        isTokenAutoRefreshEnabled: true
+    });
+    
+    console.log('App Check 初始化成功');
+} catch (error) {
+    console.error('App Check 初始化失敗:', error);
+    // 如果初始化失敗，設置為 null
+    appCheck = null;
+}
 
 // 初始化服務
 const auth = getAuth(app);
