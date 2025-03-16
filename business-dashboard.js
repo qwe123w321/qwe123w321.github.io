@@ -28,6 +28,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // 登出按鈕初始化
     initLogoutButtons();
     
+    // 如果當前頁面有地圖容器，載入 Google Maps
+    if (document.getElementById('mapContainer')) {
+        loadGoogleMapsAPI();
+    }
+    
     // 監聽 Firebase 初始化完成事件
     document.addEventListener('firebase-ready', function() {
         console.log('Firebase 初始化完成，開始監聽認證狀態');
@@ -51,69 +56,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-}
+    });
+});
 
 // 登出按鈕初始化
-function performLogout() {
-    console.log('開始登出流程...');
-    
-    // Show loading state
+function initLogoutButtons() {
     const logoutButtons = document.querySelectorAll('#logoutLink, a[href="#"][id="logoutLink"]');
     logoutButtons.forEach(btn => {
         if (btn) {
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 登出中...';
-            btn.disabled = true;
-            btn.setAttribute('data-original-text', originalText);
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                performLogout();
+            });
+            console.log('已綁定登出按鈕:', btn);
         }
     });
-    
-    // Use firebase auth object
-    try {
-        if (window.auth) {
-            window.auth.signOut().then(() => {
-                // Clear storage
-                try {
-                    localStorage.clear();
-                    sessionStorage.clear();
-                } catch (e) {
-                    console.warn('清除存儲時出錯:', e);
-                }
-                
-                showAlert('登出成功，正在跳轉...', 'success');
-                
-                setTimeout(() => {
-                    window.location.href = 'business-login.html?t=' + new Date().getTime();
-                }, 1000);
-            }).catch(error => {
-                console.error('登出錯誤:', error);
-                restoreButtons();
-                showAlert('登出失敗，請重新嘗試', 'danger');
-            });
-        } else {
-            // Fallback
-            window.location.href = 'business-login.html?sessionExpired=true';
-        }
-    } catch (error) {
-        console.error('登出過程中發生錯誤:', error);
-        restoreButtons();
-        window.location.href = 'business-login.html?error=true';
-    }
-    
-    // Set timeout to prevent hanging
-    setTimeout(() => {
-        window.location.href = 'business-login.html?timeout=true&t=' + new Date().getTime();
-    }, 5000);
-    
-    function restoreButtons() {
-        logoutButtons.forEach(btn => {
-            if (btn) {
-                const originalText = btn.getAttribute('data-original-text') || '<i class="fas fa-sign-out-alt"></i> 登出';
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        });
-    }
 }
 
 // 執行登出
@@ -299,6 +256,7 @@ async function loadVenueData() {
             }
             
             console.log("店家資料載入完成");
+            showAlert("店家資料已載入完成", "success");
         } else {
             // 店家資料不存在，可能是新用戶
             console.log("店家資料不存在，請建立資料");
@@ -508,6 +466,7 @@ async function removeMainImage() {
 }
 
 // 提交店家基本資料表單
+// 提交店家基本資料表單
 async function submitVenueForm() {
     try {
         // 顯示載入提示
@@ -572,6 +531,381 @@ async function submitVenueForm() {
         const saveBtn = document.querySelector("#profile-section .card-header .btn-primary");
         saveBtn.innerHTML = '儲存變更';
         saveBtn.disabled = false;
+    }
+}
+
+// 處理上傳環境照片
+async function handleEnvironmentImageUpload(files) {
+    if (!files || files.length === 0) return;
+    
+    try {
+        showAlert("正在上傳環境照片，請稍候...", "info");
+        
+        // 獲取圖庫容器和添加按鈕
+        const gallery = document.querySelector('.gallery-preview');
+        const addBtn = gallery.querySelector('.add-gallery-item');
+        
+        // 獲取既有的環境照片URLs
+        let galleryImages = [];
+        if (venueData && venueData.galleryImages) {
+            galleryImages = [...venueData.galleryImages];
+        }
+        
+        // 處理每張照片
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // 檢查文件類型和大小
+            if (!file.type.match('image.*')) {
+                showAlert(`文件 ${file.name} 不是圖片，已跳過`, "warning");
+                continue;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) { // 5MB
+                showAlert(`圖片 ${file.name} 超過 5MB，已跳過`, "warning");
+                continue;
+            }
+            
+            // 壓縮圖片
+            const compressedFile = await compressImage(file, 800, 600);
+            
+            // 上傳到 Storage
+            const storageRef = storage.ref(`venues/${currentUser.uid}/gallery/${Date.now()}_${file.name}`);
+            await storageRef.put(compressedFile);
+            const imageUrl = await storageRef.getDownloadURL();
+            
+            // 添加到圖片URLs陣列
+            galleryImages.push(imageUrl);
+            
+            // 創建新的圖庫項目
+            const galleryItem = document.createElement('div');
+            galleryItem.className = 'gallery-item';
+            galleryItem.innerHTML = `
+                <img src="${imageUrl}" alt="店內環境照片">
+                <div class="remove-image">
+                    <i class="fas fa-times"></i>
+                </div>
+            `;
+            
+            // 插入到添加按鈕之前
+            gallery.insertBefore(galleryItem, addBtn);
+            
+            // 添加刪除事件
+            const removeBtn = galleryItem.querySelector('.remove-image');
+            removeBtn.addEventListener('click', function() {
+                if (confirm('確定要刪除此照片？')) {
+                    removeGalleryImage(imageUrl);
+                    galleryItem.remove();
+                }
+            });
+        }
+        
+        // 更新 Firestore
+        await db.collection("venues").doc(currentUser.uid).update({
+            galleryImages: galleryImages,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // 更新本地數據
+        if (!venueData) venueData = {};
+        venueData.galleryImages = galleryImages;
+        
+        showAlert("環境照片已成功上傳", "success");
+    } catch (error) {
+        console.error("上傳環境照片錯誤:", error);
+        showAlert("上傳環境照片失敗，請稍後再試", "danger");
+    } finally {
+        // 清空文件輸入
+        document.getElementById('addEnvironmentImage').value = '';
+    }
+}
+
+// 營業時間初始化
+function initBusinessHours() {
+    // 營業時間保存按鈕
+    const saveBusinessHoursBtn = document.querySelector("#profile-section .card-header .btn-primary");
+    if (saveBusinessHoursBtn) {
+        saveBusinessHoursBtn.addEventListener('click', function() {
+            saveBusinessHours();
+        });
+    }
+}
+
+// 保存營業時間
+async function saveBusinessHours() {
+    try {
+        // 獲取按鈕並顯示載入狀態
+        const saveBtn = document.querySelector("#profile-section .card-header .btn-primary");
+        const originalText = saveBtn.textContent;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 儲存中...';
+        saveBtn.disabled = true;
+        
+        // 收集營業時間
+        const openingHours = [];
+        const hourSelectionDivs = document.querySelectorAll(".hours-selection");
+        hourSelectionDivs.forEach((div, index) => {
+            const selects = div.querySelectorAll("select");
+            if (selects.length === 2) {
+                openingHours[index] = {
+                    day: index,
+                    open: selects[0].value,
+                    close: selects[1].value
+                };
+            }
+        });
+        
+        // 更新 Firestore
+        await db.collection("venues").doc(currentUser.uid).update({
+            openingHours: openingHours,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // 更新本地數據
+        if (!venueData) venueData = {};
+        venueData.openingHours = openingHours;
+        
+        // 恢復按鈕狀態
+        saveBtn.textContent = originalText;
+        saveBtn.disabled = false;
+        
+        showAlert("營業時間已成功更新", "success");
+    } catch (error) {
+        console.error("更新營業時間錯誤:", error);
+        showAlert("更新營業時間失敗，請稍後再試", "danger");
+        
+        // 恢復按鈕狀態
+        const saveBtn = document.querySelector("#profile-section .card-header .btn-primary");
+        if (saveBtn) {
+            saveBtn.textContent = '儲存營業時間';
+            saveBtn.disabled = false;
+        }
+    }
+}
+
+// 表單驗證初始化
+function initFormValidation() {
+    // 基本資料表單提交
+    const saveProfileBtn = document.querySelector("#profile-section .btn-primary");
+    if (saveProfileBtn) {
+        saveProfileBtn.addEventListener('click', function() {
+            submitVenueForm();
+        });
+    }
+    
+    // 為所有必填字段添加驗證
+    const requiredFields = document.querySelectorAll('input[required], textarea[required], select[required]');
+    
+    requiredFields.forEach(field => {
+        field.addEventListener('blur', function() {
+            if (!this.value.trim()) {
+                this.classList.add('is-invalid');
+                
+                // 檢查是否已存在錯誤提示
+                let feedback = this.nextElementSibling;
+                if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+                    feedback = document.createElement('div');
+                    feedback.className = 'invalid-feedback';
+                    feedback.textContent = '此欄位為必填';
+                    this.after(feedback);
+                }
+            } else {
+                this.classList.remove('is-invalid');
+                
+                // 移除錯誤提示
+                const feedback = this.nextElementSibling;
+                if (feedback && feedback.classList.contains('invalid-feedback')) {
+                    feedback.remove();
+                }
+            }
+        });
+    });
+    
+    // 為電子郵件欄位添加格式驗證
+    const emailFields = document.querySelectorAll('input[type="email"]');
+    emailFields.forEach(field => {
+        field.addEventListener('blur', function() {
+            if (this.value && !isValidEmail(this.value)) {
+                this.classList.add('is-invalid');
+                
+                // 檢查是否已存在錯誤提示
+                let feedback = this.nextElementSibling;
+                if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+                    feedback = document.createElement('div');
+                    feedback.className = 'invalid-feedback';
+                    feedback.textContent = '請輸入有效的電子郵件地址';
+                    this.after(feedback);
+                }
+            }
+        });
+    });
+    
+    // 為網址欄位添加格式驗證
+    const urlFields = document.querySelectorAll('input[type="url"]');
+    urlFields.forEach(field => {
+        field.addEventListener('blur', function() {
+            if (this.value && !isValidUrl(this.value)) {
+                this.classList.add('is-invalid');
+                
+                // 檢查是否已存在錯誤提示
+                let feedback = this.nextElementSibling;
+                if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+                    feedback = document.createElement('div');
+                    feedback.className = 'invalid-feedback';
+                    feedback.textContent = '請輸入有效的網址，包含http://或https://';
+                    this.after(feedback);
+                }
+            }
+        });
+    });
+}
+
+// 驗證電子郵件格式
+function isValidEmail(email) {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+}
+
+// 驗證URL格式
+function isValidUrl(url) {
+    try {
+        new URL(url);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+// 更新地理位置欄位
+function updateLocationFields(location) {
+    const latitudeField = document.getElementById('latitude');
+    const longitudeField = document.getElementById('longitude');
+    
+    if (latitudeField && longitudeField) {
+        latitudeField.value = location.latitude.toFixed(6);
+        longitudeField.value = location.longitude.toFixed(6);
+    }
+}
+
+// 加載Google Maps API
+function loadGoogleMapsAPI() {
+    if (document.getElementById('google-maps-script')) {
+        return; // 避免重複載入
+    }
+    
+    const script = document.createElement('script');
+    script.id = 'google-maps-script';
+    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyByRzxE7olx04Q_-ckYIKNyI9uJnZ_p_-Y&libraries=places&callback=initMap`;
+    script.defer = true;
+    script.async = true;
+    script.onerror = function() {
+        showAlert('無法載入 Google Maps API，請檢查您的網絡連接', 'warning');
+    };
+    document.head.appendChild(script);
+}
+
+// 圖片壓縮函數
+async function compressImage(file, maxWidth, maxHeight) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = function(event) {
+            const img = new Image();
+            img.src = event.target.result;
+            
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                
+                // 計算縮放比例
+                if (width > maxWidth) {
+                    height = (maxWidth / width) * height;
+                    width = maxWidth;
+                }
+                
+                if (height > maxHeight) {
+                    width = (maxHeight / height) * width;
+                    height = maxHeight;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // 將畫布轉換為Blob
+                canvas.toBlob(blob => {
+                    // 創建一個新文件，保持原始檔名
+                    const compressedFile = new File([blob], file.name, {
+                        type: file.type,
+                        lastModified: Date.now()
+                    });
+                    
+                    resolve(compressedFile);
+                }, file.type, 0.7); // 壓縮質量0.7
+            };
+            
+            img.onerror = function() {
+                reject(new Error('圖片加載失敗'));
+            };
+        };
+        
+        reader.onerror = function() {
+            reject(new Error('文件讀取失敗'));
+        };
+    });
+}
+
+// 顯示提示訊息
+function showAlert(message, type = "success", duration = 3000) {
+    // 檢查是否已有提示，避免重複
+    const existingAlerts = document.querySelectorAll('.alert-floating');
+    existingAlerts.forEach(alert => alert.remove());
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show alert-floating`;
+    alertDiv.style.position = 'fixed';
+    alertDiv.style.top = '15px';
+    alertDiv.style.left = '50%';
+    alertDiv.style.transform = 'translateX(-50%)';
+    alertDiv.style.zIndex = '9999';
+    alertDiv.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+    alertDiv.style.minWidth = '300px';
+    alertDiv.role = 'alert';
+    
+    alertDiv.innerHTML = `
+        <strong>${type === 'success' ? '✓' : type === 'danger' ? '✗' : 'ℹ'}</strong> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    // 自動關閉
+    setTimeout(() => {
+        alertDiv.classList.remove('show');
+        setTimeout(() => alertDiv.remove(), 300);
+    }, duration);
+    
+    return alertDiv;
+}
+
+// 全頁面加載中顯示
+function showPageLoading(message = '處理中，請稍候...') {
+    const overlay = document.getElementById('loadingOverlay');
+    const messageEl = document.getElementById('loadingMessage');
+    
+    if (overlay && messageEl) {
+        messageEl.textContent = message;
+        overlay.classList.remove('d-none');
+    }
+}
+
+// 全頁面加載中隱藏
+function hidePageLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.classList.add('d-none');
     }
 }
 
@@ -806,8 +1140,237 @@ function addMenuItemsEvents() {
         });
     });
 }
-    });
-});
+
+// 儲存商品項目
+async function saveMenuItem(category) {
+    try {
+        const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
+        const nameInput = document.getElementById(`${formId}-name`);
+        const priceInput = document.getElementById(`${formId}-price`);
+        const descInput = document.getElementById(`${formId}-desc`);
+        
+        // 驗證必填字段
+        if (!nameInput.value) {
+            showAlert("請填寫商品名稱", "warning");
+            return;
+        }
+        
+        // 驗證價格
+        const price = parseFloat(priceInput.value);
+        if (isNaN(price) || price <= 0) {
+            showAlert("請輸入有效的價格", "warning");
+            return;
+        }
+        
+        // 顯示載入提示
+        showAlert("儲存中...", "info");
+        
+        // 準備項目數據
+        const itemData = {
+            venueId: currentUser.uid,
+            category: category,
+            name: nameInput.value,
+            price: price,
+            description: descInput.value,
+            displayInApp: true,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // 添加到Firestore
+        await db.collection("menuItems").add(itemData);
+        
+        // 重新加載商品列表
+        await loadMenuItems();
+        
+        // 重置表單
+        nameInput.value = "";
+        priceInput.value = "";
+        descInput.value = "";
+        
+        // 隱藏表單
+        document.getElementById(formId).style.display = "none";
+        
+        showAlert("商品項目已成功添加", "success");
+    } catch (error) {
+        console.error("保存商品項目時出錯:", error);
+        showAlert("保存商品項目失敗，請稍後再試", "danger");
+    }
+}
+
+// 編輯商品項目
+async function editMenuItem(itemId) {
+    try {
+        // 獲取項目數據
+        const doc = await db.collection("menuItems").doc(itemId).get();
+        if (!doc.exists) {
+            showAlert("找不到此商品項目", "warning");
+            return;
+        }
+        
+        const item = doc.data();
+        
+        // 建立編輯表單
+        const categoryElement = document.querySelector(`.product-subitem[data-id="${itemId}"]`).closest('.product-item');
+        
+        // 如果已有編輯表單，先移除
+        const existingForm = categoryElement.querySelector('.edit-form');
+        if (existingForm) {
+            existingForm.remove();
+        }
+        
+        // 創建編輯表單
+        const editForm = document.createElement('div');
+        editForm.className = 'menu-item-form mt-3 edit-form';
+        editForm.innerHTML = `
+            <h6>編輯 ${item.name}</h6>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">商品名稱</label>
+                        <input type="text" class="form-control" id="edit-name-${itemId}" value="${item.name}">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">價格</label>
+                        <input type="number" class="form-control" id="edit-price-${itemId}" value="${item.price}">
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">描述</label>
+                <textarea class="form-control" id="edit-desc-${itemId}" rows="2">${item.description || ''}</textarea>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary" onclick="updateMenuItem('${itemId}')">更新</button>
+                <button type="button" class="btn btn-outline-secondary" onclick="cancelEdit(this)">取消</button>
+            </div>
+        `;
+        
+        // 插入表單
+        categoryElement.appendChild(editForm);
+        
+        // 滾動到表單位置
+        editForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (error) {
+        console.error("載入商品項目編輯失敗:", error);
+        showAlert("無法載入商品項目，請稍後再試", "danger");
+    }
+}
+
+// 更新商品項目
+async function updateMenuItem(itemId) {
+    try {
+        const nameInput = document.getElementById(`edit-name-${itemId}`);
+        const priceInput = document.getElementById(`edit-price-${itemId}`);
+        const descInput = document.getElementById(`edit-desc-${itemId}`);
+        
+        // 驗證必填字段
+        if (!nameInput.value) {
+            showAlert("請填寫商品名稱", "warning");
+            return;
+        }
+        
+        // 驗證價格
+        const price = parseFloat(priceInput.value);
+        if (isNaN(price) || price <= 0) {
+            showAlert("請輸入有效的價格", "warning");
+            return;
+        }
+        
+        // 顯示載入提示
+        showAlert("更新中...", "info");
+        
+        // 準備更新數據
+        const itemData = {
+            name: nameInput.value,
+            price: price,
+            description: descInput.value,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // 更新Firestore
+        await db.collection("menuItems").doc(itemId).update(itemData);
+        
+        // 重新加載商品列表
+        await loadMenuItems();
+        
+        showAlert("商品項目已成功更新", "success");
+    } catch (error) {
+        console.error("更新商品項目失敗:", error);
+        showAlert("更新商品項目失敗，請稍後再試", "danger");
+    }
+}
+
+// 取消編輯
+function cancelEdit(btn) {
+    const editForm = btn.closest('.edit-form');
+    if (editForm) {
+        editForm.remove();
+    }
+}
+
+// 刪除商品項目
+async function deleteMenuItem(itemId) {
+    if (!confirm("確定要刪除此商品項目嗎？")) return;
+    
+    try {
+        showAlert("刪除中...", "info");
+        
+        // 從Firestore刪除
+        await db.collection("menuItems").doc(itemId).delete();
+        
+        // 重新加載商品列表
+        await loadMenuItems();
+        
+        showAlert("商品項目已成功刪除", "success");
+    } catch (error) {
+        console.error("刪除商品項目失敗:", error);
+        showAlert("刪除商品項目失敗，請稍後再試", "danger");
+    }
+}
+
+// 刪除類別
+async function deleteCategory(categoryName) {
+    try {
+        showAlert("刪除類別中...", "info");
+        
+        // 查詢屬於此類別的所有商品項目
+        const itemsSnapshot = await db.collection("menuItems")
+            .where("venueId", "==", currentUser.uid)
+            .where("category", "==", categoryName)
+            .get();
+        
+        // 創建批處理刪除所有商品項目
+        const batch = db.batch();
+        itemsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        
+        // 查詢類別文檔
+        const categoriesSnapshot = await db.collection("categories")
+            .where("venueId", "==", currentUser.uid)
+            .where("name", "==", categoryName)
+            .get();
+        
+        // 添加類別到批處理
+        categoriesSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        
+        // 提交批處理
+        await batch.commit();
+        
+        // 重新加載商品列表
+        await loadMenuItems();
+        
+        showAlert(`「${categoryName}」類別已成功刪除`, "success");
+    } catch (error) {
+        console.error("刪除類別失敗:", error);
+        showAlert("刪除類別失敗，請稍後再試", "danger");
+    }
+}
 
 // 側邊欄初始化
 function initSidebar() {
@@ -853,6 +1416,12 @@ function initSidebar() {
             targetSection.classList.add('active');
         });
     });
+    
+    // 預設選中側邊欄第一項
+    const defaultMenuItem = document.querySelector('.sidebar-menu li a');
+    if (defaultMenuItem && !document.querySelector('.content-section.active')) {
+        defaultMenuItem.click();
+    }
 }
 
 // 商品類別管理初始化
@@ -922,20 +1491,6 @@ function initCategoryManagement() {
             const btn = e.target.classList.contains('save-item-btn') ? e.target : e.target.closest('.save-item-btn');
             const category = btn.getAttribute('data-category');
             saveMenuItem(category);
-        }
-        
-        // 處理「編輯項目」按鈕點擊
-        if (e.target.classList.contains('edit-item-btn') || e.target.closest('.edit-item-btn')) {
-            const btn = e.target.classList.contains('edit-item-btn') ? e.target : e.target.closest('.edit-item-btn');
-            const itemId = btn.getAttribute('data-id');
-            editMenuItem(itemId);
-        }
-        
-        // 處理「刪除項目」按鈕點擊
-        if (e.target.classList.contains('delete-item-btn') || e.target.closest('.delete-item-btn')) {
-            const btn = e.target.classList.contains('delete-item-btn') ? e.target : e.target.closest('.delete-item-btn');
-            const itemId = btn.getAttribute('data-id');
-            deleteMenuItem(itemId);
         }
     });
 }
@@ -1045,7 +1600,7 @@ function initTagsSystem() {
         // 為推薦標籤按鈕添加點擊事件
         const tagButtons = document.querySelectorAll('.btn-outline-secondary');
         tagButtons.forEach(btn => {
-            if (btn.parentElement.classList.contains('me-2')) { // 確保是標籤按鈕
+            if (btn.parentElement.classList.contains('me-2') || btn.classList.contains('me-2')) {
                 btn.addEventListener('click', function() {
                     const tagText = this.textContent.trim();
                     addTag(tagText);
@@ -1140,13 +1695,13 @@ function addTag(tagText) {
         return;
     }
     
+    // 獲取輸入框
+    const tagInput = tagContainer.querySelector(".tag-input");
+    
     // 創建新標籤元素
     const tag = document.createElement("div");
     tag.className = "tag";
     tag.innerHTML = tagText + '<span class="tag-close">&times;</span>';
-    
-    // 獲取輸入框
-    const tagInput = tagContainer.querySelector(".tag-input");
     
     // 添加到容器
     tagContainer.insertBefore(tag, tagInput);
@@ -1158,7 +1713,58 @@ function addTag(tagText) {
     });
 }
 
-// 活動類型卡片初始化
+// 更新標籤
+function updateTags(tags) {
+    const tagContainer = document.getElementById("tagContainer");
+    if (!tagContainer) return;
+    
+    // 清空現有標籤，但保留輸入框
+    const tagInput = tagContainer.querySelector(".tag-input");
+    tagContainer.innerHTML = "";
+    
+    // 添加標籤
+    tags.forEach(tag => {
+        const tagElement = document.createElement("div");
+        tagElement.className = "tag";
+        tagElement.innerHTML = `
+        ${tag}
+        <span class="tag-close">&times;</span>
+        `;
+        
+        tagContainer.appendChild(tagElement);
+        
+        // 添加刪除事件
+        const closeBtn = tagElement.querySelector(".tag-close");
+        if (closeBtn) {
+            closeBtn.addEventListener("click", function() {
+                tagElement.remove();
+            });
+        }
+    });
+    
+    // 添加輸入框
+    tagContainer.appendChild(tagInput || createTagInput());
+}
+
+// 創建標籤輸入框
+function createTagInput() {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "tag-input";
+    input.placeholder = "輸入標籤，按Enter添加";
+    
+    input.addEventListener("keydown", function(e) {
+        if (e.key === "Enter" && this.value.trim() !== "") {
+            e.preventDefault();
+            addTag(this.value.trim());
+            this.value = "";
+        }
+    });
+    
+    return input;
+}
+
+// 活動類型卡片選擇
 function initActivityTypeCards() {
     const activityCards = document.querySelectorAll('.activity-type-card');
     
@@ -1176,6 +1782,79 @@ function initActivityTypeCards() {
     });
 }
 
+// 更新活動類型
+function updateActivityTypes(activityTypes) {
+    const activityCards = document.querySelectorAll(".activity-type-card");
+    
+    // 重置所有卡片
+    activityCards.forEach(card => {
+        card.classList.remove("selected");
+    });
+    
+    // 選中對應活動類型
+    activityTypes.forEach(type => {
+        activityCards.forEach(card => {
+            if (card.querySelector("p").textContent === type) {
+                card.classList.add("selected");
+            }
+        });
+    });
+    
+    // 更新選擇數量
+    const selectedCount = document.querySelectorAll(".activity-type-card.selected").length;
+    const badge = document.querySelector(".badge.bg-primary");
+    if (badge) {
+        badge.textContent = `已選擇 ${selectedCount} 項`;
+    }
+}
+
+// 儲存活動類型功能
+async function saveActivityTypes() {
+    try {
+        // 獲取按鈕並顯示載入狀態
+        const saveBtn = document.querySelector("#activities-section .card-header .btn-primary");
+        if (!saveBtn) return;
+        
+        const originalText = saveBtn.textContent;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 儲存中...';
+        saveBtn.disabled = true;
+        
+        // 收集選中的活動類型
+        const activityTypes = [];
+        const selectedCards = document.querySelectorAll(".activity-type-card.selected");
+        selectedCards.forEach(card => {
+            const typeText = card.querySelector("p").textContent;
+            activityTypes.push(typeText);
+        });
+        
+        // 更新 Firestore
+        await db.collection("venues").doc(currentUser.uid).update({
+            activityTypes: activityTypes,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // 更新本地數據
+        if (!venueData) venueData = {};
+        venueData.activityTypes = activityTypes;
+        
+        // 恢復按鈕狀態
+        saveBtn.textContent = originalText;
+        saveBtn.disabled = false;
+        
+        showAlert("活動類型已成功更新", "success");
+    } catch (error) {
+        console.error("更新活動類型錯誤:", error);
+        showAlert("更新活動類型失敗，請稍後再試", "danger");
+        
+        // 恢復按鈕狀態
+        const saveBtn = document.querySelector("#activities-section .card-header .btn-primary");
+        if (saveBtn) {
+            saveBtn.textContent = '儲存活動類型';
+            saveBtn.disabled = false;
+        }
+    }
+}
+
 // 圖片上傳預覽初始化
 function initImageUploads() {
     // 店家頭像上傳
@@ -1183,9 +1862,6 @@ function initImageUploads() {
     
     // 環境照片上傳
     initEnvironmentImages();
-    
-    // 商品圖片上傳
-    initItemImagePreview();
 }
 
 // 店家主圖上傳初始化
@@ -1236,56 +1912,6 @@ function initEnvironmentImages() {
             }
         });
     });
-}
-
-// 商品圖片預覽初始化
-function initItemImagePreview() {
-    const itemImage = document.getElementById('itemImage');
-    if (itemImage) {
-        itemImage.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            // 檢查文件類型和大小
-            if (!file.type.match('image.*')) {
-                showAlert("請上傳圖片文件", "warning");
-                return;
-            }
-            
-            if (file.size > 5 * 1024 * 1024) { // 5MB
-                showAlert("圖片大小不能超過 5MB", "warning");
-                return;
-            }
-            
-            const previewContainer = document.getElementById('itemImagePreview');
-            if (previewContainer) {
-                // 清空現有內容
-                previewContainer.innerHTML = '';
-                
-                // 創建圖片預覽
-                const img = document.createElement('img');
-                img.src = URL.createObjectURL(file);
-                previewContainer.appendChild(img);
-                
-                // 添加刪除按鈕
-                const removeBtn = document.createElement('div');
-                removeBtn.className = 'remove-image';
-                removeBtn.innerHTML = '<i class="fas fa-times"></i>';
-                previewContainer.appendChild(removeBtn);
-                
-                // 綁定刪除事件
-                removeBtn.addEventListener('click', function() {
-                    itemImage.value = '';
-                    previewContainer.innerHTML = `
-                        <div class="upload-placeholder">
-                            <i class="fas fa-image"></i>
-                            <p>上傳商品圖片</p>
-                        </div>
-                    `;
-                });
-            }
-        });
-    }
 }
 
 // 處理上傳店家主圖/頭像
@@ -1345,6 +1971,9 @@ async function handleMainImageUpload(e) {
         if (!venueData) venueData = {};
         venueData.imageUrl = imageUrl;
         
+        // 更新導航頭像
+        document.getElementById("navUserImage").src = imageUrl;
+        
         showAlert("店家頭像已成功更新", "success");
     } catch (error) {
         console.error("上傳圖片錯誤:", error);
@@ -1355,226 +1984,178 @@ async function handleMainImageUpload(e) {
     }
 }
 
-// 處理上傳環境照片
-async function handleEnvironmentImageUpload(files) {
-    if (!files || files.length === 0) return;
+function initMap() {
+    // 預設位置 (台北市中心)
+    const defaultPosition = { lat: 25.033964, lng: 121.564468 };
     
-    try {
-        showAlert("正在上傳環境照片，請稍候...", "info");
-        
-        // 獲取圖庫容器和添加按鈕
-        const gallery = document.querySelector('.gallery-preview');
-        const addBtn = gallery.querySelector('.add-gallery-item');
-        
-        // 獲取既有的環境照片URLs
-        let galleryImages = [];
-        if (venueData && venueData.galleryImages) {
-            galleryImages = [...venueData.galleryImages];
-        }
-        
-        // 處理每張照片
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            
-            // 檢查文件類型和大小
-            if (!file.type.match('image.*')) {
-                showAlert(`文件 ${file.name} 不是圖片，已跳過`, "warning");
-                continue;
-            }
-            
-            if (file.size > 5 * 1024 * 1024) { // 5MB
-                showAlert(`圖片 ${file.name} 超過 5MB，已跳過`, "warning");
-                continue;
-            }
-            
-            // 壓縮圖片
-            const compressedFile = await compressImage(file, 800, 600);
-            
-            // 上傳到 Storage
-            const storageRef = storage.ref(`venues/${currentUser.uid}/gallery/${Date.now()}_${file.name}`);
-            await storageRef.put(compressedFile);
-            const imageUrl = await storageRef.getDownloadURL();
-            
-            // 添加到圖片URLs陣列
-            galleryImages.push(imageUrl);
-            
-            // 創建新的圖庫項目
-            const galleryItem = document.createElement('div');
-            galleryItem.className = 'gallery-item';
-            galleryItem.innerHTML = `
-                <img src="${imageUrl}" alt="店內環境照片">
-                <div class="remove-image">
-                    <i class="fas fa-times"></i>
-                </div>
-            `;
-            
-            // 插入到添加按鈕之前
-            gallery.insertBefore(galleryItem, addBtn);
-            
-            // 添加刪除事件
-            const removeBtn = galleryItem.querySelector('.remove-image');
-            removeBtn.addEventListener('click', function() {
-                if (confirm('確定要刪除此照片？')) {
-                    removeGalleryImage(imageUrl);
-                    galleryItem.remove();
-                }
-            });
-        }
-        
-        // 更新 Firestore
-        await db.collection("venues").doc(currentUser.uid).update({
-            galleryImages: galleryImages,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        // 更新本地數據
-        if (!venueData) venueData = {};
-        venueData.galleryImages = galleryImages;
-        
-        showAlert("環境照片已成功上傳", "success");
-    } catch (error) {
-        console.error("上傳環境照片錯誤:", error);
-        showAlert("上傳環境照片失敗，請稍後再試", "danger");
-    } finally {
-        // 清空文件輸入
-        document.getElementById('addEnvironmentImage').value = '';
+    // 從Firestore中獲取店家位置（如果有）
+    if (venueData && venueData.location) {
+        defaultPosition.lat = venueData.location.latitude;
+        defaultPosition.lng = venueData.location.longitude;
     }
-}
-
-// 營業時間初始化
-function initBusinessHours() {
-    // 已在HTML中初始化，這裡可以添加額外功能
-    const saveBusinessHoursBtn = document.querySelector("#profile-section .card-header .btn-primary");
-    if (saveBusinessHoursBtn) {
-        saveBusinessHoursBtn.addEventListener('click', function() {
-            saveBusinessHours();
-        });
-    }
-}
-
-// 保存營業時間
-async function saveBusinessHours() {
-    try {
-        // 獲取按鈕並顯示載入狀態
-        const saveBtn = document.querySelector("#profile-section .card-header .btn-primary");
-        const originalText = saveBtn.textContent;
-        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 儲存中...';
-        saveBtn.disabled = true;
-        
-        // 收集營業時間
-        const openingHours = [];
-        const hourSelectionDivs = document.querySelectorAll(".hours-selection");
-        hourSelectionDivs.forEach((div, index) => {
-            const selects = div.querySelectorAll("select");
-            if (selects.length === 2) {
-                openingHours[index] = {
-                    day: index,
-                    open: selects[0].value,
-                    close: selects[1].value
-                };
+    
+    // 檢查地圖容器是否存在
+    const mapContainer = document.getElementById('mapContainer');
+    if (!mapContainer) return;
+    
+    // 初始化地圖
+    map = new google.maps.Map(mapContainer, {
+        center: defaultPosition,
+        zoom: 15,
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        mapTypeControl: false,
+    });
+    
+    // 初始化地標標記
+    marker = new google.maps.Marker({
+        position: defaultPosition,
+        map: map,
+        draggable: true,
+        animation: google.maps.Animation.DROP,
+    });
+    
+    // 初始化地理編碼器
+    geocoder = new google.maps.Geocoder();
+    
+    // 更新座標顯示
+    document.getElementById('latitude').value = defaultPosition.lat.toFixed(6);
+    document.getElementById('longitude').value = defaultPosition.lng.toFixed(6);
+    
+    // 根據經緯度取得地址 (初始載入時)
+    if (geocoder && !document.getElementById('formattedAddress').value) {
+        geocoder.geocode({ location: defaultPosition }, function(results, status) {
+            if (status === 'OK' && results[0]) {
+                document.getElementById('formattedAddress').value = results[0].formatted_address;
             }
-        });
-        
-        // 更新 Firestore
-        await db.collection("venues").doc(currentUser.uid).update({
-            openingHours: openingHours,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        // 更新本地數據
-        if (!venueData) venueData = {};
-        venueData.openingHours = openingHours;
-        
-        // 恢復按鈕狀態
-        saveBtn.textContent = originalText;
-        saveBtn.disabled = false;
-        
-        showAlert("營業時間已成功更新", "success");
-    } catch (error) {
-        console.error("更新營業時間錯誤:", error);
-        showAlert("更新營業時間失敗，請稍後再試", "danger");
-        
-        // 恢復按鈕狀態
-        const saveBtn = document.querySelector("#profile-section .card-header .btn-primary");
-        if (saveBtn) {
-            saveBtn.textContent = '儲存營業時間';
-            saveBtn.disabled = false;
-        }
-    }
-}
-
-// 表單驗證初始化
-function initFormValidation() {
-    // 基本資料表單提交
-    const saveProfileBtn = document.querySelector("#profile-section .btn-primary");
-    if (saveProfileBtn) {
-        saveProfileBtn.addEventListener('click', function() {
-            submitVenueForm();
         });
     }
     
-    // 為所有必填字段添加驗證
-    const requiredFields = document.querySelectorAll('input[required], textarea[required], select[required]');
-    
-    requiredFields.forEach(field => {
-        field.addEventListener('blur', function() {
-            if (!this.value.trim()) {
-                this.classList.add('is-invalid');
-                
-                // 檢查是否已存在錯誤提示
-                let feedback = this.nextElementSibling;
-                if (!feedback || !feedback.classList.contains('invalid-feedback')) {
-                    feedback = document.createElement('div');
-                    feedback.className = 'invalid-feedback';
-                    feedback.textContent = '此欄位為必填';
-                    this.after(feedback);
-                }
-            } else {
-                this.classList.remove('is-invalid');
-                
-                // 移除錯誤提示
-                const feedback = this.nextElementSibling;
-                if (feedback && feedback.classList.contains('invalid-feedback')) {
-                    feedback.remove();
-                }
+    // 獲取地標拖動後的位置
+    google.maps.event.addListener(marker, 'dragend', function() {
+        const position = marker.getPosition();
+        updateLocationFields(position);
+        
+        // 根據經緯度取得地址
+        geocoder.geocode({ location: position }, function(results, status) {
+            if (status === 'OK' && results[0]) {
+                document.getElementById('formattedAddress').value = results[0].formatted_address;
             }
         });
     });
     
-    // 為電子郵件欄位添加格式驗證
-    const emailFields = document.querySelectorAll('input[type="email"]');
-    emailFields.forEach(field => {
-        field.addEventListener('blur', function() {
-            if (this.value && !isValidEmail(this.value)) {
-                this.classList.add('is-invalid');
-                
-                // 檢查是否已存在錯誤提示
-                let feedback = this.nextElementSibling;
-                if (!feedback || !feedback.classList.contains('invalid-feedback')) {
-                    feedback = document.createElement('div');
-                    feedback.className = 'invalid-feedback';
-                    feedback.textContent = '請輸入有效的電子郵件地址';
-                    this.after(feedback);
-                }
-            }
+    // 搜尋地址按鈕事件
+    const searchLocationBtn = document.getElementById('searchLocationBtn');
+    if (searchLocationBtn) {
+        searchLocationBtn.addEventListener('click', function() {
+            searchLocation();
         });
-    });
+    }
     
-    // 為網址欄位添加格式驗證
-    const urlFields = document.querySelectorAll('input[type="url"]');
-    urlFields.forEach(field => {
-        field.addEventListener('blur', function() {
-            if (this.value && !isValidUrl(this.value)) {
-                this.classList.add('is-invalid');
-                
-                // 檢查是否已存在錯誤提示
-                let feedback = this.nextElementSibling;
-                if (!feedback || !feedback.classList.contains('invalid-feedback')) {
-                    feedback = document.createElement('div');
-                    feedback.className = 'invalid-feedback';
-                    feedback.textContent = '請輸入有效的網址，包含http://或https://';
-                    this.after(feedback);
-                }
+    // 地址搜尋框按下Enter事件
+    const locationSearch = document.getElementById('locationSearch');
+    if (locationSearch) {
+        locationSearch.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // 防止表單提交
+                searchLocation();
             }
         });
+    }
+    
+    // 如果已有地址信息，顯示在文本區
+    if (venueData && venueData.address) {
+        document.getElementById('formattedAddress').value = venueData.address;
+    }
+}
+
+// 搜尋地址功能
+function searchLocation() {
+    if (!geocoder) return;
+    
+    const address = document.getElementById('locationSearch').value;
+    if (!address) return;
+    
+    showAlert("搜尋地址中...", "info");
+    
+    geocoder.geocode({ address: address }, function(results, status) {
+        if (status === 'OK' && results[0]) {
+            const position = results[0].geometry.location;
+            
+            // 更新地圖中心和標記位置
+            map.setCenter(position);
+            marker.setPosition(position);
+            
+            // 更新顯示欄位
+            updateLocationFields(position);
+            document.getElementById('formattedAddress').value = results[0].formatted_address;
+            
+            showAlert("地址已找到並更新", "success");
+        } else {
+            showAlert('無法找到該地址，請嘗試其他關鍵字', 'warning');
+        }
     });
+}
+
+// 頁面載入時初始化更多功能
+document.addEventListener('DOMContentLoaded', function() {
+    // 設置活動類型儲存按鈕
+    const saveActivityTypesBtn = document.querySelector("#activities-section .card-header .btn-primary");
+    if (saveActivityTypesBtn) {
+        saveActivityTypesBtn.addEventListener('click', function() {
+            saveActivityTypes();
+        });
+    }
+    
+    // 綁定店家位置儲存按鈕
+    const saveLocationBtn = document.getElementById('saveLocationBtn');
+    if (saveLocationBtn) {
+        saveLocationBtn.addEventListener('click', async function() {
+            const lat = parseFloat(document.getElementById('latitude').value);
+            const lng = parseFloat(document.getElementById('longitude').value);
+            const formattedAddress = document.getElementById('formattedAddress').value;
+            
+            if (isNaN(lat) || isNaN(lng) || !formattedAddress) {
+                showAlert('位置資訊不完整，請確保已設定位置', 'warning');
+                return;
+            }
+            
+            showPageLoading('正在儲存位置...');
+            
+            // 使用Firebase儲存位置
+            try {
+                // 檢查是否已初始化Firebase
+                if (window.db && window.currentUser) {
+                    await window.db.collection("venues").doc(window.currentUser.uid).update({
+                        location: new firebase.firestore.GeoPoint(lat, lng),
+                        address: formattedAddress,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // 更新本地數據
+                    if (!window.venueData) window.venueData = {};
+                    window.venueData.location = { latitude: lat, longitude: lng };
+                    window.venueData.address = formattedAddress;
+                    
+                    hidePageLoading();
+                    showAlert('店家位置已成功更新', 'success');
+                } else {
+                    hidePageLoading();
+                    showAlert('無法儲存位置，請重新整理頁面後再試', 'danger');
+                }
+            } catch (error) {
+                console.error('更新位置時發生錯誤:', error);
+                hidePageLoading();
+                showAlert('更新位置失敗，請稍後再試', 'danger');
+            }
+        });
+    }
+});
+
+// 添加全局函數，以便在HTML中直接調用
+window.cancelEdit = cancelEdit;
+window.updateMenuItem = updateMenuItem;
+window.initMap = initMap; // Google Maps 初始化函數，需要全局可訪問
+window.searchLocation = searchLocation;
+window.showAlert = showAlert;
+window.showPageLoading = showPageLoading;
+window.hidePageLoading = hidePageLoading;
