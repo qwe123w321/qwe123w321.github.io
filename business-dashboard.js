@@ -815,67 +815,6 @@ function isValidUrl(url) {
     }
 }
 
-// 更新店家位置欄位
-function updateLocationFields(position) {
-    const latitudeField = document.getElementById('latitude');
-    const longitudeField = document.getElementById('longitude');
-    
-    if (latitudeField && longitudeField && position.geopoint) {
-        latitudeField.value = position.geopoint.latitude.toFixed(6);
-        longitudeField.value = position.geopoint.longitude.toFixed(6);
-    }
-    
-    // 如果有geohash，顯示在隱藏字段中
-    const geohashField = document.getElementById('geohash');
-    if (geohashField && position.geohash) {
-        geohashField.value = position.geohash;
-    }
-}
-
-// 生成geohash的輔助函數
-function generateGeohash(lat, lng, precision = 9) {
-    // 簡易實現，生產環境應使用專業库
-    const BASE32 = '0123456789bcdefghjkmnpqrstuvwxyz';
-    let geohash = '';
-    let minLat = -90, maxLat = 90;
-    let minLng = -180, maxLng = 180;
-    let bit = 0;
-    let ch = 0;
-    
-    while (geohash.length < precision) {
-        if (bit % 2 === 0) {
-            // 處理經度
-            const mid = (minLng + maxLng) / 2;
-            if (lng > mid) {
-                ch = (ch << 1) + 1;
-                minLng = mid;
-            } else {
-                ch = ch << 1;
-                maxLng = mid;
-            }
-        } else {
-            // 處理緯度
-            const mid = (minLat + maxLat) / 2;
-            if (lat > mid) {
-                ch = (ch << 1) + 1;
-                minLat = mid;
-            } else {
-                ch = ch << 1;
-                maxLat = mid;
-            }
-        }
-        
-        bit++;
-        if (bit === 5) {
-            geohash += BASE32[ch];
-            bit = 0;
-            ch = 0;
-        }
-    }
-    
-    return geohash;
-}
-
 // 儲存店家位置資訊
 async function saveLocationInfo() {
     try {
@@ -889,7 +828,11 @@ async function saveLocationInfo() {
             return;
         }
         
-        showPageLoading('正在儲存位置資訊...');
+        // 按鈕載入狀態
+        const saveBtn = document.getElementById('saveLocationBtn');
+        const originalBtnText = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 儲存中...';
+        saveBtn.disabled = true;
         
         // 創建符合要求的位置數據結構
         const positionData = {
@@ -909,11 +852,21 @@ async function saveLocationInfo() {
         businessData.position = positionData;
         businessData.address = formattedAddress;
         
-        hidePageLoading();
+        // 恢復按鈕狀態
+        saveBtn.innerHTML = originalBtnText;
+        saveBtn.disabled = false;
+        
         showAlert('店家位置已成功更新', 'success');
     } catch (error) {
         console.error('儲存位置時發生錯誤:', error);
-        hidePageLoading();
+        
+        // 恢復按鈕狀態
+        const saveBtn = document.getElementById('saveLocationBtn');
+        if (saveBtn) {
+            saveBtn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i>儲存位置';
+            saveBtn.disabled = false;
+        }
+        
         showAlert('儲存位置失敗，請稍後再試', 'danger');
     }
 }
@@ -1008,6 +961,24 @@ function loadGoogleMapsAPI() {
     };
     document.head.appendChild(script);
 }
+
+// 頁面初始化時加載Google Maps
+document.addEventListener('DOMContentLoaded', function() {
+    // 如果當前頁面有地圖容器，載入 Google Maps
+    if (document.getElementById('mapContainer')) {
+        loadGoogleMapsAPI();
+    }
+});
+
+// 監聽 Firebase 初始化完成事件
+document.addEventListener('firebase-ready', function() {
+    // 當Firebase初始化完成後，再次檢查地圖加載
+    setTimeout(() => {
+        if (document.getElementById('mapContainer') && !window.google) {
+            loadGoogleMapsAPI();
+        }
+    }, 1000);
+});
 
 // 圖片壓縮函數
 async function compressImage(file, maxWidth, maxHeight) {
@@ -2190,14 +2161,19 @@ async function handleMainImageUpload(e) {
     }
 }
 
+let map;
+let marker;
+let geocoder;
+
+// 初始化地圖
 function initMap() {
     // 預設位置 (台北市中心)
     const defaultPosition = { lat: 25.033964, lng: 121.564468 };
     
     // 從Firestore中獲取店家位置（如果有）
-    if (venueData && venueData.location) {
-        defaultPosition.lat = venueData.location.latitude;
-        defaultPosition.lng = venueData.location.longitude;
+    if (businessData && businessData.position && businessData.position.geopoint) {
+        defaultPosition.lat = businessData.position.geopoint.latitude;
+        defaultPosition.lng = businessData.position.geopoint.longitude;
     }
     
     // 檢查地圖容器是否存在
@@ -2210,6 +2186,15 @@ function initMap() {
         zoom: 15,
         mapTypeId: google.maps.MapTypeId.ROADMAP,
         mapTypeControl: false,
+        styles: [
+            {
+                "featureType": "poi",
+                "elementType": "labels",
+                "stylers": [
+                    { "visibility": "off" }
+                ]
+            }
+        ]
     });
     
     // 初始化地標標記
@@ -2218,6 +2203,9 @@ function initMap() {
         map: map,
         draggable: true,
         animation: google.maps.Animation.DROP,
+        icon: {
+            url: 'https://maps.google.com/mapfiles/ms/icons/pink-dot.png' // 使用粉紅色標記符合品牌顏色
+        }
     });
     
     // 初始化地理編碼器
@@ -2227,8 +2215,16 @@ function initMap() {
     document.getElementById('latitude').value = defaultPosition.lat.toFixed(6);
     document.getElementById('longitude').value = defaultPosition.lng.toFixed(6);
     
+    // 生成並顯示geohash
+    const geohash = generateGeohash(defaultPosition.lat, defaultPosition.lng);
+    document.getElementById('geohash').value = geohash;
+    
     // 根據經緯度取得地址 (初始載入時)
-    if (geocoder && !document.getElementById('formattedAddress').value) {
+    if (businessData && businessData.address) {
+        // 如果已有地址，直接顯示
+        document.getElementById('formattedAddress').value = businessData.address;
+    } else if (geocoder) {
+        // 否則根據坐標獲取地址
         geocoder.geocode({ location: defaultPosition }, function(results, status) {
             if (status === 'OK' && results[0]) {
                 document.getElementById('formattedAddress').value = results[0].formatted_address;
@@ -2268,18 +2264,24 @@ function initMap() {
         });
     }
     
-    // 如果已有地址信息，顯示在文本區
-    if (venueData && venueData.address) {
-        document.getElementById('formattedAddress').value = venueData.address;
+    // 儲存位置按鈕事件
+    const saveLocationBtn = document.getElementById('saveLocationBtn');
+    if (saveLocationBtn) {
+        saveLocationBtn.addEventListener('click', function() {
+            saveLocationInfo();
+        });
     }
 }
 
-// 搜尋地址功能
+// 搜尋地址
 function searchLocation() {
     if (!geocoder) return;
     
     const address = document.getElementById('locationSearch').value;
-    if (!address) return;
+    if (!address) {
+        showAlert('請輸入要搜尋的地址', 'warning');
+        return;
+    }
     
     showAlert("搜尋地址中...", "info");
     
@@ -2300,6 +2302,29 @@ function searchLocation() {
             showAlert('無法找到該地址，請嘗試其他關鍵字', 'warning');
         }
     });
+}
+
+// 更新位置欄位
+function updateLocationFields(position) {
+    if (!position) return;
+    
+    // 更新緯度經度欄位
+    const latitudeField = document.getElementById('latitude');
+    const longitudeField = document.getElementById('longitude');
+    
+    if (latitudeField && longitudeField) {
+        const lat = position.lat();
+        const lng = position.lng();
+        
+        latitudeField.value = lat.toFixed(6);
+        longitudeField.value = lng.toFixed(6);
+        
+        // 更新geohash欄位
+        const geohashField = document.getElementById('geohash');
+        if (geohashField) {
+            geohashField.value = generateGeohash(lat, lng);
+        }
+    }
 }
 
 // 頁面載入時初始化更多功能
