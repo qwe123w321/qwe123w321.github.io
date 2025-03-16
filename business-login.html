@@ -506,5 +506,18 @@
         }, 5000);
     </script>
 
+    <script>
+        const admin = require('firebase-admin');
+        async function setUserAsAdmin(uid) {
+            try {
+            // 將該用戶的 Token 加入 role: 'admin'
+                await admin.auth().setCustomUserClaims(uid, { role: 'admin' });
+                console.log(`已將使用者 ${uid} 設為 Admin`);
+            } catch (error) {
+            console.error('設定管理員失敗:', error);
+            }
+        }
+    </script>
+
 </body>
 </html>
