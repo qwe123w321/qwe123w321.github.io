@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 登入表單處理
     const loginForm = document.getElementById('businessLoginForm');
     if (loginForm) {
+        console.log('submit');
         loginForm.addEventListener('submit', handleLogin);
     }
     
