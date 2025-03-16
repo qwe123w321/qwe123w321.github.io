@@ -172,8 +172,7 @@ function forceRedirect() {
     }, 1000);
 }
 
-// 加載店家資料
-async function loadVenueData() {
+async function loadBusinessData() {
     try {
         showAlert("載入店家資料中...", "info");
         
@@ -184,32 +183,65 @@ async function loadVenueData() {
             return;
         }
         
-        const venueDoc = await db.collection("venues").doc(currentUser.uid).get();
+        // 從 businesses 集合加載數據
+        const businessDoc = await db.collection("businesses").doc(currentUser.uid).get();
         
-        if (venueDoc.exists) {
-            venueData = venueDoc.data();
+        if (businessDoc.exists) {
+            businessData = businessDoc.data();
             
             // 更新導航欄用戶資訊
-            document.getElementById("navUserName").textContent = venueData.name || "未命名店家";
-            if (venueData.profileImageUrl) {
-                document.getElementById("navUserImage").src = venueData.profileImageUrl;
-            } else if (venueData.imageUrl) {
-                document.getElementById("navUserImage").src = venueData.imageUrl;
+            document.getElementById("navUserName").textContent = businessData.businessName || "未命名店家";
+            if (businessData.profileImageUrl) {
+                document.getElementById("navUserImage").src = businessData.profileImageUrl;
+            } else if (businessData.licenseUrls && businessData.licenseUrls.length > 0) {
+                document.getElementById("navUserImage").src = businessData.licenseUrls[0];
             }
             
             // 更新基本資料欄位
-            document.getElementById("storeName").value = venueData.name || "";
-            document.getElementById("storePhone").value = venueData.phoneNumber || "";
-            document.getElementById("storeEmail").value = venueData.email || "";
-            document.getElementById("storeWebsite").value = venueData.website || "";
-            document.getElementById("storeDescription").value = venueData.description || "";
+            document.getElementById("storeName").value = businessData.businessName || "";
+            document.getElementById("storePhone").value = businessData.phoneNumber || "";
+            document.getElementById("storeEmail").value = businessData.email || "";
+            document.getElementById("storeWebsite").value = businessData.website || "";
+            document.getElementById("storeDescription").value = businessData.description || "";
+            
+            // 更新店家類型
+            const businessTypeSelect = document.getElementById("businessType");
+            if (businessTypeSelect && businessData.businessType) {
+                for (let i = 0; i < businessTypeSelect.options.length; i++) {
+                    if (businessTypeSelect.options[i].value === businessData.businessType) {
+                        businessTypeSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
             
             // 更新店家主圖
-            if (venueData.imageUrl) {
+            if (businessData.profileImageUrl) {
                 const mainImagePreview = document.querySelector(".image-preview");
                 if (mainImagePreview) {
                     mainImagePreview.innerHTML = `
-                    <img src="${venueData.imageUrl}" alt="店家頭像/Logo">
+                    <img src="${businessData.profileImageUrl}" alt="店家頭像/Logo">
+                    <div class="remove-image">
+                        <i class="fas fa-times"></i>
+                    </div>
+                    `;
+                    
+                    // 添加刪除事件
+                    const removeBtn = mainImagePreview.querySelector('.remove-image');
+                    if (removeBtn) {
+                        removeBtn.addEventListener('click', function() {
+                            if (confirm('確定要刪除頭像嗎?')) {
+                                removeMainImage();
+                            }
+                        });
+                    }
+                }
+            } else if (businessData.licenseUrls && businessData.licenseUrls.length > 0) {
+                // 如果沒有專門的頭像，使用第一張營業執照照片
+                const mainImagePreview = document.querySelector(".image-preview");
+                if (mainImagePreview) {
+                    mainImagePreview.innerHTML = `
+                    <img src="${businessData.licenseUrls[0]}" alt="店家頭像/Logo">
                     <div class="remove-image">
                         <i class="fas fa-times"></i>
                     </div>
@@ -228,31 +260,37 @@ async function loadVenueData() {
             }
             
             // 更新營業時間
-            if (venueData.openingHours && venueData.openingHours.length > 0) {
-                updateOpeningHours(venueData.openingHours);
+            if (businessData.openingHours && businessData.openingHours.length > 0) {
+                updateOpeningHours(businessData.openingHours);
             } else {
                 // 設置預設營業時間
                 initDefaultOpeningHours();
             }
             
             // 更新活動類型
-            if (venueData.activityTypes && venueData.activityTypes.length > 0) {
-                updateActivityTypes(venueData.activityTypes);
+            if (businessData.activityTypes && businessData.activityTypes.length > 0) {
+                updateActivityTypes(businessData.activityTypes);
             }
             
             // 更新標籤
-            if (venueData.tags && venueData.tags.length > 0) {
-                updateTags(venueData.tags);
+            if (businessData.tags && businessData.tags.length > 0) {
+                updateTags(businessData.tags);
             }
             
             // 更新環境照片
-            if (venueData.galleryImages && venueData.galleryImages.length > 0) {
-                updateGallery(venueData.galleryImages);
+            if (businessData.galleryImages && businessData.galleryImages.length > 0) {
+                updateGallery(businessData.galleryImages);
+            } else if (businessData.licenseUrls && businessData.licenseUrls.length > 0) {
+                // 使用營業執照照片作為環境照片
+                updateGallery(businessData.licenseUrls);
             }
             
             // 更新地理位置
-            if (venueData.location) {
-                updateLocationFields(venueData.location);
+            if (businessData.position) {
+                updateLocationFields(businessData.position);
+            } else if (businessData.address) {
+                // 如果只有地址，在地址框中顯示
+                document.getElementById('formattedAddress').value = businessData.address;
             }
             
             console.log("店家資料載入完成");
@@ -266,7 +304,7 @@ async function loadVenueData() {
             initDefaultOpeningHours();
             
             // 創建新的店家文檔
-            await initializeNewVenue();
+            await initializeNewBusiness();
         }
     } catch (error) {
         console.error("載入店家資料錯誤:", error);
@@ -275,36 +313,38 @@ async function loadVenueData() {
 }
 
 // 為新用戶初始化店家資料
-async function initializeNewVenue() {
+async function initializeNewBusiness() {
     try {
         if (!currentUser || !currentUser.uid) return;
         
         // 檢查是否已存在店家文檔
-        const venueDoc = await db.collection("venues").doc(currentUser.uid).get();
-        if (venueDoc.exists) return;
+        const businessDoc = await db.collection("businesses").doc(currentUser.uid).get();
+        if (businessDoc.exists) return;
         
         // 創建預設數據
-        const defaultVenueData = {
-            name: "未命名店家",
+        const defaultBusinessData = {
+            businessName: "未命名店家",
             description: "",
             phoneNumber: "",
             email: currentUser.email || "",
             website: "",
-            isActive: true,
+            status: "active",
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
         // 寫入到資料庫
-        await db.collection("venues").doc(currentUser.uid).set(defaultVenueData);
+        await db.collection("businesses").doc(currentUser.uid).set(defaultBusinessData);
         console.log("已創建新的店家資料");
         
         // 更新本地數據
-        venueData = defaultVenueData;
+        businessData = defaultBusinessData;
     } catch (error) {
         console.error("初始化新店家資料時出錯:", error);
     }
 }
+
+
 
 // 更新營業時間
 function updateOpeningHours(hours) {
@@ -775,14 +815,180 @@ function isValidUrl(url) {
     }
 }
 
-// 更新地理位置欄位
-function updateLocationFields(location) {
+// 更新店家位置欄位
+function updateLocationFields(position) {
     const latitudeField = document.getElementById('latitude');
     const longitudeField = document.getElementById('longitude');
     
-    if (latitudeField && longitudeField) {
-        latitudeField.value = location.latitude.toFixed(6);
-        longitudeField.value = location.longitude.toFixed(6);
+    if (latitudeField && longitudeField && position.geopoint) {
+        latitudeField.value = position.geopoint.latitude.toFixed(6);
+        longitudeField.value = position.geopoint.longitude.toFixed(6);
+    }
+    
+    // 如果有geohash，顯示在隱藏字段中
+    const geohashField = document.getElementById('geohash');
+    if (geohashField && position.geohash) {
+        geohashField.value = position.geohash;
+    }
+}
+
+// 生成geohash的輔助函數
+function generateGeohash(lat, lng, precision = 9) {
+    // 簡易實現，生產環境應使用專業库
+    const BASE32 = '0123456789bcdefghjkmnpqrstuvwxyz';
+    let geohash = '';
+    let minLat = -90, maxLat = 90;
+    let minLng = -180, maxLng = 180;
+    let bit = 0;
+    let ch = 0;
+    
+    while (geohash.length < precision) {
+        if (bit % 2 === 0) {
+            // 處理經度
+            const mid = (minLng + maxLng) / 2;
+            if (lng > mid) {
+                ch = (ch << 1) + 1;
+                minLng = mid;
+            } else {
+                ch = ch << 1;
+                maxLng = mid;
+            }
+        } else {
+            // 處理緯度
+            const mid = (minLat + maxLat) / 2;
+            if (lat > mid) {
+                ch = (ch << 1) + 1;
+                minLat = mid;
+            } else {
+                ch = ch << 1;
+                maxLat = mid;
+            }
+        }
+        
+        bit++;
+        if (bit === 5) {
+            geohash += BASE32[ch];
+            bit = 0;
+            ch = 0;
+        }
+    }
+    
+    return geohash;
+}
+
+// 儲存店家位置資訊
+async function saveLocationInfo() {
+    try {
+        const lat = parseFloat(document.getElementById('latitude').value);
+        const lng = parseFloat(document.getElementById('longitude').value);
+        const formattedAddress = document.getElementById('formattedAddress').value;
+        const geohash = document.getElementById('geohash').value || generateGeohash(lat, lng);
+        
+        if (isNaN(lat) || isNaN(lng) || !formattedAddress) {
+            showAlert('位置資訊不完整，請確保已設定位置', 'warning');
+            return;
+        }
+        
+        showPageLoading('正在儲存位置資訊...');
+        
+        // 創建符合要求的位置數據結構
+        const positionData = {
+            geohash: geohash,
+            geopoint: new firebase.firestore.GeoPoint(lat, lng)
+        };
+        
+        // 更新Firestore
+        await db.collection("businesses").doc(currentUser.uid).update({
+            position: positionData,
+            address: formattedAddress,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // 更新本地數據
+        if (!businessData) businessData = {};
+        businessData.position = positionData;
+        businessData.address = formattedAddress;
+        
+        hidePageLoading();
+        showAlert('店家位置已成功更新', 'success');
+    } catch (error) {
+        console.error('儲存位置時發生錯誤:', error);
+        hidePageLoading();
+        showAlert('儲存位置失敗，請稍後再試', 'danger');
+    }
+}
+
+// 修改的商店基本資料儲存
+async function saveBusinessInfo() {
+    try {
+        // 顯示載入提示
+        const saveBtn = document.querySelector("#profile-section .card-header .btn-primary");
+        const originalBtnText = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 儲存中...';
+        saveBtn.disabled = true;
+        
+        const nameInput = document.getElementById("storeName");
+        const phoneInput = document.getElementById("storePhone");
+        const emailInput = document.getElementById("storeEmail");
+        const websiteInput = document.getElementById("storeWebsite");
+        const descriptionInput = document.getElementById("storeDescription");
+        const businessTypeSelect = document.getElementById("businessType");
+        
+        // 驗證必填字段
+        if (!nameInput.value) {
+            showAlert("請填寫店家名稱", "warning");
+            saveBtn.innerHTML = originalBtnText;
+            saveBtn.disabled = false;
+            return;
+        }
+        
+        // 準備更新的數據
+        const dataToUpdate = {
+            businessName: nameInput.value,
+            phoneNumber: phoneInput.value,
+            email: emailInput.value,
+            website: websiteInput.value,
+            description: descriptionInput.value,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // 如果選擇了業務類型，也更新它
+        if (businessTypeSelect) {
+            dataToUpdate.businessType = businessTypeSelect.value;
+        }
+        
+        // 檢查是否有店家文檔
+        let businessDocRef = db.collection("businesses").doc(currentUser.uid);
+        let businessDoc = await businessDocRef.get();
+        
+        // 如果文檔不存在，添加創建時間
+        if (!businessDoc.exists) {
+            dataToUpdate.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        }
+        
+        // 更新 Firestore 文檔
+        await businessDocRef.set(dataToUpdate, { merge: true });
+        
+        // 更新本地數據
+        if (!businessData) businessData = {};
+        Object.assign(businessData, dataToUpdate);
+        
+        // 更新UI
+        document.getElementById("navUserName").textContent = businessData.businessName;
+        
+        // 恢復按鈕狀態
+        saveBtn.innerHTML = originalBtnText;
+        saveBtn.disabled = false;
+        
+        showAlert("店家資料已成功更新", "success");
+    } catch (error) {
+        console.error("更新店家資料錯誤:", error);
+        showAlert("更新店家資料失敗，請稍後再試", "danger");
+        
+        // 恢復按鈕狀態
+        const saveBtn = document.querySelector("#profile-section .card-header .btn-primary");
+        saveBtn.innerHTML = '儲存變更';
+        saveBtn.disabled = false;
     }
 }
 
@@ -1808,7 +2014,7 @@ function updateActivityTypes(activityTypes) {
     }
 }
 
-// 儲存活動類型功能
+// 儲存活動類型
 async function saveActivityTypes() {
     try {
         // 獲取按鈕並顯示載入狀態
@@ -1828,14 +2034,14 @@ async function saveActivityTypes() {
         });
         
         // 更新 Firestore
-        await db.collection("venues").doc(currentUser.uid).update({
+        await db.collection("businesses").doc(currentUser.uid).update({
             activityTypes: activityTypes,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
         // 更新本地數據
-        if (!venueData) venueData = {};
-        venueData.activityTypes = activityTypes;
+        if (!businessData) businessData = {};
+        businessData.activityTypes = activityTypes;
         
         // 恢復按鈕狀態
         saveBtn.textContent = originalText;
