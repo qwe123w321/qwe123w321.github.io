@@ -78,17 +78,30 @@
     <script src="error-handler.js"></script>
 
     <style>
+        /* 整體優化樣式 */
         :root {
             --primary-color: #9D7F86;
             --primary-light: #EADED5;
+            --primary-dark: #8A6E75;
             --secondary-color: #D8CAB8;
             --dark-color: #4A4A4A;
             --light-color: #F8F9FA;
-            --success-color: #28a745;
-            --warning-color: #ffc107;
-            --danger-color: #dc3545;
+            --success-color: #6BBB5A;
+            --warning-color: #FFCC33;
+            --danger-color: #FF6B6B;
+            --info-color: #4CB3D8;
             --gray-color: #6c757d;
+            --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 8px 20px rgba(0, 0, 0, 0.12);
+            --transition-fast: all 0.2s ease;
+            --transition-normal: all 0.3s ease;
+            --border-radius-sm: 4px;
+            --border-radius-md: 8px;
+            --border-radius-lg: 16px;
         }
+
+        /* 卡片樣式增強
         
         body {
             font-family: 'Noto Sans TC', sans-serif;
@@ -852,25 +865,40 @@
                     
             <!-- 店家資訊區塊 -->
             <div class="content-section" id="profile-section">
-                <h2 class="mb-4">店家資訊</h2>
-                
                 <div class="dashboard-card">
-                    <div class="card-header">
+                    <div class="card-header d-flex justify-content-between align-items-center">
                         <h5>基本資料</h5>
-                        <button class="btn btn-primary">儲存變更</button>
+                        <button class="btn btn-primary save-business-info-btn" id="saveBusinessInfoBtn">
+                            <i class="fas fa-save me-2"></i>儲存變更
+                        </button>
                     </div>
                     <div class="card-body">
                         <form>
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label for="storeName" class="form-label">店家名稱</label>
-                                        <input type="text" class="form-control" id="storeName" placeholder="請輸入店家名稱">
+                                        <label for="storeName" class="form-label">店家名稱 <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="storeName" placeholder="請輸入店家名稱" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="businessType" class="form-label">店家類型</label>
+                                        <select class="form-select" id="businessType">
+                                            <option value="">請選擇店家類型</option>
+                                            <option value="cafe">咖啡廳</option>
+                                            <option value="restaurant">餐廳</option>
+                                            <option value="bar">酒吧</option>
+                                            <option value="dessert">甜點店</option>
+                                            <option value="bookstore">書店</option>
+                                            <option value="activity">活動場所</option>
+                                            <option value="other">其他</option>
+                                        </select>
                                     </div>
                                     <div class="mb-3">
                                         <label for="storeDescription" class="form-label">店家簡介</label>
                                         <textarea class="form-control" id="storeDescription" rows="5" placeholder="請輸入店家簡介"></textarea>
                                     </div>
+                                </div>
+                                <div class="col-md-6">
                                     <div class="mb-3">
                                         <label for="storePhone" class="form-label">聯絡電話</label>
                                         <input type="tel" class="form-control" id="storePhone" placeholder="請輸入聯絡電話">
@@ -886,20 +914,25 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="dashboard-card mt-4">
-                                        <div class="card-header">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
                                             <h5>地理位置設定</h5>
-                                            <button class="btn btn-primary" id="saveLocationBtn">儲存位置</button>
+                                            <button class="btn btn-primary" id="saveLocationBtn">
+                                                <i class="fas fa-map-marker-alt me-2"></i>儲存位置
+                                            </button>
                                         </div>
                                         <div class="card-body">
                                             <p class="text-muted mb-3">
-                                                準確設定店家位置，讓附近的用戶能夠更容易找到您。此位置將用於APP中的距離計算及推薦功能。
+                                                <i class="fas fa-info-circle me-2"></i>準確設定店家位置，讓附近的用戶能夠更容易找到您。此位置將用於APP中的距離計算及推薦功能。
                                             </p>
                                             <div class="row mb-3">
                                                 <div class="col-md-12">
                                                     <div class="input-group">
+                                                        <span class="input-group-text bg-light">
+                                                            <i class="fas fa-search"></i>
+                                                        </span>
                                                         <input type="text" class="form-control" id="locationSearch" placeholder="搜尋地址...">
                                                         <button class="btn btn-outline-secondary" type="button" id="searchLocationBtn">
-                                                            <i class="fas fa-search"></i>
+                                                            搜尋
                                                         </button>
                                                     </div>
                                                 </div>
@@ -907,24 +940,33 @@
                                             
                                             <div class="row">
                                                 <div class="col-md-8">
-                                                    <div id="mapContainer" style="height: 350px; border-radius: 8px;"></div>
+                                                    <div id="mapContainer" style="height: 400px; border-radius: 8px; box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);"></div>
                                                 </div>
                                                 <div class="col-md-4">
-                                                    <div class="mb-3">
-                                                        <label class="form-label">緯度</label>
-                                                        <input type="text" class="form-control" id="latitude" readonly>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label">經度</label>
-                                                        <input type="text" class="form-control" id="longitude" readonly>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label">地址</label>
-                                                        <textarea class="form-control" id="formattedAddress" rows="3" readonly></textarea>
-                                                    </div>
-                                                    <div class="alert alert-info" role="alert">
-                                                        <i class="fas fa-info-circle me-2"></i>
-                                                        移動地圖上的標記以設定精確位置
+                                                    <div class="card bg-light">
+                                                        <div class="card-body">
+                                                            <h6 class="card-title mb-3">座標資訊</h6>
+                                                            <div class="mb-3">
+                                                                <label class="form-label">緯度</label>
+                                                                <input type="text" class="form-control" id="latitude" readonly>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label">經度</label>
+                                                                <input type="text" class="form-control" id="longitude" readonly>
+                                                            </div>
+                                                            <div class="mb-3 d-none">
+                                                                <label class="form-label">Geohash</label>
+                                                                <input type="text" class="form-control" id="geohash" readonly>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label">地址</label>
+                                                                <textarea class="form-control" id="formattedAddress" rows="3" readonly></textarea>
+                                                            </div>
+                                                            <div class="alert alert-info" role="alert">
+                                                                <i class="fas fa-info-circle me-2"></i>
+                                                                移動地圖上的標記以設定精確位置
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -987,63 +1029,65 @@
             </div>
                 
             <!-- 活動類型與標籤區塊 -->
-            <div class="content-section" id="activities-section">
-                <h2 class="mb-4">活動類型與標籤</h2>
-                
-                <div class="dashboard-card">
-                    <div class="card-header">
-                        <h5>選擇店家適合的活動類型</h5>
-                        <div>
-                            <span class="badge bg-primary">已選擇 0 項</span>
-                        </div>
+            <div class="dashboard-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>選擇店家適合的活動類型</h5>
+                    <div>
+                        <span class="badge bg-primary activity-count-badge">已選擇 0 項</span>
+                        <button class="btn btn-primary ms-2" id="saveActivityTypesBtn">
+                            <i class="fas fa-save me-2"></i>儲存活動類型
+                        </button>
                     </div>
-                    <div class="card-body">
-                        <p>請選擇您的店家適合的活動類型，這將有助於我們向用戶推薦您的店鋪。</p>
-                        
-                        <div class="activity-type-grid">
-                            <div class="activity-type-card">
-                                <i class="fas fa-coffee"></i>
-                                <p>咖啡廳</p>
-                            </div>
-                            <div class="activity-type-card">
-                                <i class="fas fa-utensils"></i>
-                                <p>吃飯</p>
-                            </div>
-                            <div class="activity-type-card">
-                                <i class="fas fa-shopping-bag"></i>
-                                <p>逛街</p>
-                            </div>
-                            <div class="activity-type-card">
-                                <i class="fas fa-film"></i>
-                                <p>看電影</p>
-                            </div>
-                            <div class="activity-type-card">
-                                <i class="fas fa-book"></i>
-                                <p>讀書</p>
-                            </div>
-                            <div class="activity-type-card">
-                                <i class="fas fa-glass-cheers"></i>
-                                <p>喝酒</p>
-                            </div>
-                            <div class="activity-type-card">
-                                <i class="fas fa-running"></i>
-                                <p>運動</p>
-                            </div>
-                            <div class="activity-type-card">
-                                <i class="fas fa-comments"></i>
-                                <p>聊天</p>
-                            </div>
-                            <div class="activity-type-card">
-                                <i class="fas fa-gamepad"></i>
-                                <p>電玩</p>
-                            </div>
-                            <div class="activity-type-card">
-                                <i class="fas fa-music"></i>
-                                <p>音樂</p>
-                            </div>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        <i class="fas fa-lightbulb me-2"></i>請選擇您的店家適合的活動類型，這將有助於我們向用戶推薦您的店鋪。
+                    </p>
+                    
+                    <div class="activity-type-grid">
+                        <div class="activity-type-card">
+                            <i class="fas fa-coffee"></i>
+                            <p>咖啡廳</p>
+                        </div>
+                        <div class="activity-type-card">
+                            <i class="fas fa-utensils"></i>
+                            <p>吃飯</p>
+                        </div>
+                        <div class="activity-type-card">
+                            <i class="fas fa-shopping-bag"></i>
+                            <p>逛街</p>
+                        </div>
+                        <div class="activity-type-card">
+                            <i class="fas fa-film"></i>
+                            <p>看電影</p>
+                        </div>
+                        <div class="activity-type-card">
+                            <i class="fas fa-book"></i>
+                            <p>讀書</p>
+                        </div>
+                        <div class="activity-type-card">
+                            <i class="fas fa-glass-cheers"></i>
+                            <p>喝酒</p>
+                        </div>
+                        <div class="activity-type-card">
+                            <i class="fas fa-running"></i>
+                            <p>運動</p>
+                        </div>
+                        <div class="activity-type-card">
+                            <i class="fas fa-comments"></i>
+                            <p>聊天</p>
+                        </div>
+                        <div class="activity-type-card">
+                            <i class="fas fa-gamepad"></i>
+                            <p>電玩</p>
+                        </div>
+                        <div class="activity-type-card">
+                            <i class="fas fa-music"></i>
+                            <p>音樂</p>
                         </div>
                     </div>
                 </div>
+            </div>
                 
                 <!-- 店家標籤設置 -->
                 <div class="dashboard-card mt-4">
