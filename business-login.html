@@ -17,7 +17,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
    <!-- 1. 首先加載 reCAPTCHA 腳本 (非常重要) -->
-   <script src="https://www.google.com/recaptcha/api.js?render=6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G" async></script>
+   <script src="https://www.google.com/recaptcha/api.js?render=6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G" 
+        async 
+        onload="console.log('reCAPTCHA 腳本加載成功', new Date().toISOString())" 
+        onerror="console.error('reCAPTCHA 腳本加載失敗', new Date().toISOString())"></script>
     
    2. 然後加載 Firebase 和 App Check 模組
    <script type="module">
@@ -468,6 +471,39 @@
                 console.error('設置狀態指示器時發生錯誤:', error);
             }
         });
+    </script>
+
+    <script type="module">
+        import { runFullDiagnostics, checkRecaptchaStatus } from './app-check-module.js';
+        
+        // 添加診斷按鈕
+        document.addEventListener('DOMContentLoaded', () => {
+            const diagButton = document.createElement('button');
+            diagButton.textContent = '執行 App Check 診斷';
+            diagButton.style.position = 'fixed';
+            diagButton.style.bottom = '10px';
+            diagButton.style.left = '10px';
+            diagButton.style.zIndex = '9999';
+            diagButton.style.padding = '10px';
+            diagButton.style.backgroundColor = '#4285f4';
+            diagButton.style.color = 'white';
+            diagButton.style.border = 'none';
+            diagButton.style.borderRadius = '4px';
+            diagButton.style.cursor = 'pointer';
+            
+            diagButton.addEventListener('click', () => {
+                console.log('手動觸發診斷');
+                runFullDiagnostics();
+            });
+            
+            document.body.appendChild(diagButton);
+        });
+        
+        // 頁面加載 5 秒後自動檢查 reCAPTCHA 狀態
+        setTimeout(() => {
+            console.log('頁面加載 5 秒後自動檢查 reCAPTCHA 狀態');
+            checkRecaptchaStatus();
+        }, 5000);
     </script>
 
 </body>
