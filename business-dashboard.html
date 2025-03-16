@@ -24,8 +24,7 @@
     <!-- 添加Firebase ES 模組 script 標籤 -->
     <script type="module">
         // 從 firebase-config.js 導入所有需要的模組
-        import { auth, db, storage, appCheck } from './firebase-config.js';
-        import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
+        import { auth, db, storage, appCheck, onAuthStateChanged, signOut } from './firebase-config.js';
         
         // 將變數暴露給全局範圍
         window.auth = auth;
@@ -52,7 +51,7 @@
             }, 500);
         });
         
-        // 驗證用戶身份
+        // 驗證用戶身份，但不進行重定向
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 console.log('用戶已登入:', user.email);
@@ -60,8 +59,13 @@
                 const event = new CustomEvent('user-authenticated', { detail: user });
                 document.dispatchEvent(event);
             } else {
-                console.log('用戶未登入，重定向到登入頁面');
-                window.location.href = 'business-login.html';
+                console.log('用戶未登入');
+                // 仍然保留重定向邏輯，但使用更可靠的判斷
+                if (window.location.pathname.includes('dashboard') && !sessionStorage.getItem('redirecting')) {
+                    console.log('未登入用戶訪問儀表板，重定向到登入頁面');
+                    sessionStorage.setItem('redirecting', 'true');
+                    window.location.href = 'business-login.html';
+                }
             }
         });
     </script>
@@ -752,9 +756,9 @@
                 <p>店家管理平台</p>
             </div>
             <ul class="sidebar-menu">
-                <li class="active">
+                <!-- <li class="active">
                     <a href="#dashboard"><i class="fas fa-tachometer-alt"></i> 儀表板</a>
-                </li>
+                </li> -->
                 <li>
                     <a href="#profile"><i class="fas fa-store"></i> 店家資訊</a>
                 </li>
@@ -770,9 +774,7 @@
                 <li>
                     <a href="#photos"><i class="fas fa-images"></i> 店家照片</a>
                 </li>
-                <li>
-                    <a href="#analytics"><i class="fas fa-chart-line"></i> 數據分析</a>
-                </li>
+                <!-- 移除未實現的數據分析 -->
                 <li>
                     <a href="#settings"><i class="fas fa-cog"></i> 設定</a>
                 </li>
@@ -781,6 +783,7 @@
                 </li>
             </ul>
         </div>
+        
         
         <!-- 主內容區 -->
         <div class="main-content">
@@ -804,7 +807,7 @@
             </div>
             
             <!-- 儀表板區塊 -->
-            <div class="content-section active" id="dashboard-section">
+            <!-- <div class="content-section active" id="dashboard-section">
                 <h2 class="mb-4">儀表板</h2>
                 
                 <!-- 統計卡 -->
@@ -958,7 +961,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                     
                     <!-- 店家資訊區塊 -->
                     <div class="content-section" id="profile-section">
@@ -1590,9 +1593,9 @@
                             </div>
                         </div>
                     </div>
-                    
+                   
                     <!-- 店家照片區塊 -->
-                    <div class="content-section" id="photos-section">
+                    <!-- <div class="content-section" id="photos-section">
                         <h2 class="mb-4">店家照片</h2>
                         
                         <div class="dashboard-card">
@@ -1636,7 +1639,7 @@
                             </div>
                         </div>
                         
-                        <!-- 商品照片 -->
+                        //商品照片
                         <div class="dashboard-card mt-4">
                             <div class="card-header">
                                 <h5>商品照片</h5>
@@ -1675,9 +1678,9 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                     
-                    <!-- 數據分析區塊 -->
+                    <!-- 數據分析區塊
                     <div class="content-section" id="analytics-section">
                         <h2 class="mb-4">數據分析</h2>
                         
@@ -1785,8 +1788,8 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- 設定區塊 -->
+
+                    設定區塊
                     <div class="content-section" id="settings-section">
                         <h2 class="mb-4">帳戶設定</h2>
                         
@@ -1899,7 +1902,7 @@
                                 <button type="submit" class="btn btn-primary">儲存通知設定</button>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
             </div>
 
@@ -4125,16 +4128,64 @@
             }
         });
         
-        // 在頁面載入完成後加載Google Maps API
+        // 使用適當的 Firebase 模組執行登出
         document.addEventListener('DOMContentLoaded', function() {
-            // 頁面加載時檢查是否已登入
-            firebase.auth().onAuthStateChanged(function(user) {
-                if (user) {
-                    // 加載Google Maps API (替換YOUR_API_KEY為您的Google Maps API金鑰)
-                    loadGoogleMapsAPI();
+            // 獲取所有登出按鈕
+            const logoutButtons = document.querySelectorAll('#logoutLink, a[href="#"][id="logoutLink"]');
+            logoutButtons.forEach(btn => {
+                if (btn) {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        performLogout();
+                    });
+                    console.log('已綁定登出按鈕:', btn);
                 }
             });
         });
+        
+        // 改進的登出函數
+        function performLogout() {
+            console.log('開始登出流程...');
+            
+            // 顯示加載狀態
+            const logoutButtons = document.querySelectorAll('#logoutLink, a[href="#"][id="logoutLink"]');
+            logoutButtons.forEach(btn => {
+                if (btn) {
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 登出中...';
+                    btn.disabled = true;
+                    // 保存原始文本以便恢復
+                    btn.setAttribute('data-original-text', originalText);
+                }
+            });
+            
+            // 使用全局 auth 物件
+            try {
+                // 確保 window.auth 已定義
+                if (window.auth) {
+                    window.auth.signOut().then(() => {
+                        window.location.href = 'business-login.html';
+                    }).catch(error => {
+                        console.error('登出錯誤:', error);
+                        // 恢復按鈕狀態
+                        logoutButtons.forEach(btn => {
+                            if (btn) {
+                                const originalText = btn.getAttribute('data-original-text');
+                                btn.innerHTML = originalText || '<i class="fas fa-sign-out-alt"></i> 登出';
+                                btn.disabled = false;
+                            }
+                        });
+                    });
+                } else {
+                    console.error('Auth 對象未定義，嘗試使用備用方法');
+                    // 嘗試直接重定向
+                    window.location.href = 'business-login.html?sessionExpired=true';
+                }
+            } catch (error) {
+                console.error('登出過程中發生錯誤:', error);
+                window.location.href = 'business-login.html?error=true';
+            }
+        }
         
         // 加載Google Maps API
         function loadGoogleMapsAPI() {
@@ -4144,6 +4195,126 @@
             script.async = true;
             document.head.appendChild(script);
         }
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 檢查活動類型是否為空
+            const activityGrid = document.querySelector('.activity-type-grid');
+            if (activityGrid && activityGrid.children.length === 0) {
+                activityGrid.innerHTML = `
+                    <div class="text-center py-5 w-100">
+                        <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                        <p>尚未設定活動類型</p>
+                        <p class="text-muted">選擇適合您店家的活動類型以增加曝光</p>
+                    </div>
+                `;
+            }
+            
+            // 檢查商品項目是否為空
+            const categoryList = document.getElementById('categoryList');
+            if (categoryList && (!categoryList.children.length || categoryList.innerHTML.trim() === '')) {
+                categoryList.innerHTML = `
+                    <div class="text-center py-4 text-muted" id="categoryListEmpty">
+                        <i class="fas fa-utensils fa-3x mb-3"></i>
+                        <p>尚未添加任何商品類別</p>
+                        <p>點擊「新增類別」按鈕開始建立您的菜單</p>
+                    </div>
+                `;
+            }
+            
+            // 初始默認值
+            initDefaultValues();
+        });
+        
+        // 初始化默認值
+        function initDefaultValues() {
+            // 活動類型默認數據
+            const defaultActivityTypes = [
+                { icon: 'fa-coffee', name: '咖啡廳' },
+                { icon: 'fa-utensils', name: '吃飯' },
+                { icon: 'fa-shopping-bag', name: '逛街' },
+                { icon: 'fa-film', name: '看電影' },
+                { icon: 'fa-book', name: '讀書' },
+                { icon: 'fa-glass-cheers', name: '喝酒' },
+                { icon: 'fa-running', name: '運動' },
+                { icon: 'fa-comments', name: '聊天' },
+                { icon: 'fa-gamepad', name: '電玩' },
+                { icon: 'fa-music', name: '音樂' }
+            ];
+            
+            // 添加默認活動類型
+            const activityTypeGrid = document.querySelector('.activity-type-grid');
+            if (activityTypeGrid && activityTypeGrid.children.length === 0) {
+                defaultActivityTypes.forEach(activity => {
+                    const activityCard = document.createElement('div');
+                    activityCard.className = 'activity-type-card';
+                    activityCard.innerHTML = `
+                        <i class="fas ${activity.icon}"></i>
+                        <p>${activity.name}</p>
+                    `;
+                    activityTypeGrid.appendChild(activityCard);
+                    
+                    // 添加點擊事件
+                    activityCard.addEventListener('click', function() {
+                        this.classList.toggle('selected');
+                        
+                        // 更新選中數量
+                        const selectedCount = document.querySelectorAll('.activity-type-card.selected').length;
+                        const badge = document.querySelector('.badge.bg-primary');
+                        if (badge) {
+                            badge.textContent = `已選擇 ${selectedCount} 項`;
+                        }
+                    });
+                });
+            }
+            
+            // 添加默認類別按鈕事件
+            const addCategoryBtn = document.getElementById('addCategoryBtn');
+            if (addCategoryBtn) {
+                addCategoryBtn.addEventListener('click', function() {
+                    const addCategoryForm = document.getElementById('addCategoryForm');
+                    if (addCategoryForm) {
+                        addCategoryForm.style.display = 'block';
+                    }
+                });
+            }
+            
+            const cancelAddCategory = document.getElementById('cancelAddCategory');
+            if (cancelAddCategory) {
+                cancelAddCategory.addEventListener('click', function() {
+                    const addCategoryForm = document.getElementById('addCategoryForm');
+                    if (addCategoryForm) {
+                        addCategoryForm.style.display = 'none';
+                    }
+                });
+            }
+        }
+    </script>
+
+    <!-- 4. 修正錯誤的元素 ID 參考 -->
+    <script>
+        // 修復可能的元素 ID 錯誤或缺少
+        document.addEventListener('DOMContentLoaded', function() {
+            // 確保統計數據元素存在
+            const statsToCheck = ['viewCountStat', 'favoriteCountStat', 'ratingAverageStat', 'recommendCountStat'];
+            
+            statsToCheck.forEach(statId => {
+                if (!document.getElementById(statId)) {
+                    console.warn(`找不到 ${statId} 元素，創建默認元素`);
+                    
+                    // 查找可能的父容器
+                    const container = document.querySelector('.stat-card .stat-content');
+                    if (container) {
+                        // 創建元素
+                        const statElement = document.createElement('h3');
+                        statElement.id = statId;
+                        statElement.textContent = '0';
+                        container.appendChild(statElement);
+                    }
+                }
+            });
+        });
     </script>
 
     <script>
