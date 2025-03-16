@@ -1,6 +1,6 @@
 // 全域變數
 let currentUser = null;
-let venueData = null;
+let businessData = null;
 
 // 頁面載入初始化
 document.addEventListener('DOMContentLoaded', function() {
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 清除重定向標記，允許下次檢查
                 localStorage.removeItem('redirected_to_dashboard');
                 // 加載店家資料
-                loadVenueData();
+                loadBusinessData();
             } else {
                 console.log('未檢測到登入用戶，將重定向到登入頁面');
                 
@@ -443,14 +443,14 @@ function updateGallery(images) {
 // 刪除環境照片
 async function removeGalleryImage(imageUrl) {
     try {
-        if (!venueData || !venueData.galleryImages) return;
+        if (!businessData || !businessData.galleryImages) return;
         
         // 從存儲中刪除文件
         const storageRef = firebase.storage().refFromURL(imageUrl);
         await storageRef.delete();
         
         // 從店家數據中移除 URL
-        const updatedImages = venueData.galleryImages.filter(url => url !== imageUrl);
+        const updatedImages = businessData.galleryImages.filter(url => url !== imageUrl);
         
         // 更新Firestore
         await db.collection("venues").doc(currentUser.uid).update({
@@ -459,7 +459,7 @@ async function removeGalleryImage(imageUrl) {
         });
         
         // 更新本地數據
-        venueData.galleryImages = updatedImages;
+        businessData.galleryImages = updatedImages;
         
         showAlert("照片已成功刪除", "success");
     } catch (error) {
@@ -471,10 +471,10 @@ async function removeGalleryImage(imageUrl) {
 // 刪除主圖/頭像
 async function removeMainImage() {
     try {
-        if (!venueData || !venueData.imageUrl) return;
+        if (!businessData || !businessData.imageUrl) return;
         
         // 從存儲中刪除文件
-        const imageRef = storage.refFromURL(venueData.imageUrl);
+        const imageRef = storage.refFromURL(businessData.imageUrl);
         await imageRef.delete();
         
         // 從資料庫中刪除引用
@@ -484,7 +484,7 @@ async function removeMainImage() {
         });
         
         // 更新本地數據
-        delete venueData.imageUrl;
+        delete businessData.imageUrl;
         
         // 更新UI
         const mainImagePreview = document.querySelector(".image-preview");
@@ -530,7 +530,7 @@ async function submitVenueForm() {
         }
         
         // 準備更新的數據
-        const venueDataToUpdate = {
+        const businessDataToUpdate = {
             name: nameInput.value,
             phoneNumber: phoneInput.value,
             email: emailInput.value,
@@ -545,18 +545,18 @@ async function submitVenueForm() {
         
         // 如果文檔不存在，添加創建時間
         if (!venueDoc.exists) {
-            venueDataToUpdate.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            businessDataToUpdate.createdAt = firebase.firestore.FieldValue.serverTimestamp();
         }
         
         // 更新 Firestore 文檔
-        await venueDocRef.set(venueDataToUpdate, { merge: true });
+        await venueDocRef.set(businessDataToUpdate, { merge: true });
         
         // 更新本地數據
-        if (!venueData) venueData = {};
-        Object.assign(venueData, venueDataToUpdate);
+        if (!businessData) businessData = {};
+        Object.assign(businessData, businessDataToUpdate);
         
         // 更新UI
-        document.getElementById("navUserName").textContent = venueData.name;
+        document.getElementById("navUserName").textContent = businessData.name;
         
         // 恢復按鈕狀態
         saveBtn.innerHTML = originalBtnText;
@@ -587,8 +587,8 @@ async function handleEnvironmentImageUpload(files) {
         
         // 獲取既有的環境照片URLs
         let galleryImages = [];
-        if (venueData && venueData.galleryImages) {
-            galleryImages = [...venueData.galleryImages];
+        if (businessData && businessData.galleryImages) {
+            galleryImages = [...businessData.galleryImages];
         }
         
         // 處理每張照片
@@ -647,8 +647,8 @@ async function handleEnvironmentImageUpload(files) {
         });
         
         // 更新本地數據
-        if (!venueData) venueData = {};
-        venueData.galleryImages = galleryImages;
+        if (!businessData) businessData = {};
+        businessData.galleryImages = galleryImages;
         
         showAlert("環境照片已成功上傳", "success");
     } catch (error) {
@@ -701,8 +701,8 @@ async function saveBusinessHours() {
         });
         
         // 更新本地數據
-        if (!venueData) venueData = {};
-        venueData.openingHours = openingHours;
+        if (!businessData) businessData = {};
+        businessData.openingHours = openingHours;
         
         // 恢復按鈕狀態
         saveBtn.textContent = originalText;
@@ -1818,8 +1818,8 @@ async function updateVenueTags() {
         });
         
         // 更新本地數據
-        if (!venueData) venueData = {};
-        venueData.tags = tags;
+        if (!businessData) businessData = {};
+        businessData.tags = tags;
         
         // 恢復按鈕狀態
         saveBtn.textContent = originalText;
@@ -2145,8 +2145,8 @@ async function handleMainImageUpload(e) {
         }
         
         // 更新本地數據
-        if (!venueData) venueData = {};
-        venueData.imageUrl = imageUrl;
+        if (!businessData) businessData = {};
+        businessData.imageUrl = imageUrl;
         
         // 更新導航頭像
         document.getElementById("navUserImage").src = imageUrl;
@@ -2363,9 +2363,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     
                     // 更新本地數據
-                    if (!window.venueData) window.venueData = {};
-                    window.venueData.location = { latitude: lat, longitude: lng };
-                    window.venueData.address = formattedAddress;
+                    if (!window.businessData) window.businessData = {};
+                    window.businessData.location = { latitude: lat, longitude: lng };
+                    window.businessData.address = formattedAddress;
                     
                     hidePageLoading();
                     showAlert('店家位置已成功更新', 'success');
