@@ -38,14 +38,21 @@ if (window.location.hostname === 'localhost' ||
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
 }
 
-// 初始化 App Check
+// 初始化 App Check (如果尚未初始化)
 let appCheck;
 try {
-    appCheck = initializeAppCheck(app, {
-        provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
-        isTokenAutoRefreshEnabled: true
-    });
-    console.log('【AppCheckModule】成功初始化 App Check');
+    // 檢查是否已初始化
+    if (window.appCheck) {
+        appCheck = window.appCheck;
+        console.log('【AppCheckModule】檢測到已存在的 App Check 實例');
+    } else {
+        appCheck = initializeAppCheck(app, {
+            provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
+            isTokenAutoRefreshEnabled: true
+        });
+        window.appCheck = appCheck; // 存儲至全局
+        console.log('【AppCheckModule】成功初始化 App Check');
+    }
 } catch (error) {
     console.error('【AppCheckModule】初始化 App Check 失敗:', error);
 }
