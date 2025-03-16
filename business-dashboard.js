@@ -176,7 +176,7 @@ function initCategoryManagement() {
     });
 }
 
-// 儲存類別
+// 2. 添加 saveCategory 函數
 async function saveCategory() {
     try {
         const categoryName = document.getElementById('categoryName').value;
@@ -187,24 +187,76 @@ async function saveCategory() {
             return;
         }
         
-        // 添加到 Firestore
-        await db.collection("categories").add({
-            venueId: currentUser.uid,
-            name: categoryName,
-            description: categoryDesc,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        // 重新加載商品列表
-        await loadMenuItems();
-        
-        // 隱藏表單並重置
-        document.getElementById('addCategoryForm').style.display = 'none';
-        document.getElementById('categoryName').value = '';
-        document.getElementById('categoryDesc').value = '';
-        
-        showAlert("商品類別已成功添加", "success");
+        // 顯示載入狀態
+        const saveBtn = document.querySelector('#addCategoryForm .btn-primary');
+        if (saveBtn) {
+            const originalText = saveBtn.textContent;
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 儲存中...';
+            saveBtn.disabled = true;
+            
+            // 恢復按鈕狀態的函數
+            const restoreButton = () => {
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
+            };
+            
+            try {
+                // 檢查是否已存在相同類別
+                const categoriesSnapshot = await db.collection("categories")
+                    .where("venueId", "==", currentUser.uid)
+                    .where("name", "==", categoryName)
+                    .get();
+                
+                if (!categoriesSnapshot.empty) {
+                    showAlert("已存在相同名稱的類別", "warning");
+                    restoreButton();
+                    return;
+                }
+                
+                // 添加到 Firestore
+                await db.collection("categories").add({
+                    venueId: currentUser.uid,
+                    name: categoryName,
+                    description: categoryDesc,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // 重新加載商品列表
+                await loadMenuItems();
+                
+                // 隱藏表單並重置
+                document.getElementById('addCategoryForm').style.display = 'none';
+                document.getElementById('categoryName').value = '';
+                document.getElementById('categoryDesc').value = '';
+                
+                showAlert("商品類別已成功添加", "success");
+            } catch (error) {
+                console.error("添加類別時發生錯誤:", error);
+                showAlert("添加類別失敗，請稍後再試", "danger");
+            } finally {
+                restoreButton();
+            }
+        } else {
+            // 如果找不到按鈕，直接執行
+            await db.collection("categories").add({
+                venueId: currentUser.uid,
+                name: categoryName,
+                description: categoryDesc,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            // 重新加載商品列表
+            await loadMenuItems();
+            
+            // 隱藏表單並重置
+            document.getElementById('addCategoryForm').style.display = 'none';
+            document.getElementById('categoryName').value = '';
+            document.getElementById('categoryDesc').value = '';
+            
+            showAlert("商品類別已成功添加", "success");
+        }
     } catch (error) {
         console.error("添加類別時發生錯誤:", error);
         showAlert("添加類別失敗，請稍後再試", "danger");
@@ -291,15 +343,13 @@ async function updateVenueTags() {
     }
 }
 
-// 添加標籤到容器
+// 9. 添加標籤
 function addTag(tagText) {
-    const tagContainer = document.getElementById('tagContainer');
-    const tagInput = tagContainer?.querySelector('.tag-input');
-    
-    if (!tagContainer || !tagInput) return;
+    const tagContainer = document.getElementById("tagContainer");
+    if (!tagContainer) return;
     
     // 檢查是否已存在
-    const existingTags = tagContainer.querySelectorAll('.tag');
+    const existingTags = tagContainer.querySelectorAll(".tag");
     let isDuplicate = false;
     
     existingTags.forEach(tag => {
@@ -310,33 +360,36 @@ function addTag(tagText) {
     });
     
     if (isDuplicate) {
-        showAlert('此標籤已添加', 'warning');
+        showAlert("此標籤已添加", "warning");
         return;
     }
     
     // 檢查是否已達到最大數量
     if (existingTags.length >= 10) {
-        showAlert('最多只能添加10個標籤', 'warning');
+        showAlert("最多只能添加10個標籤", "warning");
         return;
     }
     
     // 檢查標籤長度
     if (tagText.length > 10) {
-        showAlert('標籤不能超過10個字', 'warning');
+        showAlert("標籤不能超過10個字", "warning");
         return;
     }
     
     // 創建新標籤元素
-    const tag = document.createElement('div');
-    tag.className = 'tag';
+    const tag = document.createElement("div");
+    tag.className = "tag";
     tag.innerHTML = tagText + '<span class="tag-close">&times;</span>';
+    
+    // 獲取輸入框
+    const tagInput = tagContainer.querySelector(".tag-input");
     
     // 添加到容器
     tagContainer.insertBefore(tag, tagInput);
     
     // 添加刪除事件
-    const closeBtn = tag.querySelector('.tag-close');
-    closeBtn.addEventListener('click', function() {
+    const closeBtn = tag.querySelector(".tag-close");
+    closeBtn.addEventListener("click", function() {
         tag.remove();
     });
 }
@@ -1004,16 +1057,18 @@ function updateTags(tags) {
     if (!tagContainer) return;
     
     // 清空現有標籤，但保留輸入框
-    const tagInput = tagContainer.querySelector(".tag-input");
+    const tagInput = tagContainer.querySelector(".tag-input") || createTagInput();
     tagContainer.innerHTML = "";
     
     // 添加標籤
     tags.forEach(tag => {
+        if (!tag) return; // 跳過空標籤
+        
         const tagElement = document.createElement("div");
         tagElement.className = "tag";
         tagElement.innerHTML = `
-        ${tag}
-        <span class="tag-close">&times;</span>
+            ${tag}
+            <span class="tag-close">&times;</span>
         `;
         
         tagContainer.appendChild(tagElement);
@@ -1028,7 +1083,7 @@ function updateTags(tags) {
     });
     
     // 添加輸入框
-    tagContainer.appendChild(tagInput || createTagInput());
+    tagContainer.appendChild(tagInput);
 }
 
 // 創建標籤輸入框
@@ -1052,6 +1107,7 @@ function createTagInput() {
 // 更新活動類型
 function updateActivityTypes(activityTypes) {
     const activityCards = document.querySelectorAll(".activity-type-card");
+    if (!activityCards.length) return;
     
     // 重置所有卡片
     activityCards.forEach(card => {
@@ -1061,7 +1117,8 @@ function updateActivityTypes(activityTypes) {
     // 選中對應活動類型
     activityTypes.forEach(type => {
         activityCards.forEach(card => {
-            if (card.querySelector("p").textContent === type) {
+            const cardText = card.querySelector("p");
+            if (cardText && cardText.textContent === type) {
                 card.classList.add("selected");
             }
         });
@@ -1075,24 +1132,182 @@ function updateActivityTypes(activityTypes) {
     }
 }
 
-// 更新營業時間
+// 3. 更新營業時間
 function updateOpeningHours(hours) {
-    // 營業時間有7天，對應索引0-6
-    for (let i = 0; i < 7; i++) {
-        if (hours[i]) {
-            const daySelects = document.querySelectorAll(`.hours-selection:nth-child(${i + 1}) select`);
-            if (daySelects.length === 2) {
-                // 設置開始時間和結束時間
-                setSelectValue(daySelects[0], hours[i].open);
-                setSelectValue(daySelects[1], hours[i].close);
+    const hourSelectionDivs = document.querySelectorAll(".hours-selection");
+    if (!hourSelectionDivs.length) return;
+    
+    hours.forEach((hourData, index) => {
+        if (index < hourSelectionDivs.length) {
+            const selects = hourSelectionDivs[index].querySelectorAll("select");
+            if (selects.length === 2) {
+                // 設置值
+                setSelectValue(selects[0], hourData.open);
+                setSelectValue(selects[1], hourData.close);
             }
         }
+    });
+}
+
+
+// 繼續修復店家資訊頁面功能
+
+// 1. 繼續 loadVenueData 函數
+async function loadVenueData() {
+    try {
+        showAlert("載入店家資料中...", "info");
+        
+        // 確保用戶已登入
+        if (!currentUser || !currentUser.uid) {
+            console.error("未找到用戶資料");
+            showAlert("請重新登入", "danger");
+            return;
+        }
+        
+        const venueDoc = await db.collection("venues").doc(currentUser.uid).get();
+        
+        if (venueDoc.exists) {
+            venueData = venueDoc.data();
+            
+            // 更新導航欄用戶資訊
+            document.getElementById("navUserName").textContent = venueData.name || "未命名店家";
+            if (venueData.profileImageUrl) {
+                document.getElementById("navUserImage").src = venueData.profileImageUrl;
+            } else if (venueData.imageUrl) {
+                document.getElementById("navUserImage").src = venueData.imageUrl;
+            }
+            
+            // 更新基本資料欄位
+            document.getElementById("storeName").value = venueData.name || "";
+            document.getElementById("storePhone").value = venueData.phoneNumber || "";
+            document.getElementById("storeEmail").value = venueData.email || "";
+            document.getElementById("storeWebsite").value = venueData.website || "";
+            document.getElementById("storeDescription").value = venueData.description || "";
+            
+            // 更新店家主圖
+            if (venueData.imageUrl) {
+                const mainImagePreview = document.querySelector(".image-preview");
+                if (mainImagePreview) {
+                    mainImagePreview.innerHTML = `
+                    <img src="${venueData.imageUrl}" alt="店家頭像/Logo">
+                    <div class="remove-image">
+                        <i class="fas fa-times"></i>
+                    </div>
+                    `;
+                    
+                    // 添加刪除事件
+                    const removeBtn = mainImagePreview.querySelector('.remove-image');
+                    if (removeBtn) {
+                        removeBtn.addEventListener('click', function() {
+                            if (confirm('確定要刪除頭像嗎?')) {
+                                removeMainImage();
+                            }
+                        });
+                    }
+                }
+            }
+            
+            // 更新營業時間
+            if (venueData.openingHours && venueData.openingHours.length > 0) {
+                updateOpeningHours(venueData.openingHours);
+            } else {
+                // 設置預設營業時間
+                initDefaultOpeningHours();
+            }
+            
+            // 更新活動類型
+            if (venueData.activityTypes && venueData.activityTypes.length > 0) {
+                updateActivityTypes(venueData.activityTypes);
+            }
+            
+            // 更新標籤
+            if (venueData.tags && venueData.tags.length > 0) {
+                updateTags(venueData.tags);
+            }
+            
+            // 更新環境照片
+            if (venueData.galleryImages && venueData.galleryImages.length > 0) {
+                updateGallery(venueData.galleryImages);
+            }
+            
+            // 更新地理位置
+            if (venueData.location) {
+                updateLocationFields(venueData.location);
+            }
+            
+            // 更新儀表板統計數據
+            updateDashboardStats();
+            
+            console.log("店家資料載入完成");
+        } else {
+            // 店家資料不存在，可能是新用戶
+            console.log("店家資料不存在，請建立資料");
+            showAlert("歡迎使用店家管理平台！請完善您的店家資料。", "info");
+            
+            // 設置預設營業時間
+            initDefaultOpeningHours();
+            
+            // 創建新的店家文檔
+            await initializeNewVenue();
+        }
+    } catch (error) {
+        console.error("載入店家資料錯誤:", error);
+        showAlert("載入資料時發生錯誤，請稍後再試", "danger");
     }
 }
 
-// 設置選擇器的值
+// 2. 為新用戶初始化店家資料
+async function initializeNewVenue() {
+    try {
+        if (!currentUser || !currentUser.uid) return;
+        
+        // 檢查是否已存在店家文檔
+        const venueDoc = await db.collection("venues").doc(currentUser.uid).get();
+        if (venueDoc.exists) return;
+        
+        // 創建預設數據
+        const defaultVenueData = {
+            name: "未命名店家",
+            description: "",
+            phoneNumber: "",
+            email: currentUser.email || "",
+            website: "",
+            isActive: true,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // 寫入到資料庫
+        await db.collection("venues").doc(currentUser.uid).set(defaultVenueData);
+        console.log("已創建新的店家資料");
+        
+        // 更新本地數據
+        venueData = defaultVenueData;
+    } catch (error) {
+        console.error("初始化新店家資料時出錯:", error);
+    }
+}
+
+// 3. 更新營業時間
+function updateOpeningHours(hours) {
+    const hourSelectionDivs = document.querySelectorAll(".hours-selection");
+    if (!hourSelectionDivs.length) return;
+    
+    hours.forEach((hourData, index) => {
+        if (index < hourSelectionDivs.length) {
+            const selects = hourSelectionDivs[index].querySelectorAll("select");
+            if (selects.length === 2) {
+                // 設置值
+                setSelectValue(selects[0], hourData.open);
+                setSelectValue(selects[1], hourData.close);
+            }
+        }
+    });
+}
+
+// 4. 設置下拉選單值
 function setSelectValue(selectElement, value) {
-    if (!value) return;
+    if (!selectElement || !value) return;
     
     // 尋找匹配的選項
     for (let i = 0; i < selectElement.options.length; i++) {
@@ -1110,26 +1325,23 @@ function setSelectValue(selectElement, value) {
     selectElement.appendChild(option);
 }
 
-// 初始化預設營業時間選擇器
+// 5. 初始化預設營業時間
 function initDefaultOpeningHours() {
-    const days = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"];
     const hourSelectionDivs = document.querySelectorAll(".hours-selection");
+    if (!hourSelectionDivs.length) return;
     
-    days.forEach((day, index) => {
-        if (index < hourSelectionDivs.length) {
-            const selects = hourSelectionDivs[index].querySelectorAll("select");
-            if (selects.length === 2) {
-                // 預設開始和結束時間（可以根據需要調整）
-                const defaultOpen = index < 5 ? "09:00" : "10:00"; // 週一至週五 9:00，週末 10:00
-                const defaultClose = index < 5 ? "19:00" : "20:00"; // 週一至週五 19:00，週末 20:00
-                
-                // 設置預設值
-                setSelectValue(selects[0], defaultOpen);
-                setSelectValue(selects[1], defaultClose);
-            }
+    const defaultOpenTimes = ["09:00", "09:00", "09:00", "09:00", "09:00", "10:00", "10:00"];
+    const defaultCloseTimes = ["19:00", "19:00", "19:00", "19:00", "19:00", "20:00", "20:00"];
+    
+    hourSelectionDivs.forEach((div, index) => {
+        const selects = div.querySelectorAll("select");
+        if (selects.length === 2) {
+            setSelectValue(selects[0], defaultOpenTimes[index]);
+            setSelectValue(selects[1], defaultCloseTimes[index]);
         }
     });
 }
+
 
 // 更新環境照片畫廊
 function updateGallery(images) {
@@ -1310,6 +1522,8 @@ async function submitVenueForm() {
 // 加載商品項目
 async function loadMenuItems() {
     try {
+        console.log("開始加載商品項目列表");
+        
         // 查詢商品類別
         const categoriesSnapshot = await db.collection("categories")
             .where("venueId", "==", currentUser.uid)
@@ -1323,6 +1537,8 @@ async function loadMenuItems() {
                 ...doc.data()
             });
         });
+        
+        console.log(`找到 ${categories.length} 個類別`);
         
         // 查詢商品項目
         const menuItemsSnapshot = await db.collection("menuItems")
@@ -1339,11 +1555,13 @@ async function loadMenuItems() {
         });
         
         // 將項目添加到對應類別
+        let totalItems = 0;
         menuItemsSnapshot.forEach(doc => {
             const item = {
                 id: doc.id,
                 ...doc.data()
             };
+            totalItems++;
             
             // 如果類別不存在，創建它
             if (!menuItemsByCategory[item.category]) {
@@ -1352,6 +1570,8 @@ async function loadMenuItems() {
             
             menuItemsByCategory[item.category].push(item);
         });
+        
+        console.log(`找到 ${totalItems} 個商品項目`);
         
         // 更新 UI
         updateMenuItemsUI(menuItemsByCategory);
@@ -1362,107 +1582,141 @@ async function loadMenuItems() {
 }
 
 // 更新商品項目 UI
-function updateMenuItemsUI(menuItemsByCategory) {
-    const categoryList = document.getElementById("categoryList");
-    if (!categoryList) return;
-    
-    // 檢查是否有商品類別
-    if (Object.keys(menuItemsByCategory).length === 0) {
-        // 顯示空狀態
-        categoryList.innerHTML = `
-            <div class="text-center py-4 text-muted" id="categoryListEmpty">
-                <i class="fas fa-utensils fa-3x mb-3"></i>
-                <p>尚未添加任何商品類別</p>
-                <p>點擊「新增類別」按鈕開始建立您的菜單</p>
-            </div>
-        `;
-        return;
-    }
-    
-    // 清空現有內容
-    categoryList.innerHTML = "";
-    
-    // 為每個類別創建區塊
-    for (const [category, items] of Object.entries(menuItemsByCategory)) {
-        const categoryElement = document.createElement("div");
-        categoryElement.className = "product-item mt-3";
-        categoryElement.innerHTML = `
-            <div class="product-category">
-                <span>${category}</span>
-                <div class="actions">
-                    <button class="btn btn-sm btn-outline-primary add-product-btn" data-category="${category}">新增項目</button>
-                    <button class="btn btn-sm btn-outline-secondary edit-category-btn" data-category="${category}">編輯</button>
-                    <button class="btn btn-sm btn-outline-danger delete-category-btn" data-category="${category}">刪除</button>
-                </div>
-            </div>
-            <div class="product-item-list" id="${category.replace(/\s+/g, '-').toLowerCase()}-items">
-            </div>
-        `;
+async function loadVenueData() {
+    try {
+        showAlert("載入店家資料中...", "info");
         
-        categoryList.appendChild(categoryElement);
+        // 確保用戶已登入
+        if (!currentUser || !currentUser.uid) {
+            console.error("未找到用戶資料");
+            showAlert("請重新登入", "danger");
+            return;
+        }
         
-        // 獲取該類別的項目列表容器
-        const itemsList = categoryElement.querySelector('.product-item-list');
+        const venueDoc = await db.collection("venues").doc(currentUser.uid).get();
         
-        // 添加商品項目表單 (初始隱藏)
-        const itemFormId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
-        const itemForm = document.createElement("div");
-        itemForm.className = "menu-item-form";
-        itemForm.id = itemFormId;
-        itemForm.innerHTML = `
-            <h6>新增${category}項目</h6>
-            <div class="mb-3">
-                <label for="itemName" class="form-label">商品名稱</label>
-                <input type="text" class="form-control" id="itemName" placeholder="輸入商品名稱">
-            </div>
-            <div class="mb-3">
-                <label for="itemDesc" class="form-label">描述</label>
-                <textarea class="form-control" id="itemDesc" rows="3" placeholder="描述商品特色或口味"></textarea>
-            </div>
-            <div class="mb-3">
-                <label for="itemImage" class="form-label">商品圖片</label>
-                <div class="image-preview mb-2" id="itemImagePreview">
-                    <div class="upload-placeholder">
-                        <i class="fas fa-image"></i>
-                        <p>上傳商品圖片</p>
-                    </div>
-                </div>
-                <input type="file" class="form-control" id="itemImage" accept="image/*">
-                <div class="form-text">建議尺寸：600 x 400 像素，優質的商品照片可提高顧客興趣</div>
-            </div>
-            <div class="d-flex gap-2">
-                <button type="button" class="btn btn-primary save-item-btn" data-category="${category}">儲存項目</button>
-                <button type="button" class="btn btn-outline-secondary cancel-add-item" data-form="${itemFormId}">取消</button>
-            </div>
-        `;
-        
-        itemsList.appendChild(itemForm);
-        
-        // 添加項目列表
-        items.forEach(item => {
-            const itemElement = document.createElement("div");
-            itemElement.className = "product-subitem";
-            itemElement.dataset.id = item.id;
-            itemElement.innerHTML = `
-                <div>
-                    <span class="product-name">${item.name}</span>
-                    <span class="product-description">${item.description || ''}</span>
-                    ${!item.displayInApp ? '<span class="badge bg-secondary">不顯示</span>' : ''}
-                </div>
-                <div class="d-flex align-items-center gap-3">
-                    ${item.imageUrl ? '<img src="'+item.imageUrl+'" alt="'+item.name+'" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">' : ''}
-                    <button class="btn btn-sm btn-outline-secondary edit-item-btn" data-id="${item.id}">編輯</button>
-                    <button class="btn btn-sm btn-outline-danger delete-item-btn" data-id="${item.id}">刪除</button>
-                </div>
-            `;
+        if (venueDoc.exists) {
+            venueData = venueDoc.data();
             
-            itemsList.appendChild(itemElement);
-        });
+            // 更新導航欄用戶資訊
+            document.getElementById("navUserName").textContent = venueData.name || "未命名店家";
+            if (venueData.profileImageUrl) {
+                document.getElementById("navUserImage").src = venueData.profileImageUrl;
+            } else if (venueData.imageUrl) {
+                document.getElementById("navUserImage").src = venueData.imageUrl;
+            }
+            
+            // 更新基本資料欄位
+            document.getElementById("storeName").value = venueData.name || "";
+            document.getElementById("storePhone").value = venueData.phoneNumber || "";
+            document.getElementById("storeEmail").value = venueData.email || "";
+            document.getElementById("storeWebsite").value = venueData.website || "";
+            document.getElementById("storeDescription").value = venueData.description || "";
+            
+            // 更新店家主圖
+            if (venueData.imageUrl) {
+                const mainImagePreview = document.querySelector(".image-preview");
+                if (mainImagePreview) {
+                    mainImagePreview.innerHTML = `
+                    <img src="${venueData.imageUrl}" alt="店家頭像/Logo">
+                    <div class="remove-image">
+                        <i class="fas fa-times"></i>
+                    </div>
+                    `;
+                    
+                    // 添加刪除事件
+                    const removeBtn = mainImagePreview.querySelector('.remove-image');
+                    if (removeBtn) {
+                        removeBtn.addEventListener('click', function() {
+                            if (confirm('確定要刪除頭像嗎?')) {
+                                removeMainImage();
+                            }
+                        });
+                    }
+                }
+            }
+            
+            // 更新營業時間
+            if (venueData.openingHours && venueData.openingHours.length > 0) {
+                updateOpeningHours(venueData.openingHours);
+            } else {
+                // 設置預設營業時間
+                initDefaultOpeningHours();
+            }
+            
+            // 更新活動類型
+            if (venueData.activityTypes && venueData.activityTypes.length > 0) {
+                updateActivityTypes(venueData.activityTypes);
+            }
+            
+            // 更新標籤
+            if (venueData.tags && venueData.tags.length > 0) {
+                updateTags(venueData.tags);
+            }
+            
+            // 更新環境照片
+            if (venueData.galleryImages && venueData.galleryImages.length > 0) {
+                updateGallery(venueData.galleryImages);
+            }
+            
+            // 更新地理位置
+            if (venueData.location) {
+                updateLocationFields(venueData.location);
+            }
+            
+            // 更新儀表板統計數據
+            updateDashboardStats();
+            
+            console.log("店家資料載入完成");
+        } else {
+            // 店家資料不存在，可能是新用戶
+            console.log("店家資料不存在，請建立資料");
+            showAlert("歡迎使用店家管理平台！請完善您的店家資料。", "info");
+            
+            // 設置預設營業時間
+            initDefaultOpeningHours();
+            
+            // 創建新的店家文檔
+            await initializeNewVenue();
+        }
+    } catch (error) {
+        console.error("載入店家資料錯誤:", error);
+        showAlert("載入資料時發生錯誤，請稍後再試", "danger");
     }
-    
-    // 添加所有按鈕事件
-    addMenuItemsEvents();
 }
+
+// 2. 為新用戶初始化店家資料
+async function initializeNewVenue() {
+    try {
+        if (!currentUser || !currentUser.uid) return;
+        
+        // 檢查是否已存在店家文檔
+        const venueDoc = await db.collection("venues").doc(currentUser.uid).get();
+        if (venueDoc.exists) return;
+        
+        // 創建預設數據
+        const defaultVenueData = {
+            name: "未命名店家",
+            description: "",
+            phoneNumber: "",
+            email: currentUser.email || "",
+            website: "",
+            isActive: true,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // 寫入到資料庫
+        await db.collection("venues").doc(currentUser.uid).set(defaultVenueData);
+        console.log("已創建新的店家資料");
+        
+        // 更新本地數據
+        venueData = defaultVenueData;
+    } catch (error) {
+        console.error("初始化新店家資料時出錯:", error);
+    }
+}
+
 
 // 添加商品項目相關事件
 function addMenuItemsEvents() {
@@ -1521,9 +1775,28 @@ function addMenuItemsEvents() {
 // 儲存商品項目
 async function saveMenuItem(category) {
     try {
-        const name = document.getElementById('itemName').value;
-        const description = document.getElementById('itemDesc').value;
-        const imageFile = document.getElementById('itemImage').files[0];
+        // 獲取當前顯示的表單的輸入值，而不是固定的 ID
+        const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
+        const form = document.getElementById(formId);
+        
+        // 如果找不到特定類別的表單，使用通用表單
+        let nameInput, descInput, imageInput;
+        
+        if (form) {
+            nameInput = form.querySelector('#itemName') || form.querySelector('input[placeholder*="商品名稱"]');
+            descInput = form.querySelector('#itemDesc') || form.querySelector('textarea[placeholder*="描述"]');
+            imageInput = form.querySelector('#itemImage') || form.querySelector('input[type="file"]');
+        } else {
+            // 使用通用 ID
+            nameInput = document.getElementById('itemName');
+            descInput = document.getElementById('itemDesc');
+            imageInput = document.getElementById('itemImage');
+        }
+        
+        // 獲取輸入值
+        const name = nameInput ? nameInput.value : '';
+        const description = descInput ? descInput.value : '';
+        const imageFile = imageInput && imageInput.files.length > 0 ? imageInput.files[0] : null;
         
         if (!name || !category) {
             showAlert("請填寫商品名稱", "warning");
@@ -1555,12 +1828,11 @@ async function saveMenuItem(category) {
         await loadMenuItems();
         
         // 重置表單
-        document.getElementById('itemName').value = '';
-        document.getElementById('itemDesc').value = '';
-        document.getElementById('itemImage').value = '';
+        if (nameInput) nameInput.value = '';
+        if (descInput) descInput.value = '';
+        if (imageInput) imageInput.value = '';
         
-        const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
-        const form = document.getElementById(formId);
+        // 隱藏表單
         if (form) {
             form.style.display = 'none';
         }
@@ -1571,6 +1843,9 @@ async function saveMenuItem(category) {
         showAlert("添加商品項目失敗，請稍後再試", "danger");
     }
 }
+
+
+
 
 // 刪除商品類別
 async function deleteCategory(category) {
@@ -1656,27 +1931,35 @@ async function compressImage(file, maxWidth, maxHeight) {
                 canvas.width = width;
                 canvas.height = height;
                 
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                
-                // 將畫布轉換為Blob
-                canvas.toBlob(blob => {
-                    // 創建一個新文件，保持原始檔名
-                    const compressedFile = new File([blob], file.name, {
-                        type: file.type,
-                        lastModified: Date.now()
-                    });
+                try {
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
                     
-                    resolve(compressedFile);
-                }, file.type, 0.7); // 壓縮質量0.7
+                    // 將畫布轉換為Blob
+                    canvas.toBlob(blob => {
+                        // 創建一個新文件，保持原始檔名
+                        const compressedFile = new File([blob], file.name, {
+                            type: file.type,
+                            lastModified: Date.now()
+                        });
+                        
+                        resolve(compressedFile);
+                    }, file.type, 0.7); // 壓縮質量0.7
+                } catch (error) {
+                    console.error("圖片壓縮過程中出錯:", error);
+                    // 如果壓縮失敗，返回原始文件
+                    resolve(file);
+                }
             };
             
             img.onerror = function() {
+                console.error("圖片加載失敗");
                 reject(new Error('圖片加載失敗'));
             };
         };
         
         reader.onerror = function() {
+            console.error("文件讀取失敗");
             reject(new Error('文件讀取失敗'));
         };
     });
