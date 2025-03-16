@@ -27,15 +27,27 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 監聽 Firebase 初始化完成事件
     document.addEventListener('firebase-ready', function() {
-        console.log('Firebase 初始化完成，開始綁定登出按鈕');
-        initLogoutButtons();
-    });
-    
-    // 監聽用戶認證狀態
-    document.addEventListener('user-authenticated', function(e) {
-        currentUser = e.detail;
-        // 加載店家資料
-        loadVenueData();
+        console.log('Firebase 初始化完成，開始監聽認證狀態');
+        
+        // 監聽用戶認證狀態
+        onAuthStateChanged(auth, function(user) {
+            if (user) {
+                console.log('已檢測到登入用戶:', user.email);
+                currentUser = user;
+                // 清除重定向標記，允許下次檢查
+                localStorage.removeItem('redirected_to_dashboard');
+                // 加載店家資料
+                loadVenueData();
+            } else {
+                console.log('未檢測到登入用戶，將重定向到登入頁面');
+                
+                // 確保當前頁面是儀表板頁面
+                if (window.location.pathname.includes('business-dashboard')) {
+                    console.log('未登入但在儀表板頁面，重定向到登入頁面');
+                    window.location.href = 'business-login.html?redirect=true';
+                }
+            }
+        });
     });
 });
 
