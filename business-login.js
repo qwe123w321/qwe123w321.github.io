@@ -439,7 +439,6 @@ async function checkBusinessStatus(userId) {
         }
     } catch (error) {
         console.error('檢查審核狀態時發生錯誤:', error);
-        showError('檢查審核狀態時發生錯誤，請稍後再試');
     }
 }
 
