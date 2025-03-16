@@ -97,12 +97,17 @@ document.addEventListener('DOMContentLoaded', function() {
     onAuthStateChanged(auth, function(user) {
         if (user) {
             console.log('檢測到用戶已登入:', user.email);
-            // 用戶已登入，檢查審核狀態
-            setTimeout(() => {
-                checkBusinessStatus(user.uid);
-            }, 500); // 延遲執行，確保 DOM 已完全準備好
+            // 避免在初始加載時就檢查狀態，這可能導致循環
+            if (!window.initialAuthCheckComplete) {
+                window.initialAuthCheckComplete = true;
+                // 使用 setTimeout 延遲執行，避免與其他操作競爭
+                setTimeout(() => {
+                    checkBusinessStatus(user.uid);
+                }, 1000);
+            }
         } else {
             console.log('未檢測到已登入用戶');
+            window.initialAuthCheckComplete = false;
         }
     });
 });
@@ -200,15 +205,18 @@ async function handleLogin(e) {
         
         if (!appCheckResult.success) {
             console.warn('App Check 驗證失敗，但仍將嘗試登入');
+            // 添加標誌，指示 App Check 失敗但允許登入嘗試
+            window.appCheckFailed = true;
         } else {
             console.log('App Check 驗證成功，繼續登入流程');
-            
+            window.appCheckFailed = false;
             // 設置 XHR 攔截器來添加 App Check 令牌
             installXHRInterceptor();
         }
     } catch (error) {
         console.error('App Check 檢查失敗:', error);
-        // 仍然繼續嘗試登入
+        // 記錄 App Check 失敗但繼續嘗試
+        window.appCheckFailed = true;
     }
     
     try {
@@ -409,25 +417,25 @@ async function checkBusinessStatus(userId) {
             
             // 根據審核狀態處理
             if (businessData.status === 'approved') {
-                // 添加日誌便於調試
                 console.log('登入成功：商家已通過審核，重定向到儀表板');
-                
-                // 通過審核，重定向到店家後台
-                window.location.href = 'business-dashboard.html';
+                // 使用絕對路徑確保正確重定向
+                window.location.href = window.location.origin + '/business-dashboard.html';
+                return; // 防止繼續執行
             } else if (businessData.status === 'pending') {
-                // 審核中，顯示等待訊息
                 console.log('登入成功：商家審核中');
                 showStatusMessage('pending');
             } else if (businessData.status === 'rejected') {
-                // 審核未通過，顯示原因
                 console.log('登入失敗：商家審核未通過');
                 showStatusMessage('rejected', businessData.rejectReason || '未提供拒絕原因');
             }
         } else {
-            // 找不到店家資料，登出並顯示錯誤
+            // 找不到店家資料，但不要立即登出
             console.error('找不到店家資料');
-            await signOut(auth);
             showError('找不到店家資料，請聯繫客服');
+            // 延遲登出以避免循環
+            setTimeout(async () => {
+                await signOut(auth);
+            }, 2000);
         }
     } catch (error) {
         console.error('檢查審核狀態時發生錯誤:', error);
