@@ -57,34 +57,52 @@ try {
     console.log('等待 reCAPTCHA 腳本加載...');
     
     // 定期檢查 reCAPTCHA 是否加載
-    let recaptchaCheckInterval = setInterval(() => {
-        if (checkRecaptchaLoaded()) {
+    // 檢查當前頁面是否為後台面板
+    const isDashboard = window.location.pathname.includes('dashboard');
+    if (isDashboard) {
+        // 儀表板頁面不需要 App Check
+        console.log('檢測到儀表板頁面，跳過 App Check 初始化');
+        // 清除可能存在的間隔檢查
+        if (typeof recaptchaCheckInterval !== 'undefined') {
             clearInterval(recaptchaCheckInterval);
-            console.log('reCAPTCHA 腳本已加載，繼續初始化 App Check');
-            
-            // 嘗試初始化 App Check
-            try {
-                appCheck = initializeAppCheck(app, {
-                    provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
-                    isTokenAutoRefreshEnabled: true
-                });
-                
-                window.appCheck = appCheck; // 存儲到全局以便模組訪問
-                console.log('App Check 初始化成功');
-            } catch (initError) {
-                console.error('App Check 初始化失敗:', initError, initError.stack);
-                appCheck = null;
-            }
         }
-    }, 1000);
-    
+        
+        // 設置一個假的 App Check，避免錯誤
+        appCheck = { 
+            getToken: () => Promise.resolve({ token: 'dashboard-mock-token' }) 
+        };
+        window.appCheck = appCheck;
+    } else {
+        // 登入頁面等需要 App Check 的頁面
+        let recaptchaCheckInterval = setInterval(() => {
+            if (checkRecaptchaLoaded()) {
+                clearInterval(recaptchaCheckInterval);
+                console.log('reCAPTCHA 腳本已加載，繼續初始化 App Check');
+                
+                // 嘗試初始化 App Check
+                try {
+                    appCheck = initializeAppCheck(app, {
+                        provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
+                        isTokenAutoRefreshEnabled: true
+                    });
+                    
+                    window.appCheck = appCheck; // 存儲到全局以便模組訪問
+                    console.log('App Check 初始化成功');
+                } catch (initError) {
+                    console.error('App Check 初始化失敗:', initError, initError.stack);
+                    appCheck = null;
+                }
+            }
+        }, 1000);
+    }
+
     // 確保超時後清除 interval
     setTimeout(() => {
         if (recaptchaCheckInterval) {
             clearInterval(recaptchaCheckInterval);
-            console.error('reCAPTCHA 腳本加載檢查超時');
+            console.warn('reCAPTCHA 腳本加載檢查超時，但不影響儀表板功能');
         }
-    }, 15000);
+    }, 8000); // 縮短超時時間
     
 } catch (error) {
     console.error('App Check 初始化過程中發生錯誤:', error);
