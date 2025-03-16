@@ -175,11 +175,18 @@ async function handleLogin(e) {
     submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 登入中...';
     submitButton.disabled = true;
     
+    // 添加登入超時處理
+    const loginTimeout = setTimeout(() => {
+        submitButton.innerHTML = originalButtonText;
+        submitButton.disabled = false;
+        showError('登入請求超時，請稍後再試');
+    }, 15000); // 15秒超時
+
     // App Check檢查（保留功能但減少日誌輸出）
     try {
         // 靜默檢查App Check
-        await checkAppCheckStatus();
-        installXHRInterceptor();
+        // await checkAppCheckStatus();
+        // installXHRInterceptor();
     } catch (error) {
         // 不需要告知用戶App Check狀態
     }
@@ -188,7 +195,7 @@ async function handleLogin(e) {
         // 使用Firebase Auth登入
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-        
+        clearTimeout(loginTimeout);
         // 檢查郵箱是否已驗證
         if (!user.emailVerified) {
             // 未驗證，發送新的驗證郵件
