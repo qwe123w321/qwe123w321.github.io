@@ -55,21 +55,63 @@
             padding: 20px;
         }
 
+        /* 修復頭部區域樣式以及管理員按鈕顯示 */
         .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             color: white;
             padding: 20px;
             border-radius: var(--border-radius);
             margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             box-shadow: var(--box-shadow);
         }
 
         .header h1 {
             margin: 0;
             font-size: 24px;
+            flex: 0 0 auto;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .admin-button {
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 20px;
+            padding: 8px 16px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        .admin-button:hover {
+            background-color: #45a049;
+        }
+
+        .logout-button {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 20px;
+            padding: 8px 16px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .logout-button:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        #userStatus {
+            color: white;
+            font-size: 14px;
         }
 
         .card {
@@ -899,34 +941,34 @@
 <body>
     <div class="header">
         <h1>系統管理後台</h1>
-        <div>
+        <div class="header-actions">
             <span id="userStatus" style="margin-right: 15px;"></span>
-            <button id="adminButton" class="admin-button" style="display: none; margin-right: 10px; background-color: #4CAF50; color: white; border-radius: 20px; padding: 8px 16px; border: none;">申請管理員權限</button>
+            <button id="adminButton" class="admin-button" style="display: none;">申請管理員權限</button>
             <button id="logoutButton" class="logout-button" style="display: none;">登出</button>
         </div>
-        <!-- 添加管理員密鑰輸入對話框 -->
-        <div id="adminKeyModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7);">
-            <div style="background-color: #fefefe; margin: 15% auto; padding: 20px; border-radius: 12px; width: 80%; max-width: 500px;">
-                <h3>申請管理員權限</h3>
-                <p>請輸入管理員密鑰：</p>
-                <input type="password" id="adminKeyInput" style="width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; border: 1px solid #ddd; border-radius: 8px;">
-                <p style="font-size: 12px; color: #666;">注意：只有授權人員才能申請管理員權限，且需從指定的IP進行操作。</p>
-                <div style="display: flex; justify-content: flex-end; margin-top: 15px;">
-                    <button id="cancelAdminKey" style="margin-right: 10px; padding: 8px 16px; border-radius: 8px; border: none; background-color: #f0f0f0; cursor: pointer;">取消</button>
-                    <button id="submitAdminKey" style="padding: 8px 16px; border-radius: 8px; border: none; background-color: #9D7F86; color: white; cursor: pointer;">確認</button>
-                </div>
-                <div id="adminKeyError" style="color: red; margin-top: 10px; display: none;"></div>
+    </div>
+     <!-- 管理員權限對話框保持不變 -->
+    <div id="adminKeyModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7);">
+        <div style="background-color: #fefefe; margin: 15% auto; padding: 20px; border-radius: 12px; width: 80%; max-width: 500px;">
+            <h3>申請管理員權限</h3>
+            <p>請輸入管理員密鑰：</p>
+            <input type="password" id="adminKeyInput" style="width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; border: 1px solid #ddd; border-radius: 8px;">
+            <p style="font-size: 12px; color: #666;">注意：只有授權人員才能申請管理員權限，且需從指定的IP進行操作。</p>
+            <div style="display: flex; justify-content: flex-end; margin-top: 15px;">
+                <button id="cancelAdminKey" style="margin-right: 10px; padding: 8px 16px; border-radius: 8px; border: none; background-color: #f0f0f0; cursor: pointer;">取消</button>
+                <button id="submitAdminKey" style="padding: 8px 16px; border-radius: 8px; border: none; background-color: #9D7F86; color: white; cursor: pointer;">確認</button>
             </div>
+            <div id="adminKeyError" style="color: red; margin-top: 10px; display: none;"></div>
         </div>
-        
-        <!-- 添加管理員成功提示框 -->
-        <div id="adminSuccessModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7);">
-            <div style="background-color: #fefefe; margin: 15% auto; padding: 20px; border-radius: 12px; width: 80%; max-width: 500px; text-align: center;">
-                <h3 style="color: #4CAF50;">操作成功</h3>
-                <p>您已成功獲得管理員權限！</p>
-                <p>系統將在 <span id="reloadCountdown">3</span> 秒後自動重新載入頁面。</p>
-                <button id="reloadNow" style="margin-top: 15px; padding: 8px 16px; border-radius: 8px; border: none; background-color: #9D7F86; color: white; cursor: pointer;">立即重新載入</button>
-            </div>
+    </div>
+
+    <!-- 管理員成功提示框保持不變 -->
+    <div id="adminSuccessModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7);">
+        <div style="background-color: #fefefe; margin: 15% auto; padding: 20px; border-radius: 12px; width: 80%; max-width: 500px; text-align: center;">
+            <h3 style="color: #4CAF50;">操作成功</h3>
+            <p>您已成功獲得管理員權限！</p>
+            <p>系統將在 <span id="reloadCountdown">3</span> 秒後自動重新載入頁面。</p>
+            <button id="reloadNow" style="margin-top: 15px; padding: 8px 16px; border-radius: 8px; border: none; background-color: #9D7F86; color: white; cursor: pointer;">立即重新載入</button>
         </div>
     </div>
 
