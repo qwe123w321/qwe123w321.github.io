@@ -4998,6 +4998,99 @@
                 container.innerHTML = `<div style="text-align: center; padding: 30px;">加載驗證請求時發生錯誤: ${error.message}</div>`;
             }
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('管理員按鈕診斷開始...');
+            
+            // 檢查按鈕是否存在
+            const adminButton = document.getElementById('adminButton');
+            if (!adminButton) {
+                console.error('找不到adminButton元素');
+                return;
+            }
+            console.log('找到adminButton元素:', adminButton);
+            
+            // 檢查Firebase是否初始化
+            if (typeof firebase === 'undefined' || !firebase.apps.length) {
+                console.error('Firebase尚未初始化');
+                return;
+            }
+            console.log('Firebase已初始化');
+            
+            // 檢查用戶認證狀態
+            const auth = firebase.auth();
+            console.log('檢查用戶認證狀態...');
+            
+            // 直接顯示按鈕，無論用戶是否登入（用於測試）
+            // adminButton.style.display = 'inline-block';
+            // console.log('已強制顯示管理員按鈕（測試用）');
+            
+            // 監聽認證狀態變化
+            auth.onAuthStateChanged(async (user) => {
+                console.log('認證狀態變更:', user ? '已登入: ' + user.email : '未登入');
+                
+                if (user) {
+                    try {
+                        // 檢查用戶是否在管理員集合中
+                        const db = firebase.firestore();
+                        console.log('嘗試查詢管理員文檔:', user.uid);
+                        
+                        const adminDoc = await db.collection('admins').doc(user.uid).get();
+                        
+                        if (!adminDoc.exists) {
+                            console.log('用戶不是管理員，顯示申請按鈕');
+                            adminButton.style.display = 'inline-block';
+                            
+                            // 強制更新DOM
+                            setTimeout(() => {
+                                console.log('延遲後按鈕顯示狀態:', adminButton.style.display);
+                                // 再次確保按鈕可見
+                                if (adminButton.style.display === 'none') {
+                                    adminButton.style.display = 'inline-block';
+                                    console.log('已強制顯示管理員按鈕');
+                                }
+                            }, 1000);
+                        } else {
+                            console.log('用戶已是管理員');
+                            // 更新用戶狀態顯示
+                            const userStatus = document.getElementById('userStatus');
+                            if (userStatus) {
+                                userStatus.innerHTML = `已登入: ${user.email} <span style="color: #4CAF50; font-weight: bold; margin-left: 5px;">[管理員]</span>`;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('檢查管理員狀態失敗:', error);
+                        // 出錯時也顯示按鈕（可能是權限問題）
+                        adminButton.style.display = 'inline-block';
+                        console.log('出錯後已強制顯示管理員按鈕');
+                    }
+                }
+            });
+            
+            // 檢查按鈕點擊事件是否正確綁定
+            const adminKeyModal = document.getElementById('adminKeyModal');
+            if (!adminKeyModal) {
+                console.error('找不到adminKeyModal元素');
+            } else {
+                console.log('找到adminKeyModal元素');
+                
+                // 確保按鈕點擊後顯示對話框
+                adminButton.addEventListener('click', function() {
+                    console.log('點擊管理員按鈕');
+                    adminKeyModal.style.display = 'block';
+                });
+                
+                // 確保取消按鈕可以關閉對話框
+                const cancelAdminKey = document.getElementById('cancelAdminKey');
+                if (cancelAdminKey) {
+                    cancelAdminKey.addEventListener('click', function() {
+                        adminKeyModal.style.display = 'none';
+                    });
+                }
+            }
+            
+            console.log('管理員按鈕診斷完成');
+        });
     </script>
 </body>
 </html>
