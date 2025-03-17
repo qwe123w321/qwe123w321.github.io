@@ -75,7 +75,7 @@ function initAdminManager() {
         // 禁用按鈕，顯示處理中
         submitAdminKey.disabled = true;
         submitAdminKey.innerHTML = '<div class="loading-spinner" style="width: 16px; height: 16px; display: inline-block; margin-right: 8px;"></div> 處理中...';
-
+    
         try {
             // 獲取當前用戶
             const user = auth.currentUser;
@@ -84,7 +84,10 @@ function initAdminManager() {
                 resetSubmitButton();
                 return;
             }
-
+            
+            // 確保令牌是最新的
+            await user.getIdToken(true);  // 強制刷新令牌
+            
             // 調用雲函數檢查IP並設置管理員
             const checkAdminFunction = firebase.functions().httpsCallable('checkAndSetAdmin');
             const result = await checkAdminFunction();
@@ -102,25 +105,7 @@ function initAdminManager() {
                 // 顯示成功對話框
                 adminSuccessModal.style.display = 'block';
                 
-                // 倒計時重新載入
-                let countdown = 3;
-                const countdownElement = document.getElementById('reloadCountdown');
-                
-                const countdownInterval = setInterval(() => {
-                    countdown--;
-                    countdownElement.textContent = countdown;
-                    
-                    if (countdown <= 0) {
-                        clearInterval(countdownInterval);
-                        window.location.reload();
-                    }
-                }, 1000);
-                
-                // 立即重新載入按鈕
-                reloadNowButton.addEventListener('click', () => {
-                    clearInterval(countdownInterval);
-                    window.location.reload();
-                });
+                // 其餘代碼不變
             } else {
                 // 設置失敗
                 showAdminKeyError(result.data.message || '您的IP地址不在允許列表中');
