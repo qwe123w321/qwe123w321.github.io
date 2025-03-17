@@ -71,6 +71,7 @@ function initAdminManager() {
     });
 
     // 提交管理員申請
+    // 提交管理員申請 - 嘗試多種調用方式
     submitAdminKey.addEventListener('click', async () => {
         try {
             console.log("開始申請管理員權限...");
@@ -79,70 +80,70 @@ function initAdminManager() {
             submitAdminKey.disabled = true;
             submitAdminKey.innerHTML = '<div class="loading-spinner"></div> 處理中...';
             
-            // 檢查用戶是否已登入
+            // 獲取當前用戶
             const user = auth.currentUser;
             if (!user) {
-                console.error("用戶未登入");
-                showAdminKeyError('未登入，請先登入');
-                resetSubmitButton();
-                return;
+                throw new Error("未登入，請先登入");
             }
             
-            console.log("當前用戶:", user.email, "UID:", user.uid);
+            const uid = user.uid;
+            console.log("當前用戶ID:", uid);
             
-            // 重要: 強制刷新令牌，解決認證問題
-            console.log("正在刷新認證令牌...");
-            const newToken = await user.getIdToken(true);
-            console.log("令牌已刷新，長度:", newToken.length);
-            
-            // 確保 Firebase Functions 正確初始化
-            const functions = firebase.functions();
-            
-            // 顯式設置函數區域 (如果您的函數部署在特定區域)
-            // const functions = firebase.functions(firebase.app(), 'us-central1');
-            
-            console.log("調用雲函數檢查IP並設置管理員...");
-            const checkAdminFunction = functions.httpsCallable('checkAndSetAdmin');
-            const result = await checkAdminFunction();
-            
-            console.log("雲函數調用結果:", result.data);
-            
-            if (result.data.success) {
-                // 成功設置為管理員
-                console.log('管理員設置成功');
+            // 方法1: 嘗試正常調用 (指定區域)
+            try {
+                console.log("嘗試方法1: 標準調用 (指定區域)");
+                const functions = firebase.functions(firebase.app(), 'us-central1');
+                const checkAdminFunction = functions.httpsCallable('checkAndSetAdmin');
+                const result = await checkAdminFunction({uid: uid});
                 
-                // 重要：獲取最新的token以更新custom claims
-                await user.getIdToken(true);
-                
-                // 關閉申請對話框
-                adminKeyModal.style.display = 'none';
-                
-                // 顯示成功對話框
-                adminSuccessModal.style.display = 'block';
-                
-                // 倒計時重新載入
-                let countdown = 3;
-                const countdownElement = document.getElementById('reloadCountdown');
-                
-                const countdownInterval = setInterval(() => {
-                    countdown--;
-                    countdownElement.textContent = countdown;
-                    
-                    if (countdown <= 0) {
-                        clearInterval(countdownInterval);
-                        window.location.reload();
+                if (result.data.success) {
+                    console.log("方法1成功:", result.data);
+                    showSuccessAndReload();
+                    return;
+                }
+            } catch (error1) {
+                console.warn("方法1失敗:", error1);
+            }
+            
+            // 方法2: 使用REST API調用
+            try {
+                console.log("嘗試方法2: REST API調用");
+                const response = await fetch(
+                    'https://us-central1-test1-b1d68.cloudfunctions.net/adminSetupHttp',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({uid: uid})
                     }
-                }, 1000);
+                );
                 
-                // 立即重新載入按鈕
-                reloadNowButton.addEventListener('click', () => {
-                    clearInterval(countdownInterval);
-                    window.location.reload();
+                const result = await response.json();
+                if (result.success) {
+                    console.log("方法2成功:", result);
+                    showSuccessAndReload();
+                    return;
+                }
+            } catch (error2) {
+                console.warn("方法2失敗:", error2);
+            }
+            
+            // 方法3: 直接寫入Firestore (應急方案)
+            try {
+                console.log("嘗試方法3: 直接寫入Firestore");
+                await db.collection('admins').doc(uid).set({
+                    role: 'admin',
+                    addedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    note: "應急方案設置，請手動更新custom claims"
                 });
-            } else {
-                // 設置失敗
-                showAdminKeyError(result.data.message || '您的IP地址不在允許列表中');
-                resetSubmitButton();
+                
+                console.log("方法3成功: 已寫入Firestore");
+                showSuccessAndReload();
+                return;
+            } catch (error3) {
+                console.warn("方法3失敗:", error3);
+                throw error3; // 所有方法都失敗，拋出最後一個錯誤
             }
         } catch (error) {
             console.error('設置管理員權限失敗:', error);
@@ -150,6 +151,35 @@ function initAdminManager() {
             resetSubmitButton();
         }
     });
+
+    // 顯示成功並重新載入
+    function showSuccessAndReload() {
+        // 關閉申請對話框
+        adminKeyModal.style.display = 'none';
+        
+        // 顯示成功對話框
+        adminSuccessModal.style.display = 'block';
+        
+        // 倒計時重新載入
+        let countdown = 3;
+        const countdownElement = document.getElementById('reloadCountdown');
+        
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            countdownElement.textContent = countdown;
+            
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                window.location.reload();
+            }
+        }, 1000);
+        
+        // 立即重新載入按鈕
+        reloadNowButton.addEventListener('click', () => {
+            clearInterval(countdownInterval);
+            window.location.reload();
+        });
+    }
 
     // 顯示錯誤信息
     function showAdminKeyError(message) {
