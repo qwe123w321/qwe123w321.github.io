@@ -154,10 +154,16 @@ function initAdminManager() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('頁面已加載，檢查Firebase初始化狀態...');
     
-    // 確保基本Firebase服務已初始化後再初始化管理員功能
+    // 確保Firebase完全初始化
     if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
         console.log('Firebase已初始化，開始初始化管理員功能');
-        initAdminManager();
+        
+        // 確保先等待認證狀態穩定
+        firebase.auth().onAuthStateChanged(function(user) {
+            console.log('認證狀態檢查:', user ? '已登入' : '未登入');
+            // 只有在確認認證狀態後才初始化管理員功能
+            initAdminManager();
+        });
     } else {
         console.error('Firebase 尚未初始化，無法初始化管理員功能');
         
@@ -172,7 +178,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
                 console.log('Firebase已初始化，開始初始化管理員功能');
                 clearInterval(checkFirebase);
-                initAdminManager();
+                
+                // 確保先等待認證狀態穩定
+                firebase.auth().onAuthStateChanged(function(user) {
+                    console.log('認證狀態檢查:', user ? '已登入' : '未登入');
+                    initAdminManager();
+                });
             } else if (checkCount >= maxChecks) {
                 console.error('Firebase 初始化檢查達到最大次數，放棄等待');
                 clearInterval(checkFirebase);
