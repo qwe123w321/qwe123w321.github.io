@@ -72,45 +72,42 @@ function initAdminManager() {
 
     // 提交管理員申請
     submitAdminKey.addEventListener('click', async () => {
-        // 禁用按鈕，顯示處理中
-        submitAdminKey.disabled = true;
-        submitAdminKey.innerHTML = '<div class="loading-spinner" style="width: 16px; height: 16px; display: inline-block; margin-right: 8px;"></div> 處理中...';
-    
         try {
-            // 獲取當前用戶
+            console.log("開始申請管理員權限...");
+            
+            // 禁用按鈕
+            submitAdminKey.disabled = true;
+            submitAdminKey.innerHTML = '<div class="loading-spinner"></div> 處理中...';
+            
+            // 檢查用戶是否已登入
             const user = auth.currentUser;
             if (!user) {
+                console.error("用戶未登入");
                 showAdminKeyError('未登入，請先登入');
                 resetSubmitButton();
                 return;
             }
             
-            // 確保令牌是最新的
-            await user.getIdToken(true);  // 強制刷新令牌
+            console.log("當前用戶:", user.email, "UID:", user.uid);
             
-            // 調用雲函數檢查IP並設置管理員
-            const checkAdminFunction = firebase.functions().httpsCallable('checkAndSetAdmin');
+            // 重要: 強制刷新令牌，解決認證問題
+            console.log("正在刷新認證令牌...");
+            const newToken = await user.getIdToken(true);
+            console.log("令牌已刷新，長度:", newToken.length);
+            
+            // 確保 Firebase Functions 正確初始化
+            const functions = firebase.functions();
+            
+            // 顯式設置函數區域 (如果您的函數部署在特定區域)
+            // const functions = firebase.functions(firebase.app(), 'us-central1');
+            
+            console.log("調用雲函數檢查IP並設置管理員...");
+            const checkAdminFunction = functions.httpsCallable('checkAndSetAdmin');
             const result = await checkAdminFunction();
             
-            if (result.data.success) {
-                // 成功設置為管理員
-                console.log('管理員設置成功');
-                
-                // 重要：獲取最新的token以更新custom claims
-                await user.getIdToken(true);
-                
-                // 關閉申請對話框
-                adminKeyModal.style.display = 'none';
-                
-                // 顯示成功對話框
-                adminSuccessModal.style.display = 'block';
-                
-                // 其餘代碼不變
-            } else {
-                // 設置失敗
-                showAdminKeyError(result.data.message || '您的IP地址不在允許列表中');
-                resetSubmitButton();
-            }
+            console.log("雲函數調用結果:", result.data);
+            
+            // 剩餘代碼不變...
         } catch (error) {
             console.error('設置管理員權限失敗:', error);
             showAdminKeyError(`操作失敗: ${error.message}`);
