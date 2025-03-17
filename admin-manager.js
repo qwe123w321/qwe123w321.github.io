@@ -107,7 +107,43 @@ function initAdminManager() {
             
             console.log("雲函數調用結果:", result.data);
             
-            // 剩餘代碼不變...
+            if (result.data.success) {
+                // 成功設置為管理員
+                console.log('管理員設置成功');
+                
+                // 重要：獲取最新的token以更新custom claims
+                await user.getIdToken(true);
+                
+                // 關閉申請對話框
+                adminKeyModal.style.display = 'none';
+                
+                // 顯示成功對話框
+                adminSuccessModal.style.display = 'block';
+                
+                // 倒計時重新載入
+                let countdown = 3;
+                const countdownElement = document.getElementById('reloadCountdown');
+                
+                const countdownInterval = setInterval(() => {
+                    countdown--;
+                    countdownElement.textContent = countdown;
+                    
+                    if (countdown <= 0) {
+                        clearInterval(countdownInterval);
+                        window.location.reload();
+                    }
+                }, 1000);
+                
+                // 立即重新載入按鈕
+                reloadNowButton.addEventListener('click', () => {
+                    clearInterval(countdownInterval);
+                    window.location.reload();
+                });
+            } else {
+                // 設置失敗
+                showAdminKeyError(result.data.message || '您的IP地址不在允許列表中');
+                resetSubmitButton();
+            }
         } catch (error) {
             console.error('設置管理員權限失敗:', error);
             showAdminKeyError(`操作失敗: ${error.message}`);
