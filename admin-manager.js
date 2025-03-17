@@ -205,32 +205,65 @@ function initAdminManager() {
 }
 
 // 頁面加載時初始化
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('頁面已加載，檢查Firebase初始化狀態...');
+// 提交管理員密鑰
+submitAdminKey.addEventListener('click', async () => {
+    const key = adminKeyInput.value.trim();
     
-    // 確保基本Firebase服務已初始化後再初始化管理員功能
-    if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
-        console.log('Firebase已初始化，開始初始化管理員功能');
-        initAdminManager();
-    } else {
-        console.error('Firebase 尚未初始化，無法初始化管理員功能');
+    if (!key) {
+      showAdminKeyError('請輸入管理員密鑰');
+      return;
+    }
+  
+    // 禁用按鈕，顯示處理中
+    submitAdminKey.disabled = true;
+    submitAdminKey.innerHTML = '<div class="loading-spinner" style="width: 16px; height: 16px; display: inline-block; margin-right: 8px;"></div> 處理中...';
+  
+    try {
+      // 獲取當前用戶
+      const user = auth.currentUser;
+      if (!user) {
+        showAdminKeyError('未登入，請先登入');
+        resetSubmitButton();
+        return;
+      }
+  
+      // 調用雲函數而不是直接操作 Firestore
+      const addAdminFunction = firebase.functions().httpsCallable('addAdmin');
+      const result = await addAdminFunction({ adminKey: key });
+      
+      if (result.data.success) {
+        // 關閉密鑰對話框
+        adminKeyModal.style.display = 'none';
         
-        // 添加一個等待Firebase初始化的機制
-        let checkCount = 0;
-        const maxChecks = 10; // 最多檢查10次
+        // 顯示成功對話框
+        adminSuccessModal.style.display = 'block';
         
-        const checkFirebase = setInterval(() => {
-            checkCount++;
-            console.log(`嘗試檢查Firebase初始化狀態 (${checkCount}/${maxChecks})...`);
-            
-            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
-                console.log('Firebase已初始化，開始初始化管理員功能');
-                clearInterval(checkFirebase);
-                initAdminManager();
-            } else if (checkCount >= maxChecks) {
-                console.error('Firebase 初始化檢查達到最大次數，放棄等待');
-                clearInterval(checkFirebase);
-            }
-        }, 1000); // 每秒檢查一次
+        // 倒計時重新載入
+        let countdown = 3;
+        const countdownElement = document.getElementById('reloadCountdown');
+        
+        const countdownInterval = setInterval(() => {
+          countdown--;
+          countdownElement.textContent = countdown;
+          
+          if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            window.location.reload();
+          }
+        }, 1000);
+        
+        // 立即重新載入按鈕
+        reloadNowButton.addEventListener('click', () => {
+          clearInterval(countdownInterval);
+          window.location.reload();
+        });
+      } else {
+        showAdminKeyError(result.data.message || '操作失敗');
+        resetSubmitButton();
+      }
+    } catch (error) {
+      console.error('設置管理員權限失敗:', error);
+      showAdminKeyError(`操作失敗: ${error.message}`);
+      resetSubmitButton();
     }
 });
