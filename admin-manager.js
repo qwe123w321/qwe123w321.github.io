@@ -4,6 +4,7 @@ const ALLOWED_IPS = ["192.168.171.83", "192.168.50.206", "192.168.0.11"]; // 允
 
 // 初始化管理員功能
 function initAdminManager() {
+    console.log("初始化管理員功能...");
     const adminButton = document.getElementById('adminButton');
     const adminKeyModal = document.getElementById('adminKeyModal');
     const cancelAdminKey = document.getElementById('cancelAdminKey');
@@ -12,27 +13,40 @@ function initAdminManager() {
     const adminKeyError = document.getElementById('adminKeyError');
     const adminSuccessModal = document.getElementById('adminSuccessModal');
     const reloadNowButton = document.getElementById('reloadNow');
+    const userStatus = document.getElementById('userStatus');
 
     // 確保所有必要元素都存在
-    if (!adminButton || !adminKeyModal || !cancelAdminKey || !submitAdminKey || 
+    if (!adminButton) {
+        console.error('管理員功能初始化失敗：缺少adminButton元素');
+        return;
+    }
+    
+    if (!adminKeyModal || !cancelAdminKey || !submitAdminKey || 
         !adminKeyInput || !adminKeyError || !adminSuccessModal || !reloadNowButton) {
         console.error('管理員功能初始化失敗：缺少必要DOM元素');
         return;
     }
 
+    console.log('所有必要元素已找到，繼續初始化...');
+
     // 檢查當前用戶是否已是管理員
     auth.onAuthStateChanged(async (user) => {
         if (user) {
+            console.log('用戶已登入:', user.email);
             try {
+                // 先將按鈕隱藏，只有確認用戶不是管理員才顯示
+                adminButton.style.display = 'none';
+                
                 // 檢查用戶是否在管理員集合中
                 const adminDoc = await db.collection('admins').doc(user.uid).get();
                 
                 // 只有非管理員用戶才顯示申請按鈕
                 if (!adminDoc.exists) {
+                    console.log('用戶不是管理員，顯示申請按鈕');
                     adminButton.style.display = 'inline-block';
                 } else {
+                    console.log('用戶已是管理員，顯示管理員標識');
                     // 已經是管理員，可以添加一個標識
-                    const userStatus = document.getElementById('userStatus');
                     if (userStatus) {
                         userStatus.innerHTML = `已登入: ${user.email} <span style="color: #4CAF50; font-weight: bold; margin-left: 5px;">[管理員]</span>`;
                     }
@@ -40,11 +54,15 @@ function initAdminManager() {
             } catch (error) {
                 console.error('檢查管理員狀態失敗:', error);
             }
+        } else {
+            console.log('用戶未登入，隱藏管理員按鈕');
+            adminButton.style.display = 'none';
         }
     });
 
     // 顯示管理員密鑰輸入對話框
     adminButton.addEventListener('click', () => {
+        console.log('點擊管理員按鈕，顯示密鑰輸入對話框');
         adminKeyModal.style.display = 'block';
         adminKeyInput.value = '';
         adminKeyError.style.display = 'none';
@@ -188,10 +206,31 @@ function initAdminManager() {
 
 // 頁面加載時初始化
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('頁面已加載，檢查Firebase初始化狀態...');
+    
     // 確保基本Firebase服務已初始化後再初始化管理員功能
     if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+        console.log('Firebase已初始化，開始初始化管理員功能');
         initAdminManager();
     } else {
         console.error('Firebase 尚未初始化，無法初始化管理員功能');
+        
+        // 添加一個等待Firebase初始化的機制
+        let checkCount = 0;
+        const maxChecks = 10; // 最多檢查10次
+        
+        const checkFirebase = setInterval(() => {
+            checkCount++;
+            console.log(`嘗試檢查Firebase初始化狀態 (${checkCount}/${maxChecks})...`);
+            
+            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                console.log('Firebase已初始化，開始初始化管理員功能');
+                clearInterval(checkFirebase);
+                initAdminManager();
+            } else if (checkCount >= maxChecks) {
+                console.error('Firebase 初始化檢查達到最大次數，放棄等待');
+                clearInterval(checkFirebase);
+            }
+        }, 1000); // 每秒檢查一次
     }
 });
