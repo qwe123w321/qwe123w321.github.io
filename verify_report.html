@@ -4713,12 +4713,12 @@
                 
                 const userData = userDoc.data();
                 
-                // 設置請求ID到隱藏字段
+                // 設置請求ID和用戶ID到隱藏字段
                 document.getElementById('verification-requestid').value = requestId;
+                document.getElementById('verification-userid').textContent = userId;
                 
                 // 填充驗證詳情表單
                 document.getElementById('verification-username').textContent = requestData.userName || '未知用戶';
-                document.getElementById('verification-userid').textContent = userId;
                 document.getElementById('verification-selfie').src = requestData.selfiePhotoUrl || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"%3E%3Crect width="300" height="300" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" font-family="Arial" font-size="24" fill="%23999" text-anchor="middle" dominant-baseline="middle"%3E無照片%3C/text%3E%3C/svg%3E';
                 document.getElementById('verification-action').textContent = requestData.action || '未指定動作';
                 
@@ -4730,33 +4730,34 @@
                 const photosContainer = document.getElementById('verification-photos');
                 photosContainer.innerHTML = '';
                 
+                // 獲取照片URLs
                 const photoUrls = userData.photoUrls || [];
+                // 獲取照片順序
                 const photoOrder = userData.photoOrder || [];
                 
-                if (photoUrls.length === 0 || photoOrder.length === 0) {
+                if (photoUrls.length === 0) {
                     photosContainer.innerHTML = '<p>用戶沒有上傳照片</p>';
                     return;
                 }
                 
                 // 加載已驗證的照片信息
                 const verifiedPhotos = userData.verifiedPhotos || {};
+                console.log('已驗證照片狀態:', verifiedPhotos);
                 
-                // 按照順序顯示照片
-                for (let i = 0; i < photoOrder.length; i++) {
-                    const photoIndex = photoOrder[i];
-                    if (photoIndex >= 0 && photoIndex < photoUrls.length && photoUrls[photoIndex]) {
-                        const photoItem = document.createElement('div');
-                        photoItem.className = 'photo-item';
-                        
-                        const isVerified = verifiedPhotos[photoIndex] === true;
-                        
-                        photoItem.innerHTML = `
-                            <img src="${photoUrls[photoIndex]}" alt="用戶照片 ${i+1}" onerror="this.src='https://via.placeholder.com/300?text=無照片'">
-                            <span class="index">#${photoIndex}${isVerified ? ' ✓' : ''}</span>
-                            <input type="checkbox" class="checkbox" data-index="${photoIndex}" ${isVerified ? 'checked' : ''}>
-                        `;
-                        
-                        photosContainer.appendChild(photoItem);
+                // 沒有順序或順序為空時，直接按索引顯示
+                if (photoOrder.length === 0) {
+                    for (let i = 0; i < photoUrls.length; i++) {
+                        if (photoUrls[i]) {
+                            addPhotoItemToContainer(i, photoUrls[i], verifiedPhotos, photosContainer);
+                        }
+                    }
+                } else {
+                    // 按照順序顯示照片
+                    for (let i = 0; i < photoOrder.length; i++) {
+                        const photoIndex = photoOrder[i];
+                        if (photoIndex >= 0 && photoIndex < photoUrls.length && photoUrls[photoIndex]) {
+                            addPhotoItemToContainer(photoIndex, photoUrls[photoIndex], verifiedPhotos, photosContainer);
+                        }
                     }
                 }
                 
@@ -4766,6 +4767,32 @@
                 backToVerificationList();
             }
         }
+
+        // 輔助函數：添加照片項目到容器
+        function addPhotoItemToContainer(photoIndex, photoUrl, verifiedPhotos, container) {
+            const photoItem = document.createElement('div');
+            photoItem.className = 'photo-item';
+            
+            // 檢查照片是否已驗證
+            const isVerified = verifiedPhotos[photoIndex] === true;
+            
+            photoItem.innerHTML = `
+                <img src="${photoUrl}" alt="用戶照片 ${photoIndex}" 
+                    onerror="this.src='data:image/svg+xml,%3Csvg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;300&quot; height=&quot;300&quot; viewBox=&quot;0 0 300 300&quot;%3E%3Crect width=&quot;300&quot; height=&quot;300&quot; fill=&quot;%23f0f0f0&quot;/%3E%3Ctext x=&quot;50%%&quot; y=&quot;50%%&quot; font-family=&quot;Arial&quot; font-size=&quot;24&quot; fill=&quot;%23999&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;middle&quot;%3E載入失敗%3C/text%3E%3C/svg%3E';"
+                    loading="lazy">
+                <span class="index">#${photoIndex}${isVerified ? ' ✓' : ''}</span>
+                <input type="checkbox" class="checkbox" data-index="${photoIndex}" ${isVerified ? 'checked' : ''}>
+            `;
+            
+            container.appendChild(photoItem);
+            
+            // 添加照片預覽功能
+            photoItem.querySelector('img').addEventListener('click', () => {
+                document.getElementById('lightboxImage').src = photoUrl;
+                document.getElementById('imageLightbox').style.display = 'flex';
+            });
+        }
+
 
         // 創建驗證詳情容器
         function createVerificationDetailContainer() {
@@ -4797,11 +4824,21 @@
                 </div>
                 
                 <div class="selfie-container">
-                    <h3>驗證自拍照</h3>
-                    <img id="verification-selfie" class="selfie-photo" src="https://via.placeholder.com/300?text=無照片" alt="驗證自拍照">
+                    <h3>驗證自拍照 <small>(用戶按照指定動作拍攝的照片)</small></h3>
+                    <img id="verification-selfie" class="selfie-photo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='24' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3E無照片%3C/text%3E%3C/svg%3E" alt="驗證自拍照">
                 </div>
                 
-                <h3>用戶照片 (選擇符合驗證條件的照片)</h3>
+                <div class="verification-instruction" style="margin: 20px 0; padding: 15px; background-color: rgba(157, 127, 134, 0.1); border-radius: 8px;">
+                    <h3>驗證說明</h3>
+                    <ul style="margin-top: 10px; padding-left: 20px;">
+                        <li>請比對自拍照與用戶照片是否為同一人</li>
+                        <li>勾選符合身分的照片後點擊「核准所選照片」</li>
+                        <li>未勾選的照片將被移除驗證狀態</li>
+                        <li>核准後照片將顯示已驗證標記</li>
+                    </ul>
+                </div>
+                
+                <h3>用戶照片 <small>(勾選確認為用戶本人的照片)</small></h3>
                 <div class="photos-container" id="verification-photos">
                     <!-- 用戶照片將被動態載入到這裡 -->
                     <div id="loadingPhotos" style="grid-column: 1 / -1; text-align: center; padding: 20px;">
@@ -4861,7 +4898,14 @@
                 approveBtn.disabled = true;
                 approveBtn.innerHTML = '<div class="loading-spinner"></div> 處理中...';
                 
-                // 更新驗證請求狀態
+                // 1. 獲取當前驗證請求數據
+                const requestDoc = await db.collection('PhotoVerificationRequest').doc(requestId).get();
+                if (!requestDoc.exists) {
+                    throw new Error('找不到驗證請求');
+                }
+                const requestData = requestDoc.data();
+                
+                // 2. 更新驗證請求狀態
                 await db.collection('PhotoVerificationRequest').doc(requestId).update({
                     status: 'approved',
                     verifiedPhotoIndices: verifiedIndices,
@@ -4870,34 +4914,56 @@
                     synced: false
                 });
                 
-                // 更新用戶資料中的驗證狀態
+                // 3. 更新用戶資料中的驗證狀態
                 const userDoc = await db.collection('userprofileData').doc(userId).get();
                 if (userDoc.exists) {
                     const userData = userDoc.data();
+                    
+                    // 3.1 獲取或初始化 verifiedPhotos 物件
                     let verifiedPhotos = userData.verifiedPhotos || {};
                     
-                    // 獲取所有照片索引
+                    // 3.2 獲取所有顯示的照片索引 (所有被顯示在驗證界面的照片)
                     const allCheckboxes = document.querySelectorAll('#verification-photos input[type="checkbox"]');
-                    const allIndices = Array.from(allCheckboxes).map(checkbox => {
+                    const allDisplayedIndices = Array.from(allCheckboxes).map(checkbox => {
                         return parseInt(checkbox.getAttribute('data-index'));
                     });
                     
-                    // 更新驗證狀態 - 先將所有顯示的照片設置為false，再將選中的設為true
-                    allIndices.forEach(index => {
+                    // 3.3 更新驗證狀態
+                    // 重要：先將界面上所有顯示的照片設置為 false，再將選中的設為 true
+                    allDisplayedIndices.forEach(index => {
                         verifiedPhotos[index.toString()] = false;
                     });
                     
-                    // 將選中的照片設置為true
+                    // 3.4 將選中的照片設置為 true
                     verifiedIndices.forEach(index => {
                         verifiedPhotos[index.toString()] = true;
                     });
                     
+                    // 3.5 更新用戶文檔中的 verifiedPhotos 字段
                     await db.collection('userprofileData').doc(userId).update({
                         verifiedPhotos: verifiedPhotos
                     });
+                    
+                    console.log('已更新用戶已驗證照片:', verifiedPhotos);
                 }
                 
-                alert('已核准選定的照片');
+                // 4. 刪除驗證請求記錄 (改為使用 delete 而不是更新)
+                await db.collection('PhotoVerificationRequest').doc(requestId).delete();
+                console.log('已刪除驗證請求:', requestId);
+                
+                // 5. 發送通知給用戶
+                await db.collection('notifications').add({
+                    userId: userId,
+                    type: 'verification_approved',
+                    message: '您的照片驗證請求已通過審核',
+                    data: {
+                        verifiedIndices: verifiedIndices
+                    },
+                    isRead: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                alert('已核准選定的照片並刪除驗證請求');
                 
                 // 重置按鈕狀態，以便下次使用
                 approveBtn.disabled = false;
@@ -4915,12 +4981,14 @@
             }
         }
 
+
         // 拒絕驗證
         async function rejectVerification() {
             const requestId = document.getElementById('verification-requestid').value;
+            const userId = document.getElementById('verification-userid').textContent;
             
-            if (!requestId) {
-                alert('缺少請求ID');
+            if (!requestId || !userId) {
+                alert('缺少請求ID或用戶ID');
                 return;
             }
             
@@ -4932,13 +5000,27 @@
                 rejectBtn.disabled = true;
                 rejectBtn.innerHTML = '<div class="loading-spinner"></div> 處理中...';
                 
-                await db.collection('PhotoVerificationRequest').doc(requestId).update({
-                    status: 'rejected',
-                    verifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    verifiedBy: auth.currentUser ? auth.currentUser.uid : 'admin'
+                // 先獲取驗證請求數據，用於之後發送通知
+                const requestDoc = await db.collection('PhotoVerificationRequest').doc(requestId).get();
+                if (!requestDoc.exists) {
+                    throw new Error('找不到驗證請求');
+                }
+                const requestData = requestDoc.data();
+                
+                // 直接刪除驗證請求記錄，而不是更新它的狀態
+                await db.collection('PhotoVerificationRequest').doc(requestId).delete();
+                console.log('已刪除驗證請求:', requestId);
+                
+                // 發送拒絕通知給用戶
+                await db.collection('notifications').add({
+                    userId: userId,
+                    type: 'verification_rejected',
+                    message: '您的照片驗證請求未通過審核，請確保照片清晰顯示您本人，並按照指示的動作拍攝。',
+                    isRead: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
-                alert('已拒絕驗證請求');
+                alert('已拒絕驗證請求並刪除記錄');
                 backToVerificationList();
                 
             } catch (error) {
