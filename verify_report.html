@@ -4876,7 +4876,18 @@
                     const userData = userDoc.data();
                     let verifiedPhotos = userData.verifiedPhotos || {};
                     
-                    // 更新驗證狀態
+                    // 獲取所有照片索引
+                    const allCheckboxes = document.querySelectorAll('#verification-photos input[type="checkbox"]');
+                    const allIndices = Array.from(allCheckboxes).map(checkbox => {
+                        return parseInt(checkbox.getAttribute('data-index'));
+                    });
+                    
+                    // 更新驗證狀態 - 先將所有顯示的照片設置為false，再將選中的設為true
+                    allIndices.forEach(index => {
+                        verifiedPhotos[index.toString()] = false;
+                    });
+                    
+                    // 將選中的照片設置為true
                     verifiedIndices.forEach(index => {
                         verifiedPhotos[index.toString()] = true;
                     });
@@ -4887,6 +4898,11 @@
                 }
                 
                 alert('已核准選定的照片');
+                
+                // 重置按鈕狀態，以便下次使用
+                approveBtn.disabled = false;
+                approveBtn.textContent = '核准所選照片';
+                
                 backToVerificationList();
                 
             } catch (error) {
