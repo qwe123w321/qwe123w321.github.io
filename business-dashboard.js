@@ -190,11 +190,11 @@ async function loadBusinessData() {
             businessData = businessDoc.data();
             
             // 更新導航欄用戶資訊
-            document.getElementById("navUserName").textContent = businessData.businessName || "未命名店家";
+            document.getElementById("businessName").textContent = businessData.businessName || "未命名店家";
             if (businessData.profileImageUrl) {
-                document.getElementById("navUserImage").src = businessData.profileImageUrl;
+                document.getElementById("businessImage").src = businessData.profileImageUrl;
             } else if (businessData.licenseUrls && businessData.licenseUrls.length > 0) {
-                document.getElementById("navUserImage").src = businessData.licenseUrls[0];
+                document.getElementById("businessImage").src = businessData.licenseUrls[0];
             }
             
             // 更新基本資料欄位
@@ -496,7 +496,7 @@ async function removeMainImage() {
         `;
         
         // 更新導航頭像
-        document.getElementById("navUserImage").src = "https://via.placeholder.com/40";
+        document.getElementById("businessImage").src = "https://via.placeholder.com/40";
         
         showAlert("店家頭像已成功刪除", "success");
     } catch (error) {
@@ -556,7 +556,7 @@ async function submitVenueForm() {
         Object.assign(businessData, businessDataToUpdate);
         
         // 更新UI
-        document.getElementById("navUserName").textContent = businessData.name;
+        document.getElementById("businessName").textContent = businessData.name;
         
         // 恢復按鈕狀態
         saveBtn.innerHTML = originalBtnText;
@@ -927,7 +927,7 @@ async function saveBusinessInfo() {
         Object.assign(businessData, dataToUpdate);
         
         // 更新UI
-        document.getElementById("navUserName").textContent = businessData.businessName;
+        document.getElementById("businessName").textContent = businessData.businessName;
         
         // 恢復按鈕狀態
         saveBtn.innerHTML = originalBtnText;
@@ -1553,10 +1553,10 @@ async function deleteCategory(categoryName) {
 function initSidebar() {
     const sidebar = document.querySelector('.sidebar');
     const mainContent = document.querySelector('.main-content');
-    const navToggle = document.querySelector('.nav-toggle');
+    const businessToggle = document.querySelector('.business-toggle');
     
-    if (navToggle) {
-        navToggle.addEventListener('click', function() {
+    if (businessToggle) {
+        businessToggle.addEventListener('click', function() {
             sidebar.classList.toggle('active');
             mainContent.classList.toggle('active');
         });
@@ -2149,7 +2149,7 @@ async function handleMainImageUpload(e) {
         businessData.imageUrl = imageUrl;
         
         // 更新導航頭像
-        document.getElementById("navUserImage").src = imageUrl;
+        document.getElementById("businessImage").src = imageUrl;
         
         showAlert("店家頭像已成功更新", "success");
     } catch (error) {
