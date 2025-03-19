@@ -111,6 +111,11 @@
             // 創建元素並添加到摘要區域
             const summaryInfo = document.querySelector('.summary-info .row');
             
+            if (!summaryInfo) {
+                console.error('找不到摘要信息容器');
+                return;
+            }
+            
             // 清空現有內容
             summaryInfo.innerHTML = '';
             
@@ -123,27 +128,290 @@
             }
             
             // 添加所有表單項目的摘要
-            addSummaryItem('電子郵件', document.getElementById('email').value);
+            const email = document.getElementById('email');
+            addSummaryItem('電子郵件', email ? email.value : '未提供');
             
             const businessType = document.getElementById('businessType');
-            const businessTypeText = businessType.options[businessType.selectedIndex]?.text || '未選擇';
+            const businessTypeText = businessType && businessType.selectedIndex > 0 ? 
+                businessType.options[businessType.selectedIndex].text : '未選擇';
             
-            addSummaryItem('店家名稱', document.getElementById('businessName').value);
+            const businessName = document.getElementById('businessName');
+            addSummaryItem('店家名稱', businessName ? businessName.value : '未提供');
             addSummaryItem('店家類型', businessTypeText);
-            addSummaryItem('店家地址', document.getElementById('businessAddress').value);
-            addSummaryItem('店家電話', document.getElementById('businessPhone').value);
-            addSummaryItem('聯絡人姓名', document.getElementById('contactName').value);
-            addSummaryItem('聯絡人電話', document.getElementById('contactPhone').value);
             
-            // 處理文件上傳
-            const businessLicenseFile = document.getElementById('businessLicenseFile');
-            const fileName = businessLicenseFile.files && businessLicenseFile.files.length > 0 
-                ? businessLicenseFile.files[0].name 
-                : '未上傳';
+            const businessAddress = document.getElementById('businessAddress');
+            addSummaryItem('店家地址', businessAddress ? businessAddress.value : '未提供');
             
-            addSummaryItem('上傳文件', fileName);
+            const businessPhone = document.getElementById('businessPhone');
+            addSummaryItem('店家電話', businessPhone ? businessPhone.value : '未提供');
+            
+            const contactName = document.getElementById('contactName');
+            addSummaryItem('聯絡人姓名', contactName ? contactName.value : '未提供');
+            
+            const contactPhone = document.getElementById('contactPhone');
+            addSummaryItem('聯絡人電話', contactPhone ? contactPhone.value : '未提供');
+            
+            // 處理上傳的文件
+            const uploadedFiles = window.getUploadedBusinessLicenseFiles();
+            if (uploadedFiles.length > 0) {
+                const fileNames = uploadedFiles.map(f => f.fileName).join(', ');
+                addSummaryItem('上傳文件', fileNames);
+            } else {
+                addSummaryItem('上傳文件', '未上傳');
+            }
         }
 
+        // 確保這個函數可以全局使用
+        window.updateSummary = updateSummary;
+
+        // 多照片上傳功能初始化
+        function initMultiPhotoUpload() {
+            const businessLicenseFile = document.getElementById('businessLicenseFile');
+            const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+            const uploadProgress = document.getElementById('uploadProgress');
+            const uploadCountElement = document.getElementById('uploadCount');
+            const uploadLabel = document.getElementById('uploadLabel');
+            
+            if (!businessLicenseFile || !photoPreviewContainer) {
+                console.error('找不到上傳或預覽元素');
+                return;
+            }
+            
+            // 確保 window.uploadedFiles 被初始化
+            if (!window.uploadedFiles) {
+                window.uploadedFiles = [];
+            }
+            
+            // 配置參數
+            const MAX_UPLOAD_COUNT = 5; // 最大上傳張數
+            const MAX_FILE_SIZE_MB = 5; // 每個文件最大 5MB
+            
+            // 更新上傳計數
+            function updateUploadCount() {
+                if (uploadCountElement) {
+                    uploadCountElement.textContent = window.uploadedFiles.length;
+                }
+                
+                if (uploadLabel) {
+                    if (window.uploadedFiles.length >= MAX_UPLOAD_COUNT) {
+                        uploadLabel.style.display = 'none';
+                    } else {
+                        uploadLabel.style.display = 'block';
+                    }
+                }
+            }
+            
+            // 處理文件上傳
+            businessLicenseFile.addEventListener('change', async function(e) {
+                const files = Array.from(e.target.files);
+                
+                if (window.uploadedFiles.length + files.length > MAX_UPLOAD_COUNT) {
+                    alert(`最多只能上傳 ${MAX_UPLOAD_COUNT} 張照片`);
+                    return;
+                }
+                
+                for (const file of files) {
+                    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+                        alert(`文件 ${file.name} 超過大小限制（${MAX_FILE_SIZE_MB}MB）`);
+                        continue;
+                    }
+                    
+                    try {
+                        // 顯示上傳進度
+                        if (uploadProgress) {
+                            uploadProgress.style.display = 'block';
+                        }
+                        
+                        // 壓縮圖片（如果是圖片類型）
+                        let processedFile = file;
+                        if (file.type.startsWith('image/')) {
+                            processedFile = await compressImage(file);
+                        }
+                        
+                        // 添加到上傳文件列表
+                        const fileId = `file-${Date.now()}-${window.uploadedFiles.length}`;
+                        window.uploadedFiles.push({
+                            id: fileId,
+                            file: processedFile,
+                            fileName: file.name,
+                            objectURL: URL.createObjectURL(processedFile)
+                        });
+                        
+                        // 創建預覽元素
+                        createFilePreview(fileId, file);
+                        
+                        // 更新上傳計數
+                        updateUploadCount();
+                        
+                        // 隱藏上傳進度
+                        if (uploadProgress) {
+                            uploadProgress.style.display = 'none';
+                        }
+                    } catch (error) {
+                        console.error('處理文件錯誤:', error);
+                        alert(`處理文件 ${file.name} 時發生錯誤`);
+                        if (uploadProgress) {
+                            uploadProgress.style.display = 'none';
+                        }
+                    }
+                }
+                
+                // 重置文件輸入，以便可以重新選擇相同的文件
+                businessLicenseFile.value = '';
+            });
+            
+            // 壓縮圖片
+            async function compressImage(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.src = event.target.result;
+                        img.onload = function() {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            
+                            // 計算新的尺寸，保持寬高比
+                            let width = img.width;
+                            let height = img.height;
+                            const maxDimension = 1024; // 最大寬度/高度
+                            
+                            if (width > height && width > maxDimension) {
+                                height = Math.round((height * maxDimension) / width);
+                                width = maxDimension;
+                            } else if (height > maxDimension) {
+                                width = Math.round((width * maxDimension) / height);
+                                height = maxDimension;
+                            }
+                            
+                            canvas.width = width;
+                            canvas.height = height;
+                            ctx.drawImage(img, 0, 0, width, height);
+                            
+                            // 轉換為 Blob
+                            canvas.toBlob(
+                                (blob) => {
+                                    // 創建新文件對象
+                                    const compressedFile = new File([blob], file.name, {
+                                        type: 'image/jpeg',
+                                        lastModified: Date.now()
+                                    });
+                                    resolve(compressedFile);
+                                },
+                                'image/jpeg',
+                                0.7 // 設置壓縮質量 (0.7 = 70% 質量)
+                            );
+                        };
+                    };
+                    reader.onerror = function(error) {
+                        reject(error);
+                    };
+                });
+            }
+            
+            // 創建文件預覽
+            function createFilePreview(fileId, file) {
+                const previewItem = document.createElement('div');
+                previewItem.className = 'photo-preview-item';
+                previewItem.id = fileId;
+                
+                // 判斷文件類型
+                if (file.type.startsWith('image/')) {
+                    // 圖片預覽
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.alt = file.name;
+                    img.onload = function() {
+                        URL.revokeObjectURL(this.src);
+                    };
+                    previewItem.appendChild(img);
+                } else {
+                    // PDF 或其他文件類型
+                    const fileIcon = document.createElement('div');
+                    fileIcon.className = 'file-icon';
+                    fileIcon.innerHTML = '<i class="fas fa-file-pdf fa-2x"></i>';
+                    fileIcon.style.display = 'flex';
+                    fileIcon.style.alignItems = 'center';
+                    fileIcon.style.justifyContent = 'center';
+                    fileIcon.style.height = '100%';
+                    fileIcon.style.backgroundColor = '#f8f9fa';
+                    previewItem.appendChild(fileIcon);
+                }
+                
+                // 文件名
+                const fileName = document.createElement('div');
+                fileName.className = 'file-name';
+                fileName.textContent = file.name;
+                previewItem.appendChild(fileName);
+                
+                // 刪除按鈕
+                const deleteBtn = document.createElement('div');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
+                deleteBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    
+                    // 從上傳文件列表中移除
+                    window.uploadedFiles = window.uploadedFiles.filter(item => item.id !== fileId);
+                    
+                    // 移除預覽元素
+                    photoPreviewContainer.removeChild(previewItem);
+                    
+                    // 更新上傳計數
+                    updateUploadCount();
+                });
+                previewItem.appendChild(deleteBtn);
+                
+                // 添加到預覽容器
+                photoPreviewContainer.appendChild(previewItem);
+            }
+            
+            // 使用 DnD (Drag and Drop) 上傳
+            const uploadArea = document.querySelector('.custom-file-upload');
+            
+            if (uploadArea) {
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    uploadArea.addEventListener(eventName, preventDefaults, false);
+                });
+                
+                function preventDefaults(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    uploadArea.addEventListener(eventName, highlight, false);
+                });
+                
+                ['dragleave', 'drop'].forEach(eventName => {
+                    uploadArea.addEventListener(eventName, unhighlight, false);
+                });
+                
+                function highlight() {
+                    uploadArea.classList.add('highlight');
+                }
+                
+                function unhighlight() {
+                    uploadArea.classList.remove('highlight');
+                }
+                
+                uploadArea.addEventListener('drop', handleDrop, false);
+                
+                function handleDrop(e) {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    businessLicenseFile.files = files;
+                    
+                    // 觸發 change 事件
+                    const event = new Event('change', { bubbles: true });
+                    businessLicenseFile.dispatchEvent(event);
+                }
+            }
+            
+            // 初始更新計數
+            updateUploadCount();
+        }
 
         function handleFormKeyPress(event) {
             if (event.key === 'Enter') {
@@ -162,6 +430,31 @@
                 }
             }
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const style = document.createElement('style');
+            style.textContent = `
+                .photo-preview-item.load-error {
+                    border: 2px solid #dc3545;
+                }
+                .photo-preview-item.load-error::after {
+                    content: "載入錯誤";
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: rgba(220, 53, 69, 0.8);
+                    color: white;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    font-size: 10px;
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // 初始化多照片上傳功能
+            initMultiPhotoUpload();
+        });
 
         // DOM加載完成後執行
         document.addEventListener('DOMContentLoaded', function() {
@@ -1055,6 +1348,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
             
     <script>
+        // 確保全局變量初始化
+        window.uploadedFiles = window.uploadedFiles || [];
+
+        // 獲取上傳的文件列表 - 確保全局可用
+        window.getUploadedBusinessLicenseFiles = function() {
+            return window.uploadedFiles || [];
+        };    
+
         // 導航欄滾動效果
         window.addEventListener('scroll', function() {
             const navbar = document.querySelector('.navbar');
@@ -1358,6 +1659,8 @@
             // document.getElementById('businessLicenseFileName').textContent = fileName;
         });
     });
+
+    
 
     // 表單提交處理
     document.getElementById('businessRegisterForm').addEventListener('submit', async function(e) {
