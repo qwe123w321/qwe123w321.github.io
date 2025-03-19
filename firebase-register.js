@@ -1,5 +1,5 @@
 // firebase-register.js
-import { auth, db, storage, doc, collection } from './firebase-config.js';
+import { auth, db, storage, doc, collection, onAuthStateChanged } from './firebase-config.js';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
 import { setDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
 import { ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
