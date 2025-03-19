@@ -17,7 +17,9 @@
     <link rel="icon" href="favicon.ico" type="image/x-icon">
 
     <!-- 添加Firebase ES 模組 script 標籤 -->
-    <script type="module" src="firebase-config.js"></script>
+    <script type="module"> 
+        import { auth, db, storage, doc, getDoc, collection } from './firebase-config.js';
+    </script>;
     
     <!-- 錯誤處理 -->
     <script src="error-handler.js"></script>
