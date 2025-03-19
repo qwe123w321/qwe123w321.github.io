@@ -150,15 +150,6 @@
             
             const contactPhone = document.getElementById('contactPhone');
             addSummaryItem('聯絡人電話', contactPhone ? contactPhone.value : '未提供');
-            
-            // 驗證營業執照上傳
-            const uploadedFiles = window.getUploadedBusinessLicenseFiles();
-            if (!uploadedFiles || uploadedFiles.length === 0) {
-                document.querySelector('.custom-file-upload').classList.add('is-invalid');
-                isValid = false;
-            } else {
-                document.querySelector('.custom-file-upload').classList.remove('is-invalid');
-            }
         }
 
         // 確保這個函數可以全局使用
@@ -1476,12 +1467,15 @@
                 }
                 
                 // 驗證營業執照上傳
-                const businessLicenseFile = document.getElementById('businessLicenseFile');
-                if (!businessLicenseFile.files || businessLicenseFile.files.length === 0) {
+                const uploadedFiles = window.getUploadedBusinessLicenseFiles();
+                console.log('驗證上傳檔案:', uploadedFiles);
+                if (!uploadedFiles || uploadedFiles.length === 0) {
                     document.querySelector('.custom-file-upload').classList.add('is-invalid');
+                    console.log('檔案驗證失敗: 未上傳檔案');
                     isValid = false;
                 } else {
                     document.querySelector('.custom-file-upload').classList.remove('is-invalid');
+                    console.log('檔案驗證成功: 已上傳 ' + uploadedFiles.length + ' 個檔案');
                 }
                 
                 // 驗證條款勾選
@@ -1499,45 +1493,56 @@
         
         // 更新摘要信息
         function updateSummary() {
-        // 創建元素並添加到摘要區域
-        const summaryInfo = document.querySelector('.summary-info .row');
-        
-        // 清空現有內容
-        summaryInfo.innerHTML = '';
-        
-        // 動態添加摘要項目
-        function addSummaryItem(label, value) {
-            const div = document.createElement('div');
-            div.className = 'col-12 mb-2';
-            div.innerHTML = `<strong>${label}：</strong> <span>${value}</span>`;
-            summaryInfo.appendChild(div);
+            // 創建元素並添加到摘要區域
+            const summaryInfo = document.querySelector('.summary-info .row');
+            
+            // 清空現有內容
+            summaryInfo.innerHTML = '';
+            
+            // 動態添加摘要項目
+            function addSummaryItem(label, value) {
+                const div = document.createElement('div');
+                div.className = 'col-12 mb-2';
+                div.innerHTML = `<strong>${label}：</strong> <span>${value}</span>`;
+                summaryInfo.appendChild(div);
+            }
+            
+            // 添加所有表單項目的摘要
+            addSummaryItem('電子郵件', document.getElementById('email').value);
+            
+            const businessType = document.getElementById('businessType');
+            const businessTypeText = businessType.options[businessType.selectedIndex]?.text || '未選擇';
+            
+            addSummaryItem('店家名稱', document.getElementById('businessName').value);
+            addSummaryItem('店家類型', businessTypeText);
+            addSummaryItem('店家地址', document.getElementById('businessAddress').value);
+            addSummaryItem('店家電話', document.getElementById('businessPhone').value);
+            addSummaryItem('聯絡人姓名', document.getElementById('contactName').value);
+            addSummaryItem('聯絡人電話', document.getElementById('contactPhone').value);
+            
+            // 處理文件上傳 - 顯示實際上傳的檔案
+            const uploadedFiles = window.getUploadedBusinessLicenseFiles();
+            let fileDescription = '未上傳';
+
+            if (uploadedFiles && uploadedFiles.length > 0) {
+                if (uploadedFiles.length === 1) {
+                    fileDescription = uploadedFiles[0].fileName;
+                } else {
+                    fileDescription = `已上傳 ${uploadedFiles.length} 個檔案`;
+                }
+            }
+
+            addSummaryItem('上傳文件', fileDescription);
+            console.log('摘要顯示上傳檔案:', fileDescription);
         }
-        
-        // 添加所有表單項目的摘要
-        addSummaryItem('電子郵件', document.getElementById('email').value);
-        
-        const businessType = document.getElementById('businessType');
-        const businessTypeText = businessType.options[businessType.selectedIndex]?.text || '未選擇';
-        
-        addSummaryItem('店家名稱', document.getElementById('businessName').value);
-        addSummaryItem('店家類型', businessTypeText);
-        addSummaryItem('店家地址', document.getElementById('businessAddress').value);
-        addSummaryItem('店家電話', document.getElementById('businessPhone').value);
-        addSummaryItem('聯絡人姓名', document.getElementById('contactName').value);
-        addSummaryItem('聯絡人電話', document.getElementById('contactPhone').value);
-        
-        // 處理文件上傳
-        const businessLicenseFile = document.getElementById('businessLicenseFile');
-        const fileName = businessLicenseFile.files && businessLicenseFile.files.length > 0 
-            ? businessLicenseFile.files[0].name 
-            : '未上傳';
-        
-        addSummaryItem('上傳文件', fileName);
-    }
 
     // 下一步
     function nextStep(currentStep) {
+        console.log(`嘗試進入下一步: 從第 ${currentStep} 步到第 ${currentStep + 1} 步`);
+        const isValidStep = validateStep(currentStep);
+        console.log(`步驟 ${currentStep} 驗證結果:`, isValidStep);
         if (!validateStep(currentStep)) {
+            console.log(`步驟 ${currentStep} 驗證失敗，無法進入下一步`);
             return;
         }
         
@@ -1703,8 +1708,9 @@
             });
             
             // 4. 處理營業執照上傳
-            // 使用新的多文件上傳功能
-           
+            const uploadedFiles = window.getUploadedBusinessLicenseFiles();
+            console.log('提交表單處理上傳檔案:', uploadedFiles);
+
             if (uploadedFiles && uploadedFiles.length > 0) {
                 // 建立照片URL陣列
                 const licenseUrls = [];
