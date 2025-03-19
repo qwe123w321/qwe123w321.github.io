@@ -1,51 +1,342 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 基本函數: 檢查用戶是否已認證
+    // ===== 基本輔助函數 =====
+    
+    // 檢查用戶是否已認證
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    // 基本函數: 檢查是否是管理員 IP 地址
-    function isAdminIP() {
-      // 這裡列出您所有管理員可能訪問的 IP 地址
-      // 注意: 請替換為您實際的管理員 IP 地址
-      return request.ip == '192.168.171.83'   
-        || request.ip.matches('192.168.171.*'); // 支援 IP 範圍匹配
+    // 檢查用戶是否是文檔擁有者
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
     
-    // 通用規則: 已認證用戶或管理員 IP 可讀寫
-    match /{document=**} {
-      allow read, write: if isAuthenticated();
+    // 檢查是否是管理員 IP
+    function isAdminIP() {
+      return request.ip == '192.168.171.83' 
+          || request.ip == '192.168.50.206'
+          || request.ip == '192.168.0.11' 
+          || request.ip.matches('192.168.171.*');
     }
-  }
-}
-
-// 可選: Storage 儲存空間規則
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /{allPaths=**} {
-      // 基礎圖片訪問權限
-      allow read: if true;  // 允許公開讀取所有圖片
-      allow write: if request.auth != null;  // 僅認證用戶可上傳
+    
+    // 檢查是否是管理員用戶（需在 admin 集合中檢查）
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    // 檢查管理員身份（通過 IP 或用戶身份）
+    function hasAdminAccess() {
+      return isAdmin() || isAdminIP();
+    }
+    
+    // ===== 全域規則 - 管理員可以訪問任何集合 =====
+    match /{document=**} {
+      allow read, write, delete: if hasAdminAccess();
+    }
+    
+    // 檢查是否符合創建文檔的最基本要求
+    function isValidCreate() {
+      return isAuthenticated() && 
+             request.resource.data.createdAt is timestamp && 
+             request.resource.data.createdBy == request.auth.uid
+             ;
+    }
+    
+    // 檢查用戶是否是活動主辦人
+    function isActivityHost(activityId) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/activities/$(activityId)) &&
+             get(/databases/$(database)/documents/activities/$(activityId)).data.hostId == request.auth.uid;
+    }
+    
+    // ===== 管理員相關規則 =====
+    
+    // 管理員集合規則
+    match /admins/{userId} {
+      // 只有管理員可以讀取管理員列表
+      allow read: if hasAdminAccess();
       
-      // 驗證相關圖片的特殊規則
-      match /verification_photos/{userId}/{photoId} {
-        // 允許用戶上傳自己的驗證照片
-        allow write: if request.auth != null && request.auth.uid == userId;
+      // 只有特定IP才能創建管理員記錄
+      allow create: if isAuthenticated() && 
+                      request.auth.uid == userId && 
+                      isAdminIP();
+      
+      // 只有管理員可以修改和刪除管理員記錄
+      allow update, delete: if hasAdminAccess() && 
+                              isAuthenticated() && 
+                              request.auth.uid == userId;
+    }
+    
+    // ===== 用戶資料相關規則 =====
+    
+    // 用戶個人資料
+    match /userprofileData/{userId} {
+      // 任何已認證用戶都可以讀取（公開個人資料）
+      allow read: if isAuthenticated();
+      
+      // 只有用戶本人可以修改自己的資料
+      allow create, update, delete: if isOwner(userId);
+      
+      // 管理員可以讀取所有用戶資料
+      allow read: if hasAdminAccess();
+      
+      // 電話號碼查詢專用規則
+      allow read: if isAuthenticated() && 
+                    request.query.limit <= 1 && 
+                    request.query.filters.size() == 1 && 
+                    request.query.filters[0].field_path == 'phone';
+    }
+    
+    // 用戶狀態
+    match /userStatus/{userId} {
+      // 只有用戶本人和管理員可以讀取
+      allow read: if isOwner(userId) || hasAdminAccess();
+      
+      // 只有用戶本人可以更新
+      allow create, update: if isOwner(userId);
+      
+      // 管理員可以更新用戶狀態（例如封禁）
+      allow update: if hasAdminAccess();
+    }
+    
+    // 用戶配額
+    match /userQuotas/{userId} {
+      // 用戶可讀取自己的配額
+      allow read: if isOwner(userId);
+      
+      // 用戶可以更新自己的配額（batch操作時可能需要）
+      allow update: if isOwner(userId);
+      
+      // 只有管理員可以創建和修改配額
+      allow create, update: if hasAdminAccess();
+      
+      // 活動主辦人可以更新參與者的配額（用於活動取消/完成時）
+      allow update: if isAuthenticated() && 
+                     (resource.data.currentActivityId != null && 
+                      isActivityHost(resource.data.currentActivityId));
+    }
+    
+    // 用戶可信度報告
+    match /userReportCredibility/{userId} {
+      // 用戶可以讀取自己的可信度
+      allow read: if isOwner(userId);
+      
+      // 管理員可以讀取和修改
+      allow read, write: if hasAdminAccess();
+    }
+    
+    // ===== 商家相關規則 =====
+    
+    // 商家資料
+    match /businesses/{businessId} {
+      // 任何已認證用戶都可以讀取商家資料
+      allow read: if isAuthenticated();
+      
+      // 只有商家擁有者可以創建和修改商家資料
+      allow create, update, delete: if isAuthenticated() && 
+                                      request.resource.data.ownerId == request.auth.uid;
+      
+      // 管理員可以修改商家資料
+      allow write: if hasAdminAccess();
+    }
+    
+    // ===== 交流相關規則 =====
+    
+    // 聊天訊息
+    match /chats/{chatId} {
+      // 只有聊天參與者可以讀取
+      allow read: if isAuthenticated() && 
+                    (request.auth.uid in resource.data.participants);
+      
+      // 創建規則
+      allow create: if isAuthenticated() && 
+                      request.auth.uid in request.resource.data.participants;
+      
+      // 更新規則 - 確保參與者可以更新聊天狀態
+      allow update: if isAuthenticated() && 
+                      request.auth.uid in resource.data.participants;
+      
+      // 聊天訊息子集合
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && 
+                      (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants);
         
-        // 允許管理員或用戶本人讀取
-        allow read: if request.auth != null 
-                   || request.auth.uid == userId 
-                   || isAdminIP();
+        allow create: if isAuthenticated() && 
+                        (request.resource.data.senderId == request.auth.uid || 
+                         request.resource.data.type == 'system') && 
+                        request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
       }
     }
-  }
-  
-  // 管理員 IP 檢查函數 (與 Firestore 相同)
-  function isAdminIP() {
-    return request.ip == '192.168.171.83'
-    	|| request.ip == '192.168.50.206'
-      || request.ip.matches('192.168.171.*');
+    
+    // 通知
+    match /notifications/{notificationId} {
+      // 用戶可以讀取發給自己的通知
+      allow read: if isAuthenticated() && 
+                    resource.data.userId == request.auth.uid;
+
+      // 活動創建者可以讀取與其活動相關的所有通知
+      allow read: if isAuthenticated() && 
+                    resource.data.activityId != null &&
+                    exists(/databases/$(database)/documents/activities/$(resource.data.activityId)) &&
+                    get(/databases/$(database)/documents/activities/$(resource.data.activityId)).data.hostId == request.auth.uid;
+
+      // 用戶可以標記自己的通知為已讀
+      allow update: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid && 
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt']);
+
+      // 系統、管理員和活動創建者可以創建通知
+      allow create: if hasAdminAccess() ||
+                    (isAuthenticated() && 
+                     ((request.resource.data.activityId != null &&
+                      exists(/databases/$(database)/documents/activities/$(request.resource.data.activityId)) &&
+                      get(/databases/$(database)/documents/activities/$(request.resource.data.activityId)).data.hostId == request.auth.uid) || 
+                      request.resource.data.type == 'system'));
+      
+      // 活動主辦人可以刪除與其活動相關的通知（用於活動取消時）
+      allow delete: if isAuthenticated() && 
+                      resource.data.activityId != null &&
+                      exists(/databases/$(database)/documents/activities/$(resource.data.activityId)) &&
+                      get(/databases/$(database)/documents/activities/$(resource.data.activityId)).data.hostId == request.auth.uid;
+    }
+    
+    // ===== 照片驗證相關規則 =====
+    
+    // 照片驗證請求
+    match /PhotoVerificationRequest/{requestId} {
+      // 用戶可以讀取自己的驗證請求
+      allow read: if isAuthenticated() && 
+                    resource.data.userId == request.auth.uid;
+
+      // 用戶可以創建自己的驗證請求
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid && 
+                      request.resource.data.status == 'pending';
+
+      // 管理員可以讀取所有請求，並更改狀態或刪除請求
+      allow read: if hasAdminAccess();
+      allow update: if hasAdminAccess() && 
+                      request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'verifiedAt', 'verifiedBy', 'synced']);
+      allow delete: if hasAdminAccess();  // 添加此行允許管理員刪除驗證請求
+    }
+    
+    // ===== 活動相關規則 =====
+    
+    // 活動資料
+    match /activities/{activityId} {
+      // 所有認證用戶可以讀取活動
+      allow read: if isAuthenticated();
+
+      // 只有活動創建者可以修改或刪除
+      allow create: if isAuthenticated() && 
+                    (request.resource.data.createdBy == request.auth.uid || 
+                     request.resource.data.hostId == request.auth.uid);
+
+      // 更新和刪除需檢查原始文檔
+      allow update, delete: if isAuthenticated() && 
+                             (resource.data.createdBy == request.auth.uid || 
+                              resource.data.hostId == request.auth.uid);
+    }
+    
+    match /registrations/{registrationId} {
+      // 允許用戶讀取自己的報名記錄
+      allow read: if isAuthenticated() && 
+                    request.auth.uid == resource.data.userId;
+                    
+      allow get: if isAuthenticated() && 
+          					request.auth.uid == resource.data.userId;
+
+      // 允許用戶創建自己的報名記錄
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid && 
+                      request.resource.data.status == 'pending';
+
+      // 活動主辦人可以讀取其活動的所有報名
+      allow read: if isAuthenticated() && 
+                    exists(/databases/$(database)/documents/activities/$(resource.data.activityId)) && 
+                    get(/databases/$(database)/documents/activities/$(resource.data.activityId)).data.hostId == request.auth.uid;
+
+      // 活動主辦人可以更新報名狀態（接受/拒絕）
+      allow update: if isAuthenticated() && 
+                     exists(/databases/$(database)/documents/activities/$(resource.data.activityId)) && 
+                     get(/databases/$(database)/documents/activities/$(resource.data.activityId)).data.hostId == request.auth.uid &&
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      
+      // 活動主辦人可以刪除報名記錄（用於活動取消時）
+      allow delete: if isAuthenticated() && 
+                     exists(/databases/$(database)/documents/activities/$(resource.data.activityId)) && 
+                     get(/databases/$(database)/documents/activities/$(resource.data.activityId)).data.hostId == request.auth.uid;
+
+      // 管理員可以讀取所有報名
+      allow read, write: if hasAdminAccess();
+    }
+    
+    // ===== 電話驗證相關規則 =====
+    
+    // 電話號碼集合 - 用於查詢電話是否存在
+    match /phoneNumbers/{phoneHash} {
+      // 任何認證用戶都可以檢查電話號碼是否存在
+      allow read: if isAuthenticated();
+      
+      // 只有管理員或系統可以創建/更新電話記錄
+      allow write: if hasAdminAccess();
+    }
+    
+    // ===== 系統和分析相關規則 =====
+    
+    // 系統設置
+    match /systemSettings/{settingId} {
+      // 所有人可讀取公開設置
+      allow read: if isAuthenticated() && 
+                    resource.data.isPublic == true;
+      
+      // 只有管理員可以修改系統設置
+      allow write: if hasAdminAccess();
+    }
+    
+    // 分析數據
+    match /analytics/{docId} {
+      // 只有管理員可以讀取和寫入分析數據
+      allow read, write: if hasAdminAccess();
+    }
+    
+    // 報告
+    match /reports/{reportId} {
+      // 創建者可以讀取自己的報告
+      allow read: if isAuthenticated() && 
+                    resource.data.reportedBy == request.auth.uid;
+      
+      // 被舉報的內容擁有者也可以讀取涉及自己的報告
+      allow read: if isAuthenticated() && 
+                    resource.data.targetUserId == request.auth.uid;
+      
+      // 任何認證用戶都可以創建舉報
+      allow create: if isAuthenticated() && 
+                      request.resource.data.reportedBy == request.auth.uid;
+      
+      // 只有管理員可以更新舉報狀態
+      allow update: if hasAdminAccess();
+      
+      // 管理員可以讀取所有報告
+      allow read: if hasAdminAccess();
+    }
+    
+    // 店家審核請求
+    match /businessApprovalRequests/{requestId} {
+      // 用戶可以讀取自己的審核請求
+      allow read: if isAuthenticated() && 
+                    resource.data.userId == request.auth.uid;
+      
+      // 用戶可以創建自己的審核請求
+      allow create: if isAuthenticated() && 
+                     request.resource.data.userId == request.auth.uid && 
+                     request.resource.data.status == 'pending';
+      
+      // 管理員可以讀取和更新所有審核請求
+      allow read, update, delete: if hasAdminAccess();
+    }
   }
 }
