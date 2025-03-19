@@ -1,7 +1,7 @@
 // firebase-reapply.js
 import { auth, db, storage, doc, collection, onAuthStateChanged } from './firebase-config.js';
 import { setDoc, getDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
-import { ref, uploadBytes, getDownloadURL, deleteObject, refFromURL } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
 
 // 等待 DOM 加載完成
 document.addEventListener('DOMContentLoaded', function() {
@@ -164,13 +164,14 @@ async function submitReapplication(e) {
                     for (const oldUrl of oldLicenseUrls) {
                         if (!existingUrls.includes(oldUrl)) {
                             try {
-                                // 嘗試從URL創建引用並刪除
-                                try {
-                                    // 提取文件路徑
-                                    const oldRef = refFromURL(storage, oldUrl);
+                                // 從URL中提取路徑
+                                const pathFromUrl = getPathFromFirebaseStorageUrl(oldUrl);
+                                if (pathFromUrl) {
+                                    // 使用提取的路徑創建參考
+                                    const oldRef = ref(storage, pathFromUrl);
                                     await deleteObject(oldRef);
-                                } catch (refError) {
-                                    console.error('無法創建引用:', refError);
+                                } else {
+                                    console.error('無法從URL提取路徑:', oldUrl);
                                 }
                             } catch (error) {
                                 console.error('刪除舊照片錯誤:', error);
@@ -260,6 +261,34 @@ async function submitReapplication(e) {
         
         // 顯示錯誤訊息
         alert('重新申請時發生錯誤: ' + error.message);
+    }
+}
+
+// 輔助函數: 從Firebase Storage URL中獲取路徑
+function getPathFromFirebaseStorageUrl(url) {
+    try {
+        // 創建URL對象
+        const urlObj = new URL(url);
+        
+        // 檢查是否是Firebase Storage URL (包含 /o/ 路徑)
+        if (urlObj.pathname.includes('/o/')) {
+            // 提取 /o/ 後面的部分
+            const encodedFilePath = urlObj.pathname.split('/o/')[1];
+            
+            // 解碼路徑
+            const decodedPath = decodeURIComponent(encodedFilePath);
+            
+            // 移除查詢參數
+            const pathWithoutQuery = decodedPath.split('?')[0];
+            
+            return pathWithoutQuery;
+        }
+        
+        // 如果不是預期的格式，返回null
+        return null;
+    } catch (error) {
+        console.error('解析Storage URL時出錯:', error);
+        return null;
     }
 }
 
