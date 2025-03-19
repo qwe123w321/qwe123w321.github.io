@@ -4,7 +4,6 @@ import { createUserWithEmailAndPassword, sendEmailVerification } from 'https://w
 import { setDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
 import { ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
 
-// 等待 DOM 加載完成
 document.addEventListener('DOMContentLoaded', function() {
     // 獲取註冊表單
     const registerForm = document.getElementById('businessRegisterForm');
@@ -49,7 +48,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 2. 發送驗證郵件
                 await sendEmailVerification(user);
                 
-                // 3. 存儲店家資訊到 Firestore
+                // 3. 確保用戶已完全認證 (新增)
+                await new Promise((resolve) => {
+                    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+                        if (authUser) {
+                            unsubscribe();
+                            resolve();
+                        }
+                    });
+                });
+                
+                // 4. 存儲店家資訊到 Firestore (添加 ownerId 字段)
                 await setDoc(doc(db, 'businesses', user.uid), {
                     businessName: businessName,
                     businessType: businessType,
@@ -57,12 +66,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     phoneNumber: businessPhone,
                     contactName: contactName,
                     contactPhone: contactPhone,
-                    status: 'pending', // 審核狀態：pending, approved, rejected
+                    ownerId: user.uid,  // 添加這個字段以符合安全規則
+                    status: 'pending', 
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp()
                 });
                 
-                // 4. 處理營業執照上傳
+                // 5. 處理營業執照上傳
                 const uploadedFiles = window.getUploadedBusinessLicenseFiles();
                 console.log('提交表單處理上傳檔案:', uploadedFiles);
 
@@ -88,7 +98,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 }
                 
-                // 5. 創建審核請求
+                // 6. 創建審核請求 (確保字段完全匹配)
                 await setDoc(doc(db, 'businessApprovalRequests', user.uid), {
                     userId: user.uid,
                     businessName: businessName,
@@ -104,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     updatedAt: serverTimestamp()
                 });
                 
-                // 6. 登出用戶（因為需要等待審核）
+                // 7. 登出用戶（因為需要等待審核）
                 await auth.signOut();
                 
                 // 顯示成功訊息
