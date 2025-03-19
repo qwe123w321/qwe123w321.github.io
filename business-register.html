@@ -151,13 +151,13 @@
             const contactPhone = document.getElementById('contactPhone');
             addSummaryItem('聯絡人電話', contactPhone ? contactPhone.value : '未提供');
             
-            // 處理上傳的文件
+            // 驗證營業執照上傳
             const uploadedFiles = window.getUploadedBusinessLicenseFiles();
-            if (uploadedFiles.length > 0) {
-                const fileNames = uploadedFiles.map(f => f.fileName).join(', ');
-                addSummaryItem('上傳文件', fileNames);
+            if (!uploadedFiles || uploadedFiles.length === 0) {
+                document.querySelector('.custom-file-upload').classList.add('is-invalid');
+                isValid = false;
             } else {
-                addSummaryItem('上傳文件', '未上傳');
+                document.querySelector('.custom-file-upload').classList.remove('is-invalid');
             }
         }
 
@@ -1305,22 +1305,10 @@
                     <div class="footer-links">
                         <h4>聯絡我們</h4>
                         <ul>
-                            <li><i class="fas fa-envelope"></i> <a href="mailto:info@brewdate.com">info@brewdate.com</a></li>
-                            <li><i class="fas fa-phone"></i> <a href="tel:+886912345678">+886 912 345 678</a></li>
+                            <li><i class="fas fa-envelope"></i> <a href="mailto:qwe123w321@gmail.com">qwe123w321@gmail.com</a></li>
+                            <li><i class="fas fa-phone"></i> <a href="tel:+886905 235 393">+886 905 235 393</a></li>
                             <li><i class="fas fa-map-marker-alt"></i> <span>台北市信義區松仁路 100 號</span></li>
                         </ul>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6">
-                    <div class="footer-newsletter">
-                        <h4>店家訂閱</h4>
-                        <p>訂閱我們的電子報，獲取最新的活動和合作信息</p>
-                        <form>
-                            <div class="input-group">
-                                <input type="email" name="email" class="form-control" placeholder="您的電子郵件">
-                                <button class="btn btn-primary" type="submit">訂閱</button>
-                            </div>
-                        </form>
                     </div>
                 </div>
             </div>
@@ -1329,7 +1317,7 @@
             <div class="container">
                 <div class="row">
                     <div class="col-md-6">
-                        <p>&copy; 2023 BREWDATE. 保留所有權利.</p>
+                        <p>&copy; 2025 BREWDATE. 保留所有權利.</p>
                     </div>
                     <div class="col-md-6">
                         <div class="footer-bottom-links">
@@ -1716,8 +1704,7 @@
             
             // 4. 處理營業執照上傳
             // 使用新的多文件上傳功能
-            const uploadedFiles = getUploadedBusinessLicenseFiles();
-            
+           
             if (uploadedFiles && uploadedFiles.length > 0) {
                 // 建立照片URL陣列
                 const licenseUrls = [];
@@ -1899,239 +1886,6 @@
         const phoneRegex = /^(0[2-9]\d{7,8}|09\d{8})$/;
         return phoneRegex.test(phone);
     }
-    </script>
-    <script>
-        // 照片上傳功能
-        document.addEventListener('DOMContentLoaded', function() {
-            const businessLicenseFile = document.getElementById('businessLicenseFile');
-            const photoPreviewContainer = document.getElementById('photoPreviewContainer');
-            const uploadProgress = document.getElementById('uploadProgress');
-            const uploadCountElement = document.getElementById('uploadCount');
-            const uploadLabel = document.getElementById('uploadLabel');
-            
-            // 配置參數
-            const MAX_UPLOAD_COUNT = 5; // 最大上傳張數
-            const MAX_FILE_SIZE_MB = 5; // 每個文件最大 5MB
-            let uploadedFiles = []; // 存儲已上傳的文件
-            
-            // 更新上傳計數
-            function updateUploadCount() {
-                uploadCountElement.textContent = uploadedFiles.length;
-                
-                if (uploadedFiles.length >= MAX_UPLOAD_COUNT) {
-                    uploadLabel.style.display = 'none';
-                } else {
-                    uploadLabel.style.display = 'block';
-                }
-            }
-            
-            // 處理文件上傳
-            businessLicenseFile.addEventListener('change', async function(e) {
-                const files = Array.from(e.target.files);
-                
-                if (uploadedFiles.length + files.length > MAX_UPLOAD_COUNT) {
-                    alert(`最多只能上傳 ${MAX_UPLOAD_COUNT} 張照片`);
-                    return;
-                }
-                
-                for (const file of files) {
-                    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-                        alert(`文件 ${file.name} 超過大小限制（${MAX_FILE_SIZE_MB}MB）`);
-                        continue;
-                    }
-                    
-                    try {
-                        // 顯示上傳進度
-                        uploadProgress.style.display = 'block';
-                        
-                        // 壓縮圖片（如果是圖片類型）
-                        let processedFile = file;
-                        if (file.type.startsWith('image/')) {
-                            processedFile = await compressImage(file);
-                        }
-                        
-                        // 添加到上傳文件列表
-                        const fileId = `file-${Date.now()}-${uploadedFiles.length}`;
-                        uploadedFiles.push({
-                            id: fileId,
-                            file: processedFile,
-                            fileName: file.name,
-                            objectURL: URL.createObjectURL(processedFile)
-                        });
-                        
-                        // 創建預覽元素
-                        createFilePreview(fileId, file);
-                        
-                        // 更新上傳計數
-                        updateUploadCount();
-                        
-                        // 隱藏上傳進度
-                        uploadProgress.style.display = 'none';
-                    } catch (error) {
-                        console.error('處理文件錯誤:', error);
-                        alert(`處理文件 ${file.name} 時發生錯誤`);
-                        uploadProgress.style.display = 'none';
-                    }
-                }
-                
-                // 重置文件輸入，以便可以重新選擇相同的文件
-                businessLicenseFile.value = '';
-            });
-            
-            // 壓縮圖片
-            async function compressImage(file) {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onload = function(event) {
-                        const img = new Image();
-                        img.src = event.target.result;
-                        img.onload = function() {
-                            const canvas = document.createElement('canvas');
-                            const ctx = canvas.getContext('2d');
-                            
-                            // 計算新的尺寸，保持寬高比
-                            let width = img.width;
-                            let height = img.height;
-                            const maxDimension = 1024; // 最大寬度/高度
-                            
-                            if (width > height && width > maxDimension) {
-                                height = Math.round((height * maxDimension) / width);
-                                width = maxDimension;
-                            } else if (height > maxDimension) {
-                                width = Math.round((width * maxDimension) / height);
-                                height = maxDimension;
-                            }
-                            
-                            canvas.width = width;
-                            canvas.height = height;
-                            ctx.drawImage(img, 0, 0, width, height);
-                            
-                            // 轉換為 Blob
-                            canvas.toBlob(
-                                (blob) => {
-                                    // 創建新文件對象
-                                    const compressedFile = new File([blob], file.name, {
-                                        type: 'image/jpeg',
-                                        lastModified: Date.now()
-                                    });
-                                    resolve(compressedFile);
-                                },
-                                'image/jpeg',
-                                0.7 // 設置壓縮質量 (0.7 = 70% 質量)
-                            );
-                        };
-                    };
-                    reader.onerror = function(error) {
-                        reject(error);
-                    };
-                });
-            }
-            
-            // 創建文件預覽
-            function createFilePreview(fileId, file) {
-                const previewItem = document.createElement('div');
-                previewItem.className = 'photo-preview-item';
-                previewItem.id = fileId;
-                
-                // 判斷文件類型
-                if (file.type.startsWith('image/')) {
-                    // 圖片預覽
-                    const img = document.createElement('img');
-                    img.src = URL.createObjectURL(file);
-                    img.alt = file.name;
-                    img.onload = function() {
-                        URL.revokeObjectURL(this.src);
-                    };
-                    previewItem.appendChild(img);
-                } else {
-                    // PDF 或其他文件類型
-                    const fileIcon = document.createElement('div');
-                    fileIcon.className = 'file-icon';
-                    fileIcon.innerHTML = '<i class="fas fa-file-pdf fa-2x"></i>';
-                    fileIcon.style.display = 'flex';
-                    fileIcon.style.alignItems = 'center';
-                    fileIcon.style.justifyContent = 'center';
-                    fileIcon.style.height = '100%';
-                    fileIcon.style.backgroundColor = '#f8f9fa';
-                    previewItem.appendChild(fileIcon);
-                }
-                
-                // 文件名
-                const fileName = document.createElement('div');
-                fileName.className = 'file-name';
-                fileName.textContent = file.name;
-                previewItem.appendChild(fileName);
-                
-                // 刪除按鈕
-                const deleteBtn = document.createElement('div');
-                deleteBtn.className = 'delete-btn';
-                deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
-                deleteBtn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    
-                    // 從上傳文件列表中移除
-                    uploadedFiles = uploadedFiles.filter(item => item.id !== fileId);
-                    
-                    // 移除預覽元素
-                    photoPreviewContainer.removeChild(previewItem);
-                    
-                    // 更新上傳計數
-                    updateUploadCount();
-                });
-                previewItem.appendChild(deleteBtn);
-                
-                // 添加到預覽容器
-                photoPreviewContainer.appendChild(previewItem);
-            }
-            
-            // 使用 DnD (Drag and Drop) 上傳
-            const uploadArea = document.querySelector('.custom-file-upload');
-            
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                uploadArea.addEventListener(eventName, preventDefaults, false);
-            });
-            
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-            
-            ['dragenter', 'dragover'].forEach(eventName => {
-                uploadArea.addEventListener(eventName, highlight, false);
-            });
-            
-            ['dragleave', 'drop'].forEach(eventName => {
-                uploadArea.addEventListener(eventName, unhighlight, false);
-            });
-            
-            function highlight() {
-                uploadArea.classList.add('highlight');
-            }
-            
-            function unhighlight() {
-                uploadArea.classList.remove('highlight');
-            }
-            
-            uploadArea.addEventListener('drop', handleDrop, false);
-            
-            function handleDrop(e) {
-                const dt = e.dataTransfer;
-                const files = dt.files;
-                businessLicenseFile.files = files;
-                
-                // 觸發 change 事件
-                const event = new Event('change', { bubbles: true });
-                businessLicenseFile.dispatchEvent(event);
-            }
-        });
-        
-        // 獲取上傳的文件列表
-        function getUploadedBusinessLicenseFiles() {
-            const businessLicenseFileInput = document.getElementById('businessLicenseFile');
-            // 從 uploadedFiles 數組中獲取文件
-            return window.uploadedFiles || [];
-        }
     </script>
 </body>
 </html>
