@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 successAlert.className = 'alert alert-success mt-4';
                 successAlert.innerHTML = `
                     <h5>註冊申請已成功提交！</h5>
-                    <p>我們將盡快審核您的申請，並通過電子郵件通知您結果。請確認您的郵箱並完成驗證。</p>
+                    <p>我們將盡快審核您的申請，並請確認您的郵箱完成驗證。</p>
                     <p>5秒後將自動跳轉到登入頁面...</p>
                 `;
                 document.querySelector('.register-form-container').appendChild(successAlert);
