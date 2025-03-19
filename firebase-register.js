@@ -219,18 +219,4 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('重新申請時發生錯誤: ' + error.message);
         }
     }
-
-    // 輔助函數：驗證電子郵件
-    function isValidEmail(email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
-    }
-
-    // 輔助函數：驗證電話號碼
-    function isValidPhone(phone) {
-        // 簡單的臺灣電話格式驗證，可根據需要調整
-        const phoneRegex = /^(0[2-9]\d{7,8}|09\d{8})$/;
-        return phoneRegex.test(phone);
-    }
-
 });
