@@ -191,7 +191,7 @@
         }
         
         /* 導航欄 */
-        .dashboard-nav {
+        .dashboard-business {
             background-color: white;
             box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
             padding: 15px 20px;
@@ -202,26 +202,26 @@
             border-radius: 10px;
         }
         
-        .dashboard-nav .nav-toggle {
+        .dashboard-business .business-toggle {
             font-size: 24px;
             cursor: pointer;
             color: var(--dark-color);
         }
         
-        .dashboard-nav .nav-user {
+        .dashboard-business .business-user {
             display: flex;
             align-items: center;
             gap: 15px;
         }
         
-        .dashboard-nav .nav-user img {
+        .dashboard-business .business-user img {
             width: 40px;
             height: 40px;
             border-radius: 50%;
             object-fit: cover;
         }
         
-        .dashboard-nav .nav-user .dropdown-toggle {
+        .dashboard-business .business-user .dropdown-toggle {
             background: none;
             border: none;
             color: var(--dark-color);
@@ -994,14 +994,14 @@
         <!-- 主內容區 -->
         <div class="main-content">
             <!-- 頂部導航 -->
-            <div class="dashboard-nav">
-                <div class="nav-toggle">
+            <div class="dashboard-business">
+                <div class="business-toggle">
                     <i class="fas fa-bars"></i>
                 </div>
-                <div class="nav-user dropdown">
+                <div class="business-user dropdown">
                     <button class="dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <img id="navUserImage" src="store.png" alt="用戶頭像">
-                        <span id="navUserName">載入中... <i class="fas fa-chevron-down"></i></span>
+                        <img id="businessImage" src="store.png" alt="用戶頭像">
+                        <span id="businessName">載入中... <i class="fas fa-chevron-down"></i></span>
                     </button>
                     <ul class="dropdown-menu" aria-labelledby="userDropdown">
                         <li><a class="dropdown-item" href="#profile"><i class="fas fa-user"></i> 店家資料</a></li>
@@ -1815,9 +1815,9 @@
             // 側邊欄切換
             const sidebar = document.querySelector('.sidebar');
             const mainContent = document.querySelector('.main-content');
-            const navToggle = document.querySelector('.nav-toggle');
+            const businessToggle = document.querySelector('.business-toggle');
             
-            navToggle.addEventListener('click', function() {
+            businessToggle.addEventListener('click', function() {
                 sidebar.classList.toggle('active');
                 mainContent.classList.toggle('active');
             });
