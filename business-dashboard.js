@@ -1916,31 +1916,63 @@ async function deleteCategory(categoryName) {
     try {
         showAlert("刪除類別中...", "info");
         
-        // 查詢屬於此類別的所有商品項目
-        const itemsSnapshot = await window.db.collection("menuItems")
-            .where("businessId", "==", currentUser.uid)
-            .where("category", "==", categoryName)
-            .get();
-        
-        // 使用批處理來刪除多個文檔
-        const batch = window.db.batch();
-        itemsSnapshot.forEach(doc => {
-            batch.delete(doc.ref);
-        });
-        
-        // 查詢類別文檔
+        // 1. 先查詢所有屬於當前用戶的類別
         const categoriesSnapshot = await window.db.collection("categories")
             .where("businessId", "==", currentUser.uid)
-            .where("name", "==", categoryName)
             .get();
         
-        // 添加類別到批處理
+        // 2. 在 JavaScript 中過濾出符合名稱的類別
+        const categoryDocs = [];
         categoriesSnapshot.forEach(doc => {
-            batch.delete(doc.ref);
+            if (doc.data().name === categoryName) {
+                categoryDocs.push(doc);
+            }
         });
         
-        // 提交批處理
-        await batch.commit();
+        // 3. 查詢該類別下所有商品項目
+        const itemsSnapshot = await window.db.collection("menuItems")
+            .where("businessId", "==", currentUser.uid)
+            .get();
+        
+        // 4. 在 JavaScript 中過濾出屬於該類別的商品
+        const itemDocs = [];
+        itemsSnapshot.forEach(doc => {
+            if (doc.data().category === categoryName) {
+                itemDocs.push(doc);
+            }
+        });
+        
+        // 5. 使用批處理來刪除多個文檔
+        const batch = window.firebase.firestore ? window.firebase.firestore.batch() : 
+                    (window.db.batch ? window.db.batch() : null);
+        
+        if (!batch) {
+            console.error("批處理功能不可用，將逐個刪除文檔");
+            
+            // 逐個刪除商品項目
+            for (const doc of itemDocs) {
+                await window.db.collection("menuItems").doc(doc.id).delete();
+            }
+            
+            // 逐個刪除類別
+            for (const doc of categoryDocs) {
+                await window.db.collection("categories").doc(doc.id).delete();
+            }
+        } else {
+            // 使用批處理刪除多個文檔
+            // 添加商品項目到批處理
+            itemDocs.forEach(doc => {
+                batch.delete(window.db.collection("menuItems").doc(doc.id));
+            });
+            
+            // 添加類別到批處理
+            categoryDocs.forEach(doc => {
+                batch.delete(window.db.collection("categories").doc(doc.id));
+            });
+            
+            // 提交批處理
+            await batch.commit();
+        }
         
         // 重新加載商品列表
         await loadMenuItems();
