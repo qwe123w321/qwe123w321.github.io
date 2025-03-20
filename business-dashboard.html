@@ -27,27 +27,27 @@
     
     <!-- 添加Firebase ES 模組 script 標籤 -->
     <script type="module">
-        // 從 firebase-config.js 導入所有需要的模組
-        import { auth, db, storage, appCheck, onAuthStateChanged, signOut } from './firebase-config.js';
+        // 從相容層引入Firebase服務
+        import firebaseCompat from './firebase-compat.js';
         
         // 將變數暴露給全局範圍
-        window.auth = auth;
-        window.db = db;
-        window.storage = storage;
-        window.appCheck = appCheck;
-    
-        // 暴露 Firebase Auth 方法到全局範圍
+        window.auth = firebaseCompat.auth;
+        window.db = firebaseCompat.db;
+        window.storage = firebaseCompat.storage;
+        
+        // 設置Firebase全局對象
         window.firebase = {
-            auth: {
-                signOut: () => signOut(auth)
+            auth: firebaseCompat.auth,
+            firestore: {
+                FieldValue: firebaseCompat.firestore.FieldValue,
+                GeoPoint: firebaseCompat.firestore.GeoPoint,
+                Timestamp: firebaseCompat.firestore.Timestamp
             },
-            firestore: () => db,
-            storage: () => storage
+            storage: firebaseCompat.storage
         };
         
         // 創建一個事件，通知頁面 Firebase 已初始化完成
         window.addEventListener('DOMContentLoaded', () => {
-            // 等待初始化完成，確保全局變數已賦值
             setTimeout(() => {
                 const event = new CustomEvent('firebase-ready');
                 document.dispatchEvent(event);
@@ -55,8 +55,8 @@
             }, 500);
         });
         
-        // 驗證用戶身份，但不進行重定向
-        onAuthStateChanged(auth, (user) => {
+        // 驗證用戶身份
+        firebaseCompat.auth.onAuthStateChanged((user) => {
             if (user) {
                 console.log('用戶已登入:', user.email);
                 // 觸發用戶登入事件
@@ -64,7 +64,7 @@
                 document.dispatchEvent(event);
             } else {
                 console.log('用戶未登入');
-                // 仍然保留重定向邏輯，但使用更可靠的判斷
+                // 重定向邏輯
                 if (window.location.pathname.includes('dashboard') && !sessionStorage.getItem('redirecting')) {
                     console.log('未登入用戶訪問儀表板，重定向到登入頁面');
                     sessionStorage.setItem('redirecting', 'true');
