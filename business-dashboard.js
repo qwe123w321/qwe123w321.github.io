@@ -1894,109 +1894,51 @@ async function deleteCategory(categoryName) {
 async function saveCategory() {
     try {
         const categoryNameInput = document.getElementById('categoryName');
-        const categoryDescInput = document.getElementById('categoryDesc');
-        
-        if (!categoryNameInput) {
-            showAlert("找不到類別名稱輸入框", "warning");
-            return;
-        }
-        
-        const categoryName = categoryNameInput.value;
-        const categoryDesc = categoryDescInput ? categoryDescInput.value : "";
-        
-        if (!categoryName) {
+        if (!categoryNameInput || !categoryNameInput.value.trim()) {
             showAlert("請填寫類別名稱", "warning");
             return;
         }
         
-        // 顯示載入狀態
-        const saveBtn = document.querySelector('#addCategoryForm .btn-primary');
-        if (saveBtn) {
-            const originalText = saveBtn.textContent;
-            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 儲存中...';
-            saveBtn.disabled = true;
+        const categoryName = categoryNameInput.value.trim();
+        
+        // 先獲取商家的所有類別
+        const categoriesSnapshot = await window.db.collection("categories")
+            .where("businessId", "==", currentUser.uid)
+            .get();
             
-            // 恢復按鈕狀態的函數
-            const restoreButton = () => {
-                saveBtn.textContent = originalText;
-                saveBtn.disabled = false;
-            };
-            
-            try {
-                // 檢查是否已存在相同類別
-                const categoriesSnapshot = await window.db.collection("categories")
-                    .where("businessId", "==", currentUser.uid)
-                    .where("name", "==", categoryName)
-                    .get();
-                
-                if (!categoriesSnapshot.empty) {
-                    showAlert("已存在相同名稱的類別", "warning");
-                    restoreButton();
-                    return;
-                }
-                
-                // 添加到 Firestore
-                await window.db.collection("categories").add({
-                    businessId: currentUser.uid,
-                    name: categoryName,
-                    description: categoryDesc,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                // 重新加載商品列表
-                await loadMenuItems();
-                
-                // 隱藏表單並重置
-                const addCategoryForm = document.getElementById('addCategoryForm');
-                if (addCategoryForm) {
-                    addCategoryForm.style.display = 'none';
-                    categoryNameInput.value = '';
-                    if (categoryDescInput) categoryDescInput.value = '';
-                }
-                
-                showAlert("商品類別已成功添加", "success");
-            } catch (error) {
-                console.error("添加類別時發生錯誤:", error);
-                showAlert("添加類別失敗，請稍後再試", "danger");
-            } finally {
-                restoreButton();
+        // 手動在JavaScript中檢查是否有重複名稱
+        let isDuplicate = false;
+        categoriesSnapshot.forEach(doc => {
+            if (doc.data().name === categoryName) {
+                isDuplicate = true;
             }
-        } else {
-            // 如果找不到按鈕，直接執行
-            // 檢查是否已存在相同類別
-            const categoriesSnapshot = await window.db.collection("categories")
-                .where("businessId", "==", currentUser.uid)
-                .where("name", "==", categoryName)
-                .get();
-                
-            if (!categoriesSnapshot.empty) {
-                showAlert("已存在相同名稱的類別", "warning");
-                return;
-            }
-                
-            // 添加到 Firestore
-            await window.db.collection("categories").add({
-                businessId: currentUser.uid,
-                name: categoryName,
-                description: categoryDesc,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            // 重新加載商品列表
-            await loadMenuItems();
-            
-            // 隱藏表單並重置
-            const addCategoryForm = document.getElementById('addCategoryForm');
-            if (addCategoryForm) {
-                addCategoryForm.style.display = 'none';
-                categoryNameInput.value = '';
-                if (categoryDescInput) categoryDescInput.value = '';
-            }
-            
-            showAlert("商品類別已成功添加", "success");
+        });
+        
+        if (isDuplicate) {
+            showAlert("已存在相同名稱的類別", "warning");
+            return;
         }
+        
+        // 添加到Firestore
+        await window.db.collection("categories").add({
+            businessId: currentUser.uid,
+            name: categoryName,
+            description: document.getElementById('categoryDesc')?.value || "",
+            createdAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // 重新加載商品列表
+        await loadMenuItems();
+        
+        // 重置表單
+        document.getElementById('addCategoryForm').style.display = 'none';
+        categoryNameInput.value = '';
+        if (document.getElementById('categoryDesc')) {
+            document.getElementById('categoryDesc').value = '';
+        }
+        
+        showAlert("商品類別已成功添加", "success");
     } catch (error) {
         console.error("添加類別時發生錯誤:", error);
         showAlert("添加類別失敗，請稍後再試", "danger");
@@ -2433,7 +2375,7 @@ async function handleMainImageUpload(e) {
         const compressedFile = await compressImage(file, 400, 400);
         
         // 上傳到 Storage
-        const storageRef = firebase.storage().ref(`businesses/${currentUser.uid}/main`);
+        const storageRef = window.Storage().ref(`businesses/${currentUser.uid}/main`);
         await storageRef.put(compressedFile);
         const imageUrl = await storageRef.getDownloadURL();
         
@@ -2491,99 +2433,90 @@ async function handleEnvironmentImageUpload(files) {
     if (!files || files.length === 0) return;
     
     try {
-      showPageLoading("正在上傳環境照片，請稍候...");
-      
-      // 獲取環境照片容器和添加按鈕
-      const environmentPreview = document.querySelector('.environment-preview');
-      if (!environmentPreview) {
-        hidePageLoading();
-        showAlert("找不到環境照片容器", "danger");
-        return;
-      }
-      
-      const addBtn = environmentPreview.querySelector('.add-environment-item');
-      if (!addBtn) {
-        hidePageLoading();
-        showAlert("找不到添加按鈕", "danger");
-        return;
-      }
-      
-      // 獲取既有的環境照片URLs
-      let environmentImages = [];
-      if (businessData && businessData.environmentImages) {
-        environmentImages = [...businessData.environmentImages];
-      }
-      
-      // 處理每張照片
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+        showPageLoading("正在上傳環境照片，請稍候...");
         
-        // 檢查文件類型和大小
-        if (!file.type.match('image.*')) {
-          showAlert(`文件 ${file.name} 不是圖片，已跳過`, "warning");
-          continue;
+        // 獲取環境照片容器和添加按鈕
+        const environmentPreview = document.querySelector('.environment-preview');
+        if (!environmentPreview) {
+            hidePageLoading();
+            showAlert("找不到環境照片容器", "danger");
+            return;
         }
         
-        if (file.size > 5 * 1024 * 1024) { // 5MB
-          showAlert(`圖片 ${file.name} 超過 5MB，已跳過`, "warning");
-          continue;
+        // 獲取既有的環境照片URLs
+        let environmentImages = [];
+        if (businessData && businessData.environmentImages) {
+            environmentImages = [...businessData.environmentImages];
         }
         
-        // 壓縮圖片
-        const compressedFile = await compressImage(file, 800, 600);
+        // 處理每張照片
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // 檢查文件類型和大小
+            if (!file.type.match('image.*')) {
+                showAlert(`文件 ${file.name} 不是圖片，已跳過`, "warning");
+                continue;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) { // 5MB
+                showAlert(`圖片 ${file.name} 超過 5MB，已跳過`, "warning");
+                continue;
+            }
+            
+            // 壓縮圖片
+            const compressedFile = await compressImage(file, 800, 600);
+            
+            // 上傳到 Storage - 使用 window.storage 而非 firebase.storage
+            const storageRef = window.storage.ref(`businesses/${currentUser.uid}/environment/${Date.now()}_${file.name}`);
+            await storageRef.put(compressedFile);
+            const imageUrl = await storageRef.getDownloadURL();
+            
+            // 添加到圖片URLs陣列
+            environmentImages.push(imageUrl);
         
-        // 上傳到 Storage - 使用標準路徑
-        const storageRef = firebase.storage().ref(`businesses/${currentUser.uid}/environment/${Date.now()}_${file.name}`);
-        await storageRef.put(compressedFile);
-        const imageUrl = await storageRef.getDownloadURL();
+            // 創建新的環境照片項目
+            const environmentItem = document.createElement('div');
+            environmentItem.className = 'environment-item';
+            environmentItem.innerHTML = `
+                <img src="${imageUrl}" alt="店內環境照片" onerror="this.src='https://via.placeholder.com/150x150?text=載入失敗'">
+                <div class="remove-image">
+                    <i class="fas fa-times"></i>
+                </div>
+            `;
         
-        // 添加到圖片URLs陣列
-        environmentImages.push(imageUrl);
+            // 插入到添加按鈕之前
+            environmentPreview.insertBefore(environmentItem, addBtn);
         
-        // 創建新的環境照片項目
-        const environmentItem = document.createElement('div');
-        environmentItem.className = 'environment-item';
-        environmentItem.innerHTML = `
-            <img src="${imageUrl}" alt="店內環境照片" onerror="this.src='https://via.placeholder.com/150x150?text=載入失敗'">
-            <div class="remove-image">
-                <i class="fas fa-times"></i>
-            </div>
-        `;
-        
-        // 插入到添加按鈕之前
-        environmentPreview.insertBefore(environmentItem, addBtn);
-        
-        // 添加刪除事件
-        const removeBtn = environmentItem.querySelector('.remove-image');
-        removeBtn.addEventListener('click', function() {
-          if (confirm('確定要刪除此照片？')) {
-            removeEnvironmentImage(imageUrl);
-            environmentItem.remove();
-          }
+            // 添加刪除事件
+            const removeBtn = environmentItem.querySelector('.remove-image');
+            removeBtn.addEventListener('click', function() {
+                if (confirm('確定要刪除此照片？')) {
+                    removeEnvironmentImage(imageUrl);
+                    environmentItem.remove();
+                }
+            });
+        }
+      
+        // 更新 Firestore
+        await window.db.collection("businesses").doc(currentUser.uid).update({
+            environmentImages: environmentImages,
+            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
         });
-      }
-      
-      // 更新 Firestore - 只使用 environmentImages 欄位
-      await window.db.collection("businesses").doc(currentUser.uid).update({
-        environmentImages: environmentImages,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      
-      // 更新本地數據
-      if (!businessData) businessData = {};
-      businessData.environmentImages = environmentImages;
-      
-      hidePageLoading();
-      showAlert("環境照片已成功上傳", "success");
+    
+        // 更新本地數據
+        if (!businessData) businessData = {};
+        businessData.environmentImages = environmentImages;
+    
+        hidePageLoading();
+        showAlert("環境照片已成功上傳", "success");
     } catch (error) {
-      console.error("上傳環境照片錯誤:", error);
-      hidePageLoading();
-      showAlert("上傳環境照片失敗，請稍後再試", "danger");
-    } finally {
-      // 清空文件輸入
-      document.getElementById('addEnvironmentImage').value = '';
+        console.error("上傳環境照片錯誤:", error);
+        hidePageLoading();
+        showAlert("上傳環境照片失敗，請稍後再試", "danger");
     }
-  }
+}
+
 
 // 刪除環境照片
 async function removeEnvironmentImage(imageUrl) {
@@ -2598,7 +2531,7 @@ async function removeEnvironmentImage(imageUrl) {
       
       // 從存儲中刪除文件
       try {
-        const storageRef = firebase.storage().refFromURL(imageUrl);
+        const storageRef = window.Storage().refFromURL(imageUrl);
         await storageRef.delete();
       } catch (storageError) {
         console.warn("刪除存儲檔案失敗:", storageError);
@@ -2639,7 +2572,7 @@ async function removeMainImage() {
         
         // 從存儲中刪除文件
         try {
-            const imageRef = firebase.storage().refFromURL(businessData.imageUrl);
+            const imageRef = window.Storage().refFromURL(businessData.imageUrl);
             await imageRef.delete();
         } catch (storageError) {
             console.warn("刪除存儲檔案失敗:", storageError);
