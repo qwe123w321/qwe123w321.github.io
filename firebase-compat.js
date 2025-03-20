@@ -40,14 +40,16 @@ import {
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js';
   
   // 初始化Firebase應用 - 使用你自己的配置
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",         // 替換為你的 API KEY
-    authDomain: "YOUR_AUTH_DOMAIN", // 替換為你的驗證網域
-    projectId: "YOUR_PROJECT_ID",   // 替換為你的專案ID 
-    storageBucket: "YOUR_STORAGE_BUCKET", // 替換為你的儲存桶
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // 替換為你的訊息寄件者ID
-    appId: "YOUR_APP_ID"            // 替換為你的應用程式ID
-  };
+    const firebaseConfig = {
+        apiKey: "AIzaSyDslE4rgN8ZiUam3MCT_bJiSfusUxZS-wU",
+        authDomain: "test1-b1d68.firebaseapp.com",
+        databaseURL: "https://test1-b1d68-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "test1-b1d68",
+        storageBucket: "test1-b1d68.appspot.com",
+        messagingSenderId: "1010412789448",
+        appId: "1:1010412789448:web:2843afa459b3644d118ffd",
+        measurementId: "G-X7RQ8DRZ7P"
+    };
   
   // 初始化 Firebase
   const app = initializeApp(firebaseConfig);
