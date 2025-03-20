@@ -843,27 +843,27 @@
         }
         
         /* 多圖預覽區域 */
-        .gallery-preview {
+        .environment-preview {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             gap: 15px;
             margin-top: 15px;
         }
         
-        .gallery-item {
+        .environment-item {
             height: 150px;
             border-radius: 8px;
             overflow: hidden;
             position: relative;
         }
         
-        .gallery-item img {
+        .environment-item img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
         
-        .gallery-item .remove-image {
+        .environment-item .remove-image {
             position: absolute;
             top: 5px;
             right: 5px;
@@ -879,7 +879,7 @@
             font-size: 12px;
         }
         
-        .add-gallery-item {
+        .add-environment-item {
             height: 150px;
             border: 2px dashed #ddd;
             border-radius: 8px;
@@ -891,18 +891,18 @@
             transition: all 0.3s ease;
         }
         
-        .add-gallery-item:hover {
+        .add-environment-item:hover {
             border-color: var(--primary-color);
             background-color: var(--primary-light);
         }
         
-        .add-gallery-item i {
+        .add-environment-item i {
             font-size: 30px;
             color: #aaa;
             margin-bottom: 10px;
         }
         
-        .add-gallery-item p {
+        .add-environment-item p {
             margin: 0;
             color: #777;
         }
@@ -1197,9 +1197,9 @@
                         <h6 class="mb-3">店內環境照片</h6>
                         <p class="text-muted">上傳高品質的店內環境照片，讓用戶更全面了解您的店鋪環境與氛圍</p>
                         
-                        <div class="gallery-preview">
+                        <div class="environment-preview">
                             <!-- 上傳按鈕 -->
-                            <div class="add-gallery-item">
+                            <div class="add-environment-item">
                                 <i class="fas fa-plus"></i>
                                 <p>添加環境照片</p>
                                 <input type="file" class="d-none" id="addEnvironmentImage" accept="image/*" multiple>
