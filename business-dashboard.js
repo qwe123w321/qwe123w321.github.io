@@ -1578,6 +1578,48 @@ function updateMenuItemsList(menuItemsByCategory) {
 
 // 添加商品項目相關事件
 function addMenuItemsEvents() {
+    // 首先移除所有現有的事件處理程序
+    document.querySelectorAll(".add-product-btn").forEach(btn => {
+        // 先複製一份元素來清除所有事件
+        const clone = btn.cloneNode(true);
+        btn.parentNode.replaceChild(clone, btn);
+    });
+    
+    document.querySelectorAll(".cancel-add-item").forEach(btn => {
+        const clone = btn.cloneNode(true);
+        btn.parentNode.replaceChild(clone, btn);
+    });
+    
+    document.querySelectorAll(".save-item-btn").forEach(btn => {
+        const clone = btn.cloneNode(true);
+        btn.parentNode.replaceChild(clone, btn);
+    });
+    
+    document.querySelectorAll(".edit-item-btn").forEach(btn => {
+        const clone = btn.cloneNode(true);
+        btn.parentNode.replaceChild(clone, btn);
+    });
+    
+    document.querySelectorAll(".delete-item-btn").forEach(btn => {
+        const clone = btn.cloneNode(true);
+        btn.parentNode.replaceChild(clone, btn);
+    });
+    
+    document.querySelectorAll(".delete-category-btn").forEach(btn => {
+        const clone = btn.cloneNode(true);
+        btn.parentNode.replaceChild(clone, btn);
+    });
+    
+    // 重新綁定事件 - 使用事件委託，避免重複添加
+    const categoryList = document.getElementById("categoryList");
+    if (categoryList) {
+        // 移除現有的事件委託處理程序
+        categoryList.removeEventListener("click", categoryListClickHandler);
+        
+        // 添加新的事件委託處理程序
+        categoryList.addEventListener("click", categoryListClickHandler);
+    }
+    
     // 為所有「新增項目」按鈕添加事件監聽
     document.querySelectorAll(".add-product-btn").forEach(btn => {
         btn.addEventListener("click", function() {
@@ -1636,8 +1678,28 @@ function addMenuItemsEvents() {
     });
 }
 
+// 事件委託處理函數
+function categoryListClickHandler(event) {
+    // 通過事件委託處理點擊事件
+    const target = event.target;
+    
+    // 處理「新增項目」按鈕點擊
+    if (target.classList.contains('add-product-btn') || target.closest('.add-product-btn')) {
+        const btn = target.classList.contains('add-product-btn') ? target : target.closest('.add-product-btn');
+        const category = btn.getAttribute('data-category');
+        const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
+        const form = document.getElementById(formId);
+        
+        if (form) {
+            form.style.display = 'block';
+        }
+    }
+}
+
 // 儲存商品項目
 async function saveMenuItem(category) {
+    console.log(`正在儲存 ${category} 的商品項目`); // 添加日誌
+    
     try {
         const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
         const nameInput = document.getElementById(`${formId}-name`);
@@ -1673,8 +1735,8 @@ async function saveMenuItem(category) {
             price: price,
             description: descInput ? descInput.value : "",
             displayInApp: true,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
         };
         
         // 添加到Firestore
