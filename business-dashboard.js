@@ -3138,15 +3138,10 @@ async function compressImage(file, maxWidth, maxHeight) {
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
                 
-                // 將畫布轉換為Blob
+                // 將畫布轉換為Blob，而不是直接創建File對象
                 canvas.toBlob(blob => {
-                    // 創建一個新文件，保持原始檔名
-                    const compressedFile = new File([blob], file.name, {
-                        type: file.type,
-                        lastModified: Date.now()
-                    });
-                    
-                    resolve(compressedFile);
+                    // 直接返回blob，不創建File對象
+                    resolve(blob);
                 }, file.type, 0.7); // 壓縮質量0.7
             };
             
