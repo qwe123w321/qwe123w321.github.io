@@ -1925,9 +1925,14 @@ async function deleteCategory(categoryName) {
         const categoryDocs = [];
         categoriesSnapshot.forEach(doc => {
             if (doc.data().name === categoryName) {
-                categoryDocs.push(doc);
+                categoryDocs.push({id: doc.id});
             }
         });
+        
+        if (categoryDocs.length === 0) {
+            showAlert(`找不到「${categoryName}」類別`, "warning");
+            return;
+        }
         
         // 3. 查詢該類別下所有商品項目
         const itemsSnapshot = await window.db.collection("menuItems")
@@ -1938,35 +1943,38 @@ async function deleteCategory(categoryName) {
         const itemDocs = [];
         itemsSnapshot.forEach(doc => {
             if (doc.data().category === categoryName) {
-                itemDocs.push(doc);
+                itemDocs.push({id: doc.id});
             }
         });
         
-        // 5. 使用批處理來刪除多個文檔
-        const batch = window.db.batch();
+        // 5. 檢查 batch 方法是否可用
+        console.log("window.db =", window.db);
         
-        if (!batch) {
+        if (typeof window.db.batch !== 'function') {
             console.error("批處理功能不可用，將逐個刪除文檔");
             
             // 逐個刪除商品項目
-            for (const doc of itemDocs) {
-                await window.db.collection("menuItems").doc(doc.id).delete();
+            for (const item of itemDocs) {
+                await window.db.collection("menuItems").doc(item.id).delete();
             }
             
             // 逐個刪除類別
-            for (const doc of categoryDocs) {
-                await window.db.collection("categories").doc(doc.id).delete();
+            for (const category of categoryDocs) {
+                await window.db.collection("categories").doc(category.id).delete();
             }
         } else {
+            console.log("使用批處理刪除文檔");
             // 使用批處理刪除多個文檔
+            const batch = window.db.batch();
+            
             // 添加商品項目到批處理
-            itemDocs.forEach(doc => {
-                batch.delete(window.db.collection("menuItems").doc(doc.id));
+            itemDocs.forEach(item => {
+                batch.delete(window.db.collection("menuItems").doc(item.id));
             });
             
             // 添加類別到批處理
-            categoryDocs.forEach(doc => {
-                batch.delete(window.db.collection("categories").doc(doc.id));
+            categoryDocs.forEach(category => {
+                batch.delete(window.db.collection("categories").doc(category.id));
             });
             
             // 提交批處理
@@ -1979,7 +1987,7 @@ async function deleteCategory(categoryName) {
         showAlert(`「${categoryName}」類別已成功刪除`, "success");
     } catch (error) {
         console.error("刪除類別失敗:", error);
-        showAlert("刪除類別失敗，請稍後再試", "danger");
+        showAlert(`刪除類別失敗: ${error.message}`, "danger");
     }
 }
 
