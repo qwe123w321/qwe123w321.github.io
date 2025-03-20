@@ -2517,43 +2517,48 @@ async function handleEnvironmentImageUpload(files) {
 // 刪除環境照片
 async function removeEnvironmentImage(imageUrl) {
     try {
-      showPageLoading("正在移除照片...");
-      
-      if (!businessData || !businessData.environmentImages) {
+        showPageLoading("正在移除照片...");
+        
+        if (!businessData || !businessData.environmentImages) {
+            hidePageLoading();
+            showAlert("找不到照片資訊", "warning");
+            return;
+        }
+        
+        // 從存儲中刪除文件
+        try {
+            // 從URL中獲取路徑 (不使用 refFromURL)
+            const urlPath = imageUrl.split('?')[0]; // 移除查詢參數
+            const storagePath = decodeURIComponent(urlPath.split('/o/')[1]); // 獲取 object 路徑部分
+            
+            const storageRef = window.storage.ref(storagePath);
+            await storageRef.delete();
+            console.log("成功從 Storage 刪除照片");
+        } catch (storageError) {
+            console.warn("刪除 Storage 檔案失敗:", storageError);
+            // 繼續處理，不中斷流程
+        }
+        
+        // 從店家數據中移除 URL
+        const updatedImages = businessData.environmentImages.filter(url => url !== imageUrl);
+        
+        // 更新 Firestore
+        await window.db.collection("businesses").doc(currentUser.uid).update({
+            environmentImages: updatedImages,
+            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // 更新本地數據
+        businessData.environmentImages = updatedImages;
+        
         hidePageLoading();
-        showAlert("找不到照片資訊", "warning");
-        return;
-      }
-      
-      // 從存儲中刪除文件
-      try {
-        const storageRef = window.Storage().refFromURL(imageUrl);
-        await storageRef.delete();
-      } catch (storageError) {
-        console.warn("刪除存儲檔案失敗:", storageError);
-        // 繼續處理，不中斷流程
-      }
-      
-      // 從店家數據中移除 URL
-      const updatedImages = businessData.environmentImages.filter(url => url !== imageUrl);
-      
-      // 更新Firestore - 只更新 environmentImages 欄位
-      await window.db.collection("businesses").doc(currentUser.uid).update({
-        environmentImages: updatedImages,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      
-      // 更新本地數據
-      businessData.environmentImages = updatedImages;
-      
-      hidePageLoading();
-      showAlert("照片已成功刪除", "success");
+        showAlert("照片已成功刪除", "success");
     } catch (error) {
-      console.error("刪除照片錯誤:", error);
-      hidePageLoading();
-      showAlert("刪除照片失敗，請稍後再試", "danger");
+        console.error("刪除照片錯誤:", error);
+        hidePageLoading();
+        showAlert("刪除照片失敗，請稍後再試", "danger");
     }
-  }
+}
 
 // 刪除主圖/頭像
 async function removeMainImage() {
@@ -2568,18 +2573,38 @@ async function removeMainImage() {
         
         // 從存儲中刪除文件
         try {
-            const imageRef = window.Storage().refFromURL(businessData.imageUrl);
-            await imageRef.delete();
+            // 從URL中獲取路徑 (不使用 refFromURL)
+            const urlPath = businessData.imageUrl.split('?')[0]; // 移除查詢參數
+            const storagePath = decodeURIComponent(urlPath.split('/o/')[1]); // 獲取 object 路徑部分
+            
+            const storageRef = window.storage.ref(storagePath);
+            await storageRef.delete();
+            console.log("成功從 Storage 刪除頭像");
         } catch (storageError) {
             console.warn("刪除存儲檔案失敗:", storageError);
             // 繼續處理，不中斷流程
         }
         
+        // 使用對應的方法刪除欄位
+        // 適配不同的 Firebase 版本
+        let updateData;
+        
+        if (window.firebase.firestore.FieldValue.deleteField) {
+            // 如果存在 deleteField 方法
+            updateData = {
+                imageUrl: window.firebase.firestore.FieldValue.deleteField(),
+                updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+            };
+        } else {
+            // 如果沒有 deleteField 方法，使用 null 代替
+            updateData = {
+                imageUrl: null,
+                updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+            };
+        }
+        
         // 從資料庫中刪除引用
-        await window.db.collection("businesses").doc(currentUser.uid).update({
-            imageUrl: firebase.firestore.FieldValue.delete(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        await window.db.collection("businesses").doc(currentUser.uid).update(updateData);
         
         // 更新本地數據
         delete businessData.imageUrl;
