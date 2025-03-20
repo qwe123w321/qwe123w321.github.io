@@ -29,12 +29,24 @@
     <script type="module">
         // 從 firebase-config.js 導入所有需要的模組
         import { auth, db, storage, appCheck, onAuthStateChanged, signOut } from './firebase-config.js';
+        import { collection, doc, getDoc, getDocs, updateDoc, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
         
         // 將變數暴露給全局範圍
         window.auth = auth;
         window.db = db;
         window.storage = storage;
         window.appCheck = appCheck;
+
+        window.firestoreAPI = {
+            collection,
+            doc,
+            getDoc,
+            getDocs,
+            updateDoc,
+            addDoc,
+            deleteDoc,
+            serverTimestamp
+        };
         
         // 暴露 Firebase Auth 方法到全局範圍
         window.firebase = {
