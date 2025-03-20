@@ -199,7 +199,7 @@ async function loadBusinessData() {
             
             // 更新基本資料欄位
             document.getElementById("storeName").value = businessData.businessName || "";
-            document.getElementById("storePhone").value = businessData.phoneNumber || "";
+            document.getElementById("storePhone").value = businessData.contactPhone || "";
             document.getElementById("storeEmail").value = businessData.email || "";
             document.getElementById("storeWebsite").value = businessData.website || "";
             document.getElementById("storeDescription").value = businessData.description || "";
@@ -217,46 +217,10 @@ async function loadBusinessData() {
             
             // 更新店家主圖
             if (businessData.profileImageUrl) {
-                const mainImagePreview = document.querySelector(".image-preview");
-                if (mainImagePreview) {
-                    mainImagePreview.innerHTML = `
-                    <img src="${businessData.profileImageUrl}" alt="店家頭像/Logo">
-                    <div class="remove-image">
-                        <i class="fas fa-times"></i>
-                    </div>
-                    `;
-                    
-                    // 添加刪除事件
-                    const removeBtn = mainImagePreview.querySelector('.remove-image');
-                    if (removeBtn) {
-                        removeBtn.addEventListener('click', function() {
-                            if (confirm('確定要刪除頭像嗎?')) {
-                                removeMainImage();
-                            }
-                        });
-                    }
-                }
+                updateMainImagePreview(businessData.profileImageUrl);
             } else if (businessData.licenseUrls && businessData.licenseUrls.length > 0) {
                 // 如果沒有專門的頭像，使用第一張營業執照照片
-                const mainImagePreview = document.querySelector(".image-preview");
-                if (mainImagePreview) {
-                    mainImagePreview.innerHTML = `
-                    <img src="${businessData.licenseUrls[0]}" alt="店家頭像/Logo">
-                    <div class="remove-image">
-                        <i class="fas fa-times"></i>
-                    </div>
-                    `;
-                    
-                    // 添加刪除事件
-                    const removeBtn = mainImagePreview.querySelector('.remove-image');
-                    if (removeBtn) {
-                        removeBtn.addEventListener('click', function() {
-                            if (confirm('確定要刪除頭像嗎?')) {
-                                removeMainImage();
-                            }
-                        });
-                    }
-                }
+                updateMainImagePreview(businessData.licenseUrls[0]);
             }
             
             // 更新營業時間
@@ -286,10 +250,10 @@ async function loadBusinessData() {
             }
             
             // 更新地理位置
-            if (businessData.position) {
-                updateLocationFields(businessData.position);
+            if (businessData.position && businessData.position.geopoint) {
+                // 地圖已在 initMap 函數中更新
+                document.getElementById('formattedAddress').value = businessData.address || "";
             } else if (businessData.address) {
-                // 如果只有地址，在地址框中顯示
                 document.getElementById('formattedAddress').value = businessData.address;
             }
             
@@ -309,6 +273,29 @@ async function loadBusinessData() {
     } catch (error) {
         console.error("載入店家資料錯誤:", error);
         showAlert("載入資料時發生錯誤，請稍後再試", "danger");
+    }
+}
+
+// 更新主圖預覽
+function updateMainImagePreview(imageUrl) {
+    const mainImagePreview = document.querySelector(".image-preview");
+    if (mainImagePreview) {
+        mainImagePreview.innerHTML = `
+        <img src="${imageUrl}" alt="店家頭像/Logo">
+        <div class="remove-image">
+            <i class="fas fa-times"></i>
+        </div>
+        `;
+        
+        // 添加刪除事件
+        const removeBtn = mainImagePreview.querySelector('.remove-image');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                if (confirm('確定要刪除頭像嗎?')) {
+                    removeMainImage();
+                }
+            });
+        }
     }
 }
 
@@ -453,7 +440,7 @@ async function removeGalleryImage(imageUrl) {
         const updatedImages = businessData.galleryImages.filter(url => url !== imageUrl);
         
         // 更新Firestore
-        await db.collection("venues").doc(currentUser.uid).update({
+        await db.collection("businesses").doc(currentUser.uid).update({
             galleryImages: updatedImages,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -478,7 +465,7 @@ async function removeMainImage() {
         await imageRef.delete();
         
         // 從資料庫中刪除引用
-        await db.collection("venues").doc(currentUser.uid).update({
+        await db.collection("businesses").doc(currentUser.uid).update({
             imageUrl: firebase.firestore.FieldValue.delete(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -507,7 +494,7 @@ async function removeMainImage() {
 
 // 提交店家基本資料表單
 // 提交店家基本資料表單
-async function submitVenueForm() {
+async function submitbusinessForm() {
     try {
         // 顯示載入提示
         const saveBtn = document.querySelector("#profile-section .card-header .btn-primary");
@@ -540,16 +527,16 @@ async function submitVenueForm() {
         };
         
         // 檢查是否有店家文檔
-        let venueDocRef = db.collection("venues").doc(currentUser.uid);
-        let venueDoc = await venueDocRef.get();
+        let businessDocRef = db.collection("businesses").doc(currentUser.uid);
+        let businessDoc = await businessDocRef.get();
         
         // 如果文檔不存在，添加創建時間
-        if (!venueDoc.exists) {
+        if (!businessDoc.exists) {
             businessDataToUpdate.createdAt = firebase.firestore.FieldValue.serverTimestamp();
         }
         
         // 更新 Firestore 文檔
-        await venueDocRef.set(businessDataToUpdate, { merge: true });
+        await businessDocRef.set(businessDataToUpdate, { merge: true });
         
         // 更新本地數據
         if (!businessData) businessData = {};
@@ -610,7 +597,7 @@ async function handleEnvironmentImageUpload(files) {
             const compressedFile = await compressImage(file, 800, 600);
             
             // 上傳到 Storage
-            const storageRef = storage.ref(`venues/${currentUser.uid}/gallery/${Date.now()}_${file.name}`);
+            const storageRef = storage.ref(`businesses/${currentUser.uid}/gallery/${Date.now()}_${file.name}`);
             await storageRef.put(compressedFile);
             const imageUrl = await storageRef.getDownloadURL();
             
@@ -641,7 +628,7 @@ async function handleEnvironmentImageUpload(files) {
         }
         
         // 更新 Firestore
-        await db.collection("venues").doc(currentUser.uid).update({
+        await db.collection("businesses").doc(currentUser.uid).update({
             galleryImages: galleryImages,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -695,7 +682,7 @@ async function saveBusinessHours() {
         });
         
         // 更新 Firestore
-        await db.collection("venues").doc(currentUser.uid).update({
+        await db.collection("businesses").doc(currentUser.uid).update({
             openingHours: openingHours,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -728,7 +715,7 @@ function initFormValidation() {
     const saveProfileBtn = document.querySelector("#profile-section .btn-primary");
     if (saveProfileBtn) {
         saveProfileBtn.addEventListener('click', function() {
-            submitVenueForm();
+            submitbusinessForm();
         });
     }
     
@@ -875,11 +862,12 @@ async function saveLocationInfo() {
 async function saveBusinessInfo() {
     try {
         // 顯示載入提示
-        const saveBtn = document.querySelector("#profile-section .card-header .btn-primary");
+        const saveBtn = document.getElementById("saveBusinessInfoBtn");
         const originalBtnText = saveBtn.innerHTML;
         saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 儲存中...';
         saveBtn.disabled = true;
         
+        // 獲取表單數據
         const nameInput = document.getElementById("storeName");
         const phoneInput = document.getElementById("storePhone");
         const emailInput = document.getElementById("storeEmail");
@@ -898,29 +886,16 @@ async function saveBusinessInfo() {
         // 準備更新的數據
         const dataToUpdate = {
             businessName: nameInput.value,
-            phoneNumber: phoneInput.value,
+            contactPhone: phoneInput.value,
             email: emailInput.value,
             website: websiteInput.value,
             description: descriptionInput.value,
+            businessType: businessTypeSelect.value,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        // 如果選擇了業務類型，也更新它
-        if (businessTypeSelect) {
-            dataToUpdate.businessType = businessTypeSelect.value;
-        }
-        
-        // 檢查是否有店家文檔
-        let businessDocRef = db.collection("businesses").doc(currentUser.uid);
-        let businessDoc = await businessDocRef.get();
-        
-        // 如果文檔不存在，添加創建時間
-        if (!businessDoc.exists) {
-            dataToUpdate.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-        }
-        
-        // 更新 Firestore 文檔
-        await businessDocRef.set(dataToUpdate, { merge: true });
+        // 更新 Firestore
+        await db.collection("businesses").doc(currentUser.uid).update(dataToUpdate);
         
         // 更新本地數據
         if (!businessData) businessData = {};
@@ -939,11 +914,12 @@ async function saveBusinessInfo() {
         showAlert("更新店家資料失敗，請稍後再試", "danger");
         
         // 恢復按鈕狀態
-        const saveBtn = document.querySelector("#profile-section .card-header .btn-primary");
-        saveBtn.innerHTML = '儲存變更';
+        const saveBtn = document.getElementById("saveBusinessInfoBtn");
+        saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>儲存變更';
         saveBtn.disabled = false;
     }
 }
+
 
 // 加載Google Maps API
 function loadGoogleMapsAPI() {
@@ -1093,7 +1069,7 @@ async function loadMenuItems() {
         
         // 查詢商品類別
         const categoriesSnapshot = await db.collection("categories")
-            .where("venueId", "==", currentUser.uid)
+            .where("businessId", "==", currentUser.uid)
             .orderBy("createdAt", "asc")
             .get();
         
@@ -1109,7 +1085,7 @@ async function loadMenuItems() {
         
         // 查詢商品項目
         const menuItemsSnapshot = await db.collection("menuItems")
-            .where("venueId", "==", currentUser.uid)
+            .where("businessId", "==", currentUser.uid)
             .orderBy("createdAt", "asc")
             .get();
         
@@ -1344,7 +1320,7 @@ async function saveMenuItem(category) {
         
         // 準備項目數據
         const itemData = {
-            venueId: currentUser.uid,
+            businessId: currentUser.uid,
             category: category,
             name: nameInput.value,
             price: price,
@@ -1515,7 +1491,7 @@ async function deleteCategory(categoryName) {
         
         // 查詢屬於此類別的所有商品項目
         const itemsSnapshot = await db.collection("menuItems")
-            .where("venueId", "==", currentUser.uid)
+            .where("businessId", "==", currentUser.uid)
             .where("category", "==", categoryName)
             .get();
         
@@ -1527,7 +1503,7 @@ async function deleteCategory(categoryName) {
         
         // 查詢類別文檔
         const categoriesSnapshot = await db.collection("categories")
-            .where("venueId", "==", currentUser.uid)
+            .where("businessId", "==", currentUser.uid)
             .where("name", "==", categoryName)
             .get();
         
@@ -1699,7 +1675,7 @@ async function saveCategory() {
             try {
                 // 檢查是否已存在相同類別
                 const categoriesSnapshot = await db.collection("categories")
-                    .where("venueId", "==", currentUser.uid)
+                    .where("businessId", "==", currentUser.uid)
                     .where("name", "==", categoryName)
                     .get();
                 
@@ -1711,7 +1687,7 @@ async function saveCategory() {
                 
                 // 添加到 Firestore
                 await db.collection("categories").add({
-                    venueId: currentUser.uid,
+                    businessId: currentUser.uid,
                     name: categoryName,
                     description: categoryDesc,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1736,7 +1712,7 @@ async function saveCategory() {
         } else {
             // 如果找不到按鈕，直接執行
             await db.collection("categories").add({
-                venueId: currentUser.uid,
+                businessId: currentUser.uid,
                 name: categoryName,
                 description: categoryDesc,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1789,14 +1765,14 @@ function initTagsSystem() {
         const saveTagsBtn = document.querySelector("#activities-section .card-header .btn-primary");
         if (saveTagsBtn) {
             saveTagsBtn.addEventListener('click', function() {
-                updateVenueTags();
+                updateBusinessTags();
             });
         }
     }
 }
 
 // 更新店家標籤
-async function updateVenueTags() {
+async function updateBusinessTags() {
     try {
         // 獲取按鈕並顯示載入狀態
         const saveBtn = document.querySelector("#activities-section .card-header .btn-primary");
@@ -1812,7 +1788,7 @@ async function updateVenueTags() {
         });
         
         // 更新 Firestore
-        await db.collection("venues").doc(currentUser.uid).update({
+        await db.collection("businesses").doc(currentUser.uid).update({
             tags: tags,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -2115,12 +2091,12 @@ async function handleMainImageUpload(e) {
         const compressedFile = await compressImage(file, 400, 400);
         
         // 上傳到 Storage
-        const storageRef = storage.ref(`venues/${currentUser.uid}/main`);
+        const storageRef = storage.ref(`businesses/${currentUser.uid}/main`);
         await storageRef.put(compressedFile);
         const imageUrl = await storageRef.getDownloadURL();
         
         // 更新 Firestore
-        await db.collection("venues").doc(currentUser.uid).update({
+        await db.collection("businesses").doc(currentUser.uid).update({
             imageUrl: imageUrl,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -2356,7 +2332,7 @@ document.addEventListener('DOMContentLoaded', function() {
             try {
                 // 檢查是否已初始化Firebase
                 if (window.db && window.currentUser) {
-                    await window.db.collection("venues").doc(window.currentUser.uid).update({
+                    await window.db.collection("businesses").doc(window.currentUser.uid).update({
                         location: new firebase.firestore.GeoPoint(lat, lng),
                         address: formattedAddress,
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
