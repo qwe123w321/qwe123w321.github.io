@@ -19,14 +19,14 @@ import {
     GeoPoint,
     limit,
     startAfter
-  } from 'https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js';
+  } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
   
   import { 
     getAuth, 
     signInWithEmailAndPassword, 
     signOut, 
     onAuthStateChanged 
-  } from 'https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js';
+  } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
   
   import { 
     getStorage, 
@@ -34,10 +34,10 @@ import {
     uploadBytes, 
     getDownloadURL, 
     deleteObject 
-  } from 'https://www.gstatic.com/firebasejs/9.15.0/firebase-storage.js';
+  } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
   
   // Firebase App (必須是首先引入的)
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js';
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
   
   // 初始化Firebase應用 - 使用你自己的配置
     const firebaseConfig = {
