@@ -1128,13 +1128,11 @@
                 </div>
                 
                 <div class="dashboard-card mt-4">
-                    <div class="card-header">
+                    <div class="card-header d-flex justify-content-between align-items-center">
                         <h5>營業時間設置</h5>
-                        <button class="btn btn-primary">儲存營業時間</button>
-                    </div>
-                    <div class="card-body">
-                        <!-- 營業時間設置 -->
-                        <div class="row g-3" id="businessHoursContainer"></div>
+                        <button class="btn btn-primary" id="saveBusinessHoursBtn">
+                            <i class="fas fa-save me-2"></i>儲存營業時間
+                        </button>
                     </div>
                 </div>
 
@@ -1242,9 +1240,9 @@
                 
                 <!-- 店家標籤設置 -->
                 <div class="dashboard-card mt-4">
-                    <div class="card-header">
+                    <div class="card-header d-flex justify-content-between align-items-center">
                         <h5>店家標籤</h5>
-                        <button class="btn btn-primary">儲存標籤</button>
+                        <button class="btn btn-primary" id="saveTagsBtn">儲存標籤</button>
                     </div>
                     <div class="card-body">
                         <p>添加能代表您店家特色的標籤，讓用戶更容易找到您。</p>
@@ -1275,7 +1273,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
                 
             <!-- 商品項目管理區塊 -->
             <div class="content-section" id="menu-section">
@@ -2409,9 +2406,9 @@
             const defaultPosition = { lat: 25.033964, lng: 121.564468 };
             
             // 從Firestore中獲取店家位置（如果有）
-            if (window.venueData && window.venueData.location) {
-                defaultPosition.lat = window.venueData.location.latitude;
-                defaultPosition.lng = window.venueData.location.longitude;
+            if (window.businessData && window.businessData.location) {
+                defaultPosition.lat = window.businessData.location.latitude;
+                defaultPosition.lng = window.businessData.location.longitude;
             }
             
             // 檢查地圖容器是否存在
@@ -2473,8 +2470,8 @@
             }
             
             // 如果已有地址信息，顯示在文本區
-            if (window.venueData && window.venueData.address) {
-                document.getElementById('formattedAddress').value = window.venueData.address;
+            if (window.businessData && window.businessData.address) {
+                document.getElementById('formattedAddress').value = window.businessData.address;
             }
         }
         
@@ -2569,16 +2566,16 @@
                     try {
                         // 檢查是否已初始化Firebase
                         if (window.db && window.currentUser) {
-                            await window.db.collection("venues").doc(window.currentUser.uid).update({
+                            await window.db.collection("businesses").doc(window.currentUser.uid).update({
                                 location: new firebase.firestore.GeoPoint(lat, lng),
                                 address: formattedAddress,
                                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                             });
                             
                             // 更新本地數據
-                            if (!window.venueData) window.venueData = {};
-                            window.venueData.location = { latitude: lat, longitude: lng };
-                            window.venueData.address = formattedAddress;
+                            if (!window.businessData) window.businessData = {};
+                            window.businessData.location = { latitude: lat, longitude: lng };
+                            window.businessData.address = formattedAddress;
                             
                             showAlert('店家位置已成功更新', 'success');
                         } else {
