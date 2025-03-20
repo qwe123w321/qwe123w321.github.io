@@ -9,7 +9,8 @@ import {
     getDocs, 
     updateDoc, 
     setDoc, 
-    deleteDoc, 
+    deleteDoc,
+    deleteField, 
     addDoc, 
     query, 
     where, 
@@ -164,13 +165,17 @@ import {
                   }
                 };
               }
-            };
+            };              
           },
           get: async () => {
             const querySnapshot = await getDocs(collectionRef);
             return wrapQuerySnapshot(querySnapshot);
           },
-          add: (data) => addDoc(collectionRef, data)
+          add: (data) => addDoc(collectionRef, data),
+          FieldValue: {
+            serverTimestamp: () => serverTimestamp(),
+            deleteField: () => deleteField()  // 添加這一行
+          }
         };
       },
       // 添加Firestore數據類型
