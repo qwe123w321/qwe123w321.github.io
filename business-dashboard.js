@@ -2134,7 +2134,6 @@ function initCategoryManagement() {
         if (e.target.classList.contains('save-item-btn') || e.target.closest('.save-item-btn')) {
             const btn = e.target.classList.contains('save-item-btn') ? e.target : e.target.closest('.save-item-btn');
             const category = btn.getAttribute('data-category');
-            saveMenuItem(category);
         }
     });
 }
