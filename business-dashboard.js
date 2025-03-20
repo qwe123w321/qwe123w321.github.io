@@ -855,9 +855,6 @@ function updateBusinessImage() {
         
         if (imageUrl) {
             updateMainImagePreview(imageUrl);
-        } else if (businessData.licenseUrls && businessData.licenseUrls.length > 0) {
-            // 如果沒有專門的頭像，使用第一張營業執照照片
-            updateMainImagePreview(businessData.licenseUrls[0]);
         }
     } catch (error) {
         console.error("更新店家主圖錯誤:", error);
