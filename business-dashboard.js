@@ -1943,8 +1943,7 @@ async function deleteCategory(categoryName) {
         });
         
         // 5. 使用批處理來刪除多個文檔
-        const batch = window.firebase.firestore ? window.firebase.firestore.batch() : 
-                    (window.db.batch ? window.db.batch() : null);
+        const batch = window.db.batch();
         
         if (!batch) {
             console.error("批處理功能不可用，將逐個刪除文檔");
