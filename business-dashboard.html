@@ -716,27 +716,53 @@
             font-size: 15px;
         }
         
-        /* 操作時間選擇 */
+        /* 營業時間選擇器樣式優化 */
+        .business-hours {
+            /* 調整下拉箭頭位置，使其更靠右 */
+            background-position: right 0.5rem center;
+            padding-right: 2rem;
+            border-radius: var(--border-radius-sm);
+        }
+
+        /* 提高可點擊區域寬度 */
+        .time-inputs select {
+            min-width: 100px;
+        }
+
+        /* 優化營業時間佈局 */
         .hours-selection {
             display: flex;
-            gap: 10px;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
         }
-        
+
         .hours-selection .day-label {
-            width: 90px;
+            width: 80px;
             font-weight: 500;
+            color: var(--dark-color);
         }
-        
+
         .hours-selection .time-inputs {
             display: flex;
             align-items: center;
-            gap: 10px;
+            flex: 1;
         }
-        
+
         .hours-selection .time-separator {
-            margin: 0 5px;
+            margin: 0 8px;
+            color: var(--gray-color);
+        }
+
+        /* 可選：完全移除下拉箭頭，使用自定義 */
+        .business-hours.custom-arrow {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236c757d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
         }
         
         /* 工具提示 */
