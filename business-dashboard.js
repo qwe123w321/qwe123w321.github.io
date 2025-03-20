@@ -17,16 +17,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 表單驗證
     initFormValidation();
-
+    
     // 監聽 Firebase 初始化完成事件
     document.addEventListener('firebase-ready', function() {
         console.log('Firebase 初始化完成，開始監聽認證狀態');
         
+        // 使用 ES 模組風格的引用
         if (window.auth) {
-            // 監聽用戶認證狀態
-            window.auth.onAuthStateChanged(function(user) {
-                handleAuthStateChanged(user);
-            });
+            window.auth.onAuthStateChanged(handleAuthStateChanged);
+        } else if (window.firebase && window.firebase.auth) {
+            // 使用全局 firebase
+            window.firebase.auth().onAuthStateChanged(handleAuthStateChanged);
         } else {
             console.error('Firebase Auth 未正確初始化');
             showAlert('加載錯誤，請重新整理頁面', 'danger');
@@ -40,14 +41,14 @@ function handleAuthStateChanged(user) {
         console.log('已檢測到登入用戶:', user.email);
         currentUser = user;
         
-        // 清除重定向標記
-        localStorage.removeItem('redirected_to_dashboard');
-        
-        // 在用戶登入後再初始化其他功能
-        initAfterAuth();
-        
-        // 加載店家資料
-        loadBusinessData();
+        // 延遲一下確保 Firebase DB 連接已建立
+        setTimeout(() => {
+            // 確保初始化其他功能
+            initAfterAuth();
+            
+            // 加載店家資料 - 強制刷新
+            loadBusinessData(true);
+        }, 500);
     } else {
         console.log('未檢測到登入用戶，將重定向到登入頁面');
         
@@ -251,7 +252,7 @@ function forceRedirect() {
 }
 
 // 加載店家資料
-async function loadBusinessData() {
+async function loadBusinessData(force = false) {
     try {
         showPageLoading("載入店家資料中...");
         
@@ -263,7 +264,9 @@ async function loadBusinessData() {
             return;
         }
         
-        // 從 businesses 集合加載數據
+        console.log("開始加載商家資料...");
+        
+        // 檢查 DB 是否已初始化
         const db = window.db;
         if (!db) {
             console.error("Firestore 未正確初始化");
@@ -272,59 +275,509 @@ async function loadBusinessData() {
             return;
         }
         
-        const businessDoc = await db.collection("businesses").doc(currentUser.uid).get();
-        
-        if (businessDoc.exists) {
-            businessData = businessDoc.data();
-            console.log("成功從資料庫載入商家資料:", businessData);
+        // 加載商家資料
+        try {
+            const businessDoc = await db.collection("businesses").doc(currentUser.uid).get();
             
-            // 更新導航欄用戶資訊
-            updateHeaderInfo();
-            
-            // 更新基本資料欄位
-            updateBusinessFormFields();
-            
-            // 更新店家主圖
-            updateBusinessImage();
-            
-            // 更新營業時間
-            updateOpeningHoursFields();
-            
-            // 更新活動類型
-            updateActivityTypesUI();
-            
-            // 更新標籤
-            updateTagsUI();
-            
-            // 更新環境照片
-            updateGalleryImages();
-            
-            // 更新地理位置
-            updateLocationFields();
-            
-            // 加載商品項目
-            loadMenuItems();
-            
-            console.log("店家資料載入完成");
-            showAlert("店家資料已載入完成", "success");
-            hidePageLoading();
-        } else {
-            // 店家資料不存在，可能是新用戶
-            console.log("店家資料不存在，請建立資料");
-            showAlert("歡迎使用店家管理平台！請完善您的店家資料。", "info");
-            
-            // 設置預設營業時間
-            initDefaultOpeningHours();
-            
-            // 創建新的店家文檔
-            await initializeNewBusiness();
-            hidePageLoading();
+            if (businessDoc.exists) {
+                businessData = businessDoc.data();
+                console.log("成功從資料庫載入商家資料:", businessData);
+                
+                // 更新 UI 顯示
+                updateAllUI();
+                
+                // 特別處理營業時間
+                ensureBusinessHoursExist();
+                
+                // 加載商品項目
+                loadMenuItems();
+                
+                // 加載優惠資訊
+                loadPromotions();
+                
+                showAlert("店家資料已載入完成", "success");
+            } else {
+                // 店家資料不存在，可能是新用戶
+                console.log("店家資料不存在，創建新資料");
+                showAlert("歡迎使用店家管理平台！請完善您的店家資料。", "info");
+                
+                // 創建新的店家文檔
+                await initializeNewBusiness();
+                
+                // 設置預設營業時間
+                ensureBusinessHoursExist();
+            }
+        } catch (dbError) {
+            console.error("Firestore 查詢錯誤:", dbError);
+            showAlert("讀取資料時發生錯誤: " + dbError.message, "danger");
         }
+        
+        hidePageLoading();
     } catch (error) {
         console.error("載入店家資料錯誤:", error);
         showAlert("載入資料時發生錯誤，請稍後再試", "danger");
         hidePageLoading();
     }
+}
+
+async function loadPromotions() {
+    try {
+        console.log("開始加載優惠列表");
+        
+        if (!window.db || !currentUser) {
+            console.error("Firestore或用戶未初始化");
+            return;
+        }
+        
+        const db = window.db;
+        
+        // 確保優惠管理區域可見
+        const promotionsSection = document.getElementById('promotions-section');
+        if (promotionsSection) {
+            // 確保顯示一些默認內容
+            const promotionsTableBody = document.getElementById('promotionsTableBody');
+            if (promotionsTableBody) {
+                promotionsTableBody.innerHTML = `
+                    <tr class="text-center">
+                        <td colspan="8" class="py-4">
+                            <div class="text-center">
+                                <i class="fas fa-ticket-alt fa-3x mb-3 text-muted"></i>
+                                <p class="text-muted">尚無優惠活動，請點擊「建立優惠」按鈕創建您的第一個優惠活動</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            // 初始化统计数据
+            document.getElementById('totalPromotionUsage').textContent = "0";
+            document.getElementById('avgDailyUsage').textContent = "0";
+            document.getElementById('appGeneratedCustomers').textContent = "0";
+            document.getElementById('mostPopularPromotion').textContent = "-";
+            
+            // 初始化使用图表
+            initEmptyPromotionChart();
+        }
+        
+        // 查詢優惠活動
+        const promotionsSnapshot = await db.collection("promotions")
+            .where("businessId", "==", currentUser.uid)
+            .orderBy("createdAt", "desc")
+            .get();
+        
+        if (!promotionsSnapshot.empty) {
+            // 有优惠数据，更新表格
+            const promotions = [];
+            promotionsSnapshot.forEach(doc => {
+                promotions.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+            
+            console.log(`找到 ${promotions.length} 個優惠活動`);
+            
+            // 更新UI
+            updatePromotionsList(promotions);
+        } else {
+            console.log("沒有找到優惠活動");
+        }
+    } catch (error) {
+        console.error("載入優惠活動錯誤:", error);
+        showAlert("載入優惠活動失敗，請稍後再試", "danger");
+    }
+}
+
+// 初始化空的優惠圖表
+function initEmptyPromotionChart() {
+    const chartElement = document.getElementById('promotionUsageChart');
+    if (!chartElement) return;
+    
+    // 檢查是否已存在圖表
+    if (window.promotionChart) {
+        window.promotionChart.dispose();
+    }
+    
+    // 創建基本圖表
+    if (typeof ApexCharts !== 'undefined') {
+        window.promotionChart = new ApexCharts(chartElement, {
+            series: [{
+                name: '使用次數',
+                data: [0, 0, 0, 0, 0, 0, 0]
+            }],
+            chart: {
+                height: 300,
+                type: 'line',
+                zoom: {
+                    enabled: false
+                },
+                toolbar: {
+                    show: false
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 3
+            },
+            grid: {
+                row: {
+                    colors: ['#f3f3f3', 'transparent'],
+                    opacity: 0.5
+                }
+            },
+            xaxis: {
+                categories: ['7天前', '6天前', '5天前', '4天前', '3天前', '昨天', '今天'],
+            },
+            tooltip: {
+                y: {
+                    formatter: function (val) {
+                        return val + " 次";
+                    }
+                }
+            }
+        });
+        
+        window.promotionChart.render();
+    }
+}
+
+// 更新優惠列表 UI
+function updatePromotionsList(promotions) {
+    const promotionsTableBody = document.getElementById('promotionsTableBody');
+    if (!promotionsTableBody) return;
+    
+    // 如果沒有優惠，顯示空狀態
+    if (!promotions || promotions.length === 0) {
+        promotionsTableBody.innerHTML = `
+            <tr class="text-center">
+                <td colspan="8" class="py-4">
+                    <div class="text-center">
+                        <i class="fas fa-ticket-alt fa-3x mb-3 text-muted"></i>
+                        <p class="text-muted">尚無優惠活動，請點擊「建立優惠」按鈕創建您的第一個優惠活動</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // 更新數量標籤
+    const activeCount = promotions.filter(p => isPromotionActive(p)).length;
+    const inactiveCount = promotions.length - activeCount;
+    
+    const activeCountBadge = document.querySelector('.promotion-active-count');
+    const inactiveCountBadge = document.querySelector('.promotion-inactive-count');
+    
+    if (activeCountBadge) activeCountBadge.textContent = `${activeCount} 個進行中`;
+    if (inactiveCountBadge) inactiveCountBadge.textContent = `${inactiveCount} 個已結束`;
+    
+    // 生成表格內容
+    let tableContent = '';
+    
+    promotions.forEach(promotion => {
+        const isActive = isPromotionActive(promotion);
+        const statusClass = isActive ? 'active' : 'inactive';
+        const statusText = isActive ? '進行中' : '已結束';
+        
+        tableContent += `
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="promotion-icon rounded-circle bg-light p-2 me-2">
+                            <i class="fas fa-ticket-alt text-primary"></i>
+                        </div>
+                        <div>
+                            <span class="d-block fw-bold">${promotion.title || '未命名優惠'}</span>
+                            <small class="text-muted">${formatPromotionType(promotion.type)}</small>
+                        </div>
+                    </div>
+                </td>
+                <td>${formatPromotionType(promotion.type)}</td>
+                <td>${formatTargetAudience(promotion.targetAudience)}</td>
+                <td>${formatDateRange(promotion.startDate, promotion.endDate)}</td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td class="text-center">${promotion.viewCount || 0}</td>
+                <td class="text-center">${promotion.usageCount || 0}</td>
+                <td>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-primary view-promotion" data-id="${promotion.id}">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary qr-promotion" data-id="${promotion.id}">
+                            <i class="fas fa-qrcode"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger delete-promotion" data-id="${promotion.id}">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+    
+    promotionsTableBody.innerHTML = tableContent;
+    
+    // 添加事件監聽器
+    addPromotionEventListeners();
+}
+
+// 判斷優惠是否進行中
+function isPromotionActive(promotion) {
+    const now = new Date();
+    
+    // 如果沒有日期，假設結束
+    if (!promotion.startDate || !promotion.endDate) return false;
+    
+    // 轉換日期
+    let startDate, endDate;
+    
+    if (promotion.startDate instanceof Date) {
+        startDate = promotion.startDate;
+    } else if (promotion.startDate.seconds) {
+        // Firestore Timestamp
+        startDate = new Date(promotion.startDate.seconds * 1000);
+    } else {
+        startDate = new Date(promotion.startDate);
+    }
+    
+    if (promotion.endDate instanceof Date) {
+        endDate = promotion.endDate;
+    } else if (promotion.endDate.seconds) {
+        // Firestore Timestamp
+        endDate = new Date(promotion.endDate.seconds * 1000);
+    } else {
+        endDate = new Date(promotion.endDate);
+    }
+    
+    // 設置結束日期到當天結束
+    endDate.setHours(23, 59, 59, 999);
+    
+    return now >= startDate && now <= endDate;
+}
+
+// 格式化優惠類型
+function formatPromotionType(type) {
+    const types = {
+        "discount": "折扣",
+        "gift": "贈品",
+        "combo": "套餐",
+        "special": "特別優惠"
+    };
+    
+    return types[type] || type || "未指定";
+}
+
+// 格式化目標受眾
+function formatTargetAudience(audience) {
+    const audiences = {
+        "all": "所有顧客",
+        "brewdate": "BREWDATE用戶",
+        "first_visit": "首次造訪顧客"
+    };
+    
+    return audiences[audience] || audience || "所有顧客";
+}
+
+// 格式化日期範圍
+function formatDateRange(start, end) {
+    if (!start || !end) return "未設定";
+    
+    // 解析開始日期
+    let startDate;
+    if (start instanceof Date) {
+        startDate = start;
+    } else if (start.seconds) {
+        // Firestore Timestamp
+        startDate = new Date(start.seconds * 1000);
+    } else {
+        startDate = new Date(start);
+    }
+    
+    // 解析結束日期
+    let endDate;
+    if (end instanceof Date) {
+        endDate = end;
+    } else if (end.seconds) {
+        // Firestore Timestamp
+        endDate = new Date(end.seconds * 1000);
+    } else {
+        endDate = new Date(end);
+    }
+    
+    // 格式化
+    const formatDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}/${month}/${day}`;
+    };
+    
+    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+}
+
+// 添加優惠事件監聽器
+function addPromotionEventListeners() {
+    // 查看優惠
+    document.querySelectorAll('.view-promotion').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const promotionId = this.getAttribute('data-id');
+            // 實現查看優惠詳情功能
+            showAlert("正在開發此功能", "info");
+        });
+    });
+    
+    // 生成QR碼
+    document.querySelectorAll('.qr-promotion').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const promotionId = this.getAttribute('data-id');
+            openQRCodeModal(promotionId);
+        });
+    });
+    
+    // 刪除優惠
+    document.querySelectorAll('.delete-promotion').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const promotionId = this.getAttribute('data-id');
+            if (confirm("確定要刪除此優惠嗎？")) {
+                deletePromotion(promotionId);
+            }
+        });
+    });
+}
+
+// 開啟QR碼模態框
+function openQRCodeModal(promotionId) {
+    if (typeof QRCode === 'undefined') {
+        showAlert("QR碼生成庫未載入", "warning");
+        return;
+    }
+    
+    // 查找對應的優惠
+    const promotionData = {
+        id: promotionId,
+        title: "測試優惠",
+        code: "TEST" + promotionId.substring(0, 6).toUpperCase()
+    };
+    
+    // 設置模態框內容
+    document.getElementById('qrPromotionTitle').textContent = promotionData.title;
+    document.getElementById('qrPromotionCode').textContent = promotionData.code;
+    document.getElementById('qrPromotionLink').textContent = `https://brewdate.app/p/${promotionData.code}`;
+    
+    // 生成QR碼
+    const qrContainer = document.getElementById('qrcode');
+    if (qrContainer) {
+        qrContainer.innerHTML = '';
+        
+        try {
+            new QRCode(qrContainer, {
+                text: `https://brewdate.app/p/${promotionData.code}`,
+                width: 180,
+                height: 180,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        } catch (error) {
+            console.error("生成QR碼失敗:", error);
+            qrContainer.innerHTML = '<div class="alert alert-danger">QR碼生成失敗</div>';
+        }
+    }
+    
+    // 顯示模態框
+    const qrModal = new bootstrap.Modal(document.getElementById('qrCodeModal'));
+    qrModal.show();
+}
+
+// 刪除優惠
+async function deletePromotion(promotionId) {
+    try {
+        showPageLoading("刪除優惠中...");
+        
+        await window.db.collection("promotions").doc(promotionId).delete();
+        
+        // 重新加載優惠列表
+        await loadPromotions();
+        
+        hidePageLoading();
+        showAlert("優惠已成功刪除", "success");
+    } catch (error) {
+        console.error("刪除優惠失敗:", error);
+        hidePageLoading();
+        showAlert("刪除優惠失敗: " + error.message, "danger");
+    }
+}
+
+function ensureBusinessHoursExist() {
+    console.log("初始化營業時間區域...");
+    
+    // 1. 先找到營業時間卡片
+    const businessHoursCard = document.querySelector('#profile-section .dashboard-card');
+    if (!businessHoursCard) {
+        console.error("找不到營業時間卡片");
+        return;
+    }
+    
+    // 2. 確保卡片內容區域存在
+    const cardBody = businessHoursCard.querySelector('.card-body');
+    if (!cardBody) {
+        console.error("找不到卡片內容區域");
+        return;
+    }
+    
+    // 3. 檢查營業時間容器是否存在，如果不存在，創建一個
+    let businessHoursContainer = document.getElementById('businessHoursContainer');
+    if (!businessHoursContainer) {
+        console.log("創建營業時間容器");
+        businessHoursContainer = document.createElement('div');
+        businessHoursContainer.id = 'businessHoursContainer';
+        businessHoursContainer.className = 'row mt-3';
+        cardBody.appendChild(businessHoursContainer);
+    } else {
+        // 清空既有內容
+        businessHoursContainer.innerHTML = '';
+    }
+    
+    // 4. 創建營業時間 UI
+    const hourSelectionDivs = createBusinessHoursUI(businessHoursContainer);
+    
+    // 5. 設置營業時間數據
+    if (businessData && businessData.openingHours && businessData.openingHours.length > 0) {
+        console.log("設置已有的營業時間");
+        updateOpeningHours(businessData.openingHours);
+    } else {
+        console.log("設置預設營業時間");
+        initDefaultOpeningHours();
+    }
+}
+
+
+function updateAllUI() {
+    // 更新導航欄用戶資訊
+    updateHeaderInfo();
+    
+    // 更新基本資料欄位
+    updateBusinessFormFields();
+    
+    // 更新店家主圖
+    updateBusinessImage();
+    
+    // 更新活動類型
+    updateActivityTypesUI();
+    
+    // 更新標籤
+    updateTagsUI();
+    
+    // 更新環境照片
+    updateGalleryImages();
+    
+    // 更新地理位置
+    updateLocationFields();
+    
+    console.log("所有 UI 元素已更新");
 }
 
 // 更新導航欄用戶資訊
@@ -933,6 +1386,12 @@ async function loadMenuItems() {
         if (!window.db || !currentUser) {
             console.error("Firestore或用戶未初始化");
             return;
+        }
+        
+        // 確保商品管理區域可見
+        const menuSection = document.getElementById('menu-section');
+        if (menuSection && !menuSection.innerHTML.trim()) {
+            console.log("初始化商品管理區域");
         }
         
         const db = window.db;
