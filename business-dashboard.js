@@ -1244,68 +1244,69 @@ function createTagInput() {
 // 更新環境照片
 function updateGalleryImages() {
     try {
-        // 獲取照片來源
-        const galleryImages = businessData.galleryImages || businessData.licenseUrls || [];
-        
-        if (galleryImages && galleryImages.length > 0) {
-            updateGallery(galleryImages);
-        }
+      // 獲取照片來源 - 使用 environmentImages 替代 licenseUrls
+      const galleryImages = businessData.galleryImages || businessData.environmentImages || [];
+      
+      if (galleryImages && galleryImages.length > 0) {
+        updateGallery(galleryImages);
+      }
     } catch (error) {
-        console.error("更新環境照片錯誤:", error);
+      console.error("更新環境照片錯誤:", error);
     }
-}
+  }
 
 // 更新環境照片畫廊
 function updateGallery(images) {
     try {
-        // 找到環境照片畫廊容器
-        const galleryPreview = document.querySelector(".gallery-preview");
-        if (!galleryPreview) {
-            console.warn("找不到環境照片畫廊容器");
-            return;
-        }
+      // 找到環境照片畫廊容器
+      const galleryPreview = document.querySelector(".gallery-preview");
+      if (!galleryPreview) {
+        console.warn("找不到環境照片畫廊容器");
+        return;
+      }
+      
+      // 保留添加按鈕
+      const addBtn = galleryPreview.querySelector(".add-gallery-item");
+      if (!addBtn) {
+        console.warn("找不到添加照片按鈕");
+        return;
+      }
+      
+      // 清空現有內容（除了添加按鈕）
+      galleryPreview.innerHTML = "";
+      
+      // 添加所有照片
+      images.forEach(imageUrl => {
+        const galleryItem = document.createElement("div");
+        galleryItem.className = "gallery-item";
+        galleryItem.innerHTML = `
+            <img src="${imageUrl}" alt="店內環境" onerror="this.src='https://via.placeholder.com/150x150?text=載入失敗'">
+            <div class="remove-image">
+                <i class="fas fa-times"></i>
+            </div>
+        `;
         
-        // 保留添加按鈕
-        const addBtn = galleryPreview.querySelector(".add-gallery-item");
-        if (!addBtn) {
-            console.warn("找不到添加照片按鈕");
-            return;
-        }
+        galleryPreview.appendChild(galleryItem);
         
-        // 清空現有內容（除了添加按鈕）
-        galleryPreview.innerHTML = "";
-        
-        // 添加所有照片
-        images.forEach(imageUrl => {
-            const galleryItem = document.createElement("div");
-            galleryItem.className = "gallery-item";
-            galleryItem.innerHTML = `
-                <img src="${imageUrl}" alt="店內環境" onerror="this.src='https://via.placeholder.com/150x150?text=載入失敗'">
-                <div class="remove-image">
-                    <i class="fas fa-times"></i>
-                </div>
-            `;
-            
-            galleryPreview.appendChild(galleryItem);
-            
-            // 添加刪除事件
-            const removeBtn = galleryItem.querySelector('.remove-image');
-            if (removeBtn) {
-                removeBtn.addEventListener('click', function() {
-                    if (confirm('確定要刪除此照片？')) {
-                        removeGalleryImage(imageUrl);
-                        galleryItem.remove();
-                    }
-                });
+        // 添加刪除事件
+        const removeBtn = galleryItem.querySelector('.remove-image');
+        if (removeBtn) {
+          removeBtn.addEventListener('click', function() {
+            if (confirm('確定要刪除此照片？')) {
+              removeGalleryImage(imageUrl);
+              galleryItem.remove();
             }
-        });
-        
-        // 重新添加上傳按鈕
-        galleryPreview.appendChild(addBtn);
+          });
+        }
+      });
+      
+      // 重新添加上傳按鈕
+      galleryPreview.appendChild(addBtn);
     } catch (error) {
-        console.error("更新環境照片畫廊錯誤:", error);
+      console.error("更新環境照片畫廊錯誤:", error);
     }
-}
+  }
+  
 
 // 更新地理位置
 function updateLocationFields() {
@@ -2487,140 +2488,165 @@ async function handleEnvironmentImageUpload(files) {
     if (!files || files.length === 0) return;
     
     try {
-        showPageLoading("正在上傳環境照片，請稍候...");
+      showPageLoading("正在上傳環境照片，請稍候...");
+      
+      // 獲取圖庫容器和添加按鈕
+      const gallery = document.querySelector('.gallery-preview');
+      if (!gallery) {
+        hidePageLoading();
+        showAlert("找不到環境照片容器", "danger");
+        return;
+      }
+      
+      const addBtn = gallery.querySelector('.add-gallery-item');
+      if (!addBtn) {
+        hidePageLoading();
+        showAlert("找不到添加按鈕", "danger");
+        return;
+      }
+      
+      // 獲取既有的環境照片URLs
+      let galleryImages = [];
+      if (businessData && businessData.galleryImages) {
+        galleryImages = [...businessData.galleryImages];
+      }
+      
+      // 處理每張照片
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         
-        // 獲取圖庫容器和添加按鈕
-        const gallery = document.querySelector('.gallery-preview');
-        if (!gallery) {
-            hidePageLoading();
-            showAlert("找不到環境照片容器", "danger");
-            return;
+        // 檢查文件類型和大小
+        if (!file.type.match('image.*')) {
+          showAlert(`文件 ${file.name} 不是圖片，已跳過`, "warning");
+          continue;
         }
         
-        const addBtn = gallery.querySelector('.add-gallery-item');
-        if (!addBtn) {
-            hidePageLoading();
-            showAlert("找不到添加按鈕", "danger");
-            return;
+        if (file.size > 5 * 1024 * 1024) { // 5MB
+          showAlert(`圖片 ${file.name} 超過 5MB，已跳過`, "warning");
+          continue;
         }
         
-        // 獲取既有的環境照片URLs
-        let galleryImages = [];
-        if (businessData && businessData.galleryImages) {
-            galleryImages = [...businessData.galleryImages];
-        }
+        // 壓縮圖片
+        const compressedFile = await compressImage(file, 800, 600);
         
-        // 處理每張照片
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            
-            // 檢查文件類型和大小
-            if (!file.type.match('image.*')) {
-                showAlert(`文件 ${file.name} 不是圖片，已跳過`, "warning");
-                continue;
-            }
-            
-            if (file.size > 5 * 1024 * 1024) { // 5MB
-                showAlert(`圖片 ${file.name} 超過 5MB，已跳過`, "warning");
-                continue;
-            }
-            
-            // 壓縮圖片
-            const compressedFile = await compressImage(file, 800, 600);
-            
-            // 上傳到 Storage
-            const storageRef = firebase.storage().ref(`businesses/${currentUser.uid}/gallery/${Date.now()}_${file.name}`);
-            await storageRef.put(compressedFile);
-            const imageUrl = await storageRef.getDownloadURL();
-            
-            // 添加到圖片URLs陣列
-            galleryImages.push(imageUrl);
-            
-            // 創建新的圖庫項目
-            const galleryItem = document.createElement('div');
-            galleryItem.className = 'gallery-item';
-            galleryItem.innerHTML = `
-                <img src="${imageUrl}" alt="店內環境照片" onerror="this.src='https://via.placeholder.com/150x150?text=載入失敗'">
-                <div class="remove-image">
-                    <i class="fas fa-times"></i>
-                </div>
-            `;
-            
-            // 插入到添加按鈕之前
-            gallery.insertBefore(galleryItem, addBtn);
-            
-            // 添加刪除事件
-            const removeBtn = galleryItem.querySelector('.remove-image');
-            removeBtn.addEventListener('click', function() {
-                if (confirm('確定要刪除此照片？')) {
-                    removeGalleryImage(imageUrl);
-                    galleryItem.remove();
-                }
-            });
-        }
+        // 上傳到 Storage
+        const storageRef = firebase.storage().ref(`businesses/${currentUser.uid}/environment/${Date.now()}_${file.name}`);
+        await storageRef.put(compressedFile);
+        const imageUrl = await storageRef.getDownloadURL();
         
-        // 更新 Firestore
-        await window.db.collection("businesses").doc(currentUser.uid).update({
-            galleryImages: galleryImages,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        // 添加到圖片URLs陣列
+        galleryImages.push(imageUrl);
+        
+        // 創建新的圖庫項目
+        const galleryItem = document.createElement('div');
+        galleryItem.className = 'gallery-item';
+        galleryItem.innerHTML = `
+            <img src="${imageUrl}" alt="店內環境照片" onerror="this.src='https://via.placeholder.com/150x150?text=載入失敗'">
+            <div class="remove-image">
+                <i class="fas fa-times"></i>
+            </div>
+        `;
+        
+        // 插入到添加按鈕之前
+        gallery.insertBefore(galleryItem, addBtn);
+        
+        // 添加刪除事件
+        const removeBtn = galleryItem.querySelector('.remove-image');
+        removeBtn.addEventListener('click', function() {
+          if (confirm('確定要刪除此照片？')) {
+            removeGalleryImage(imageUrl);
+            galleryItem.remove();
+          }
         });
-        
-        // 更新本地數據
-        if (!businessData) businessData = {};
-        businessData.galleryImages = galleryImages;
-        
-        hidePageLoading();
-        showAlert("環境照片已成功上傳", "success");
+      }
+      
+      // 更新 Firestore - 使用 environmentImages 欄位
+      await window.db.collection("businesses").doc(currentUser.uid).update({
+        galleryImages: galleryImages,
+        environmentImages: galleryImages, // 同時更新新欄位
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // 更新本地數據
+      if (!businessData) businessData = {};
+      businessData.galleryImages = galleryImages;
+      businessData.environmentImages = galleryImages; // 同時更新新欄位
+      
+      hidePageLoading();
+      showAlert("環境照片已成功上傳", "success");
     } catch (error) {
-        console.error("上傳環境照片錯誤:", error);
-        hidePageLoading();
-        showAlert("上傳環境照片失敗，請稍後再試", "danger");
+      console.error("上傳環境照片錯誤:", error);
+      hidePageLoading();
+      showAlert("上傳環境照片失敗，請稍後再試", "danger");
     } finally {
-        // 清空文件輸入
-        document.getElementById('addEnvironmentImage').value = '';
+      // 清空文件輸入
+      document.getElementById('addEnvironmentImage').value = '';
     }
-}
+  }
 
 // 刪除環境照片
 async function removeGalleryImage(imageUrl) {
     try {
-        showPageLoading("正在移除照片...");
-        
-        if (!businessData || !businessData.galleryImages) {
-            hidePageLoading();
-            showAlert("找不到照片資訊", "warning");
-            return;
-        }
-        
-        // 從存儲中刪除文件
-        try {
-            const storageRef = firebase.storage().refFromURL(imageUrl);
-            await storageRef.delete();
-        } catch (storageError) {
-            console.warn("刪除存儲檔案失敗:", storageError);
-            // 繼續處理，不中斷流程
-        }
-        
-        // 從店家數據中移除 URL
-        const updatedImages = businessData.galleryImages.filter(url => url !== imageUrl);
-        
-        // 更新Firestore
-        await window.db.collection("businesses").doc(currentUser.uid).update({
-            galleryImages: updatedImages,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        // 更新本地數據
+      showPageLoading("正在移除照片...");
+      
+      if (!businessData || (!businessData.galleryImages && !businessData.environmentImages)) {
+        hidePageLoading();
+        showAlert("找不到照片資訊", "warning");
+        return;
+      }
+      
+      // 從存儲中刪除文件
+      try {
+        const storageRef = firebase.storage().refFromURL(imageUrl);
+        await storageRef.delete();
+      } catch (storageError) {
+        console.warn("刪除存儲檔案失敗:", storageError);
+        // 繼續處理，不中斷流程
+      }
+      
+      // 從店家數據中移除 URL
+      let updatedImages = [];
+      
+      if (businessData.galleryImages) {
+        updatedImages = businessData.galleryImages.filter(url => url !== imageUrl);
+      }
+      
+      // 更新Firestore - 同時更新兩個欄位
+      const updateData = {
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      
+      if (businessData.galleryImages) {
+        updateData.galleryImages = updatedImages;
+      }
+      
+      if (businessData.environmentImages) {
+        updateData.environmentImages = businessData.environmentImages.filter(url => url !== imageUrl);
+      } else {
+        updateData.environmentImages = updatedImages;
+      }
+      
+      await window.db.collection("businesses").doc(currentUser.uid).update(updateData);
+      
+      // 更新本地數據
+      if (businessData.galleryImages) {
         businessData.galleryImages = updatedImages;
-        
-        hidePageLoading();
-        showAlert("照片已成功刪除", "success");
+      }
+      
+      if (businessData.environmentImages) {
+        businessData.environmentImages = businessData.environmentImages.filter(url => url !== imageUrl);
+      } else {
+        businessData.environmentImages = updatedImages;
+      }
+      
+      hidePageLoading();
+      showAlert("照片已成功刪除", "success");
     } catch (error) {
-        console.error("刪除照片錯誤:", error);
-        hidePageLoading();
-        showAlert("刪除照片失敗，請稍後再試", "danger");
+      console.error("刪除照片錯誤:", error);
+      hidePageLoading();
+      showAlert("刪除照片失敗，請稍後再試", "danger");
     }
-}
+  }
 
 // 刪除主圖/頭像
 async function removeMainImage() {
