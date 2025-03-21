@@ -1,31 +1,5 @@
 // Firebase v9 與 v8 相容層
 // 此文件創建一個橋接層，允許使用Firebase v8風格的語法，但底層使用Firebase v9 API
-
-// import { 
-//   initializeAppCheck, 
-//   ReCaptchaV3Provider,
-//   getToken 
-// } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-check.js';
-
-// // 初始化 App Check（在應用初始化後）
-// let appCheck;
-// try {
-//   appCheck = initializeAppCheck(app, {
-//       provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
-//       isTokenAutoRefreshEnabled: true
-//   });
-//   console.log('App Check 初始化成功');
-// } catch (error) {
-//   console.error('App Check 初始化失敗:', error);
-//   // 設置後備 App Check
-//   appCheck = {
-//       getToken: () => Promise.resolve({
-//           token: 'fallback-token',
-//           expireTimeMillis: Date.now() + 300000
-//       })
-//   };
-// }
-
 import { 
   getFirestore, 
   collection, 
