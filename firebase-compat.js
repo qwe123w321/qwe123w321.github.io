@@ -98,21 +98,24 @@ function createCompatibilityLayer() {
   
   // 創建 batch 包裝器函數
   function createBatchWrapper(batchInstance) {
-    return {
+    // 先創建包裝對象，然後返回它
+    const wrapper = {
       set: (docRef, data) => {
         batchInstance.set(docRef._firestoreRef, data);
-        return batchWrapper;
+        return wrapper; // 使用 wrapper 而非 batchWrapper
       },
       update: (docRef, data) => {
         batchInstance.update(docRef._firestoreRef, data);
-        return batchWrapper;
+        return wrapper; // 使用 wrapper 而非 batchWrapper
       },
       delete: (docRef) => {
         batchInstance.delete(docRef._firestoreRef);
-        return batchWrapper;
+        return wrapper; // 使用 wrapper 而非 batchWrapper
       },
       commit: () => batchInstance.commit()
     };
+    
+    return wrapper;
   }
 
   // Firestore 相容層
