@@ -1498,33 +1498,59 @@
                 window.auth = firebase.auth();
                 window.storage = firebase.storage();
                 
-                // 嘗試啟用 App Check
-                try {
-                    // 僅在開發環境使用 debug token
-                    if (window.location.hostname === 'localhost' || 
-                        window.location.hostname === '127.0.0.1' || 
-                        window.location.hostname.includes('192.168.')) {
-                        console.log('開發環境中啟用 debug token');
-                        self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-                    }
+                // 確保 reCAPTCHA 已完全載入並可用
+                if (typeof grecaptcha !== 'undefined' && 
+                    typeof grecaptcha.enterprise !== 'undefined' && 
+                    typeof grecaptcha.enterprise.execute !== 'undefined') {
                     
-                    var appCheck = firebase.appCheck();
-                    appCheck.activate('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G', {
-                        isTokenAutoRefreshEnabled: true
+                    console.log('reCAPTCHA 已完全載入，嘗試啟用 App Check');
+                    
+                    // 啟用 App Check 之前先強制重新整理 reCAPTCHA
+                    grecaptcha.ready(function() {
+                        console.log('reCAPTCHA ready 再次確認');
+                        
+                        try {
+                            // 使用正確的 reCAPTCHA site key
+                            var appCheck = firebase.appCheck();
+                            appCheck.activate('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G', {
+                                isTokenAutoRefreshEnabled: true
+                            });
+                            
+                            console.log('App Check 初始化成功');
+                            
+                            // 設置認證狀態監聽器
+                            setupAuthStateListener();
+                            
+                            // 觸發頁面初始化
+                            initializePage();
+                        } catch (error) {
+                            console.error('App Check 初始化失敗:', error);
+                            // 即使 App Check 失敗也繼續初始化頁面
+                            setupAuthStateListener();
+                            initializePage();
+                        }
                     });
+                } else {
+                    console.warn('reCAPTCHA 未完全載入，嘗試延遲啟用 App Check');
                     
-                    console.log('App Check 初始化成功');
-                } catch (error) {
-                    console.error('App Check 初始化失敗，但繼續執行:', error);
+                    // 延遲啟用 App Check
+                    setTimeout(function() {
+                        try {
+                            var appCheck = firebase.appCheck();
+                            appCheck.activate('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G', {
+                                isTokenAutoRefreshEnabled: true
+                            });
+                            
+                            console.log('延遲後 App Check 初始化成功');
+                        } catch (appCheckError) {
+                            console.error('延遲後 App Check 初始化失敗:', appCheckError);
+                        }
+                        
+                        // 無論 App Check 是否成功，都初始化頁面
+                        setupAuthStateListener();
+                        initializePage();
+                    }, 2000); // 延遲2秒
                 }
-                
-                console.log('Firebase 和 App Check 初始化完成');
-                
-                // 設置一次性的認證狀態監聽器
-                setupAuthStateListener();
-                
-                // 觸發頁面初始化
-                initializePage();
             } catch (error) {
                 console.error('Firebase 初始化失敗:', error);
                 alert('系統初始化失敗，請重新整理頁面或聯絡管理員');
