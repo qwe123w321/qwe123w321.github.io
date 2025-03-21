@@ -21,26 +21,6 @@
         onerror="console.error('reCAPTCHA 腳本加載失敗', new Date().toISOString())">
     </script>
 
-    <script>
-        // 設置一個全局標識，表示是否已完成 App Check 初始化
-        window.APP_CHECK_INITIALIZED = false;
-        
-        // 設置調試模式（僅在測試環境使用，生產環境請移除）
-        // self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-        
-        // 定義一個全局函數來檢查 reCAPTCHA 狀態
-        window.checkRecaptchaStatus = function() {
-            console.log('檢查 reCAPTCHA 狀態:');
-            console.log('- grecaptcha 是否存在:', typeof grecaptcha !== 'undefined');
-            if (typeof grecaptcha !== 'undefined') {
-                console.log('- grecaptcha.ready 是否存在:', typeof grecaptcha.ready === 'function');
-            }
-        };
-        
-        // 3秒後自動檢查 reCAPTCHA 狀態
-        setTimeout(window.checkRecaptchaStatus, 3000);
-    </script>
-
     <style>
         :root {
             --primary-color: #9D7F86;
