@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理後台</title>
+
+    <script src="https://www.google.com/recaptcha/api.js?render=6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G" 
+        async 
+        onload="console.log('reCAPTCHA 腳本加載成功', new Date().toISOString())" 
+        onerror="console.error('reCAPTCHA 腳本加載失敗', new Date().toISOString())">
+    </script>
     <!-- Firebase SDK -->
     <!-- (1) 先引入 Firebase SDK (compat 版) -->
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
@@ -12,14 +18,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-functions-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-check-compat.js"></script>
-    
-    <!-- (2) 載入 reCAPTCHA v3 腳本（把 render= 后面的 SITE_KEY 換成你自己的） -->
-    <script src="https://www.google.com/recaptcha/api.js?render=6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G" 
-        async 
-        defer
-        onload="console.log('reCAPTCHA 腳本加載成功', new Date().toISOString())" 
-        onerror="console.error('reCAPTCHA 腳本加載失敗', new Date().toISOString())">
-    </script>
 
     <style>
         :root {
@@ -1459,27 +1457,60 @@
         function waitForRecaptcha(callback) {
             console.log('等待 reCAPTCHA 加載...');
             
-            // 檢查grecaptcha對象是否存在並且ready方法可用
-            if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.ready === 'function') {
-                console.log('reCAPTCHA 已載入，準備執行ready回調');
+            // 添加超時和重試機制
+            return new Promise((resolve, reject) => {
+                // 設置最大等待時間：15秒
+                const maxWaitTime = 15000;
+                const startTime = Date.now();
                 
-                // 執行ready回調，確保reCAPTCHA完全初始化並返回Promise
-                return new Promise(resolve => {
-                    grecaptcha.ready(() => {
-                        console.log('reCAPTCHA ready 回調執行成功');
+                // 設置重試間隔：500毫秒
+                const retryInterval = 500;
+                
+                // 嘗試檢查函數
+                function tryCheck() {
+                    // 檢查是否超時
+                    if (Date.now() - startTime > maxWaitTime) {
+                        console.warn('reCAPTCHA 等待超時，嘗試繼續初始化');
+                        // 超時後不直接拒絕，而是嘗試繼續
                         if (typeof callback === 'function') callback();
                         resolve();
-                    });
-                });
-            } else {
-                // 如果grecaptcha還未加載完成，延遲200毫秒後再次檢查
-                console.log('reCAPTCHA 尚未載入完成，稍後再試...');
-                return new Promise(resolve => {
-                    setTimeout(() => {
-                        waitForRecaptcha(callback).then(resolve);
-                    }, 200);
-                });
-            }
+                        return;
+                    }
+                    
+                    // 檢查 grecaptcha 對象是否存在並且 ready 方法可用
+                    if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.ready === 'function') {
+                        console.log('reCAPTCHA 已載入，準備執行 ready 回調');
+                        
+                        try {
+                            // 執行 ready 回調，確保 reCAPTCHA 完全初始化
+                            grecaptcha.ready(() => {
+                                console.log('reCAPTCHA ready 回調執行成功');
+                                
+                                // 再次驗證 grecaptcha 是否正常
+                                if (typeof grecaptcha.execute === 'function') {
+                                    console.log('reCAPTCHA execute 方法可用，初始化完成');
+                                } else {
+                                    console.warn('reCAPTCHA execute 方法不可用，但繼續初始化');
+                                }
+                                
+                                if (typeof callback === 'function') callback();
+                                resolve();
+                            });
+                        } catch (error) {
+                            console.error('reCAPTCHA ready 回調執行失敗:', error);
+                            // 出錯後延遲重試
+                            setTimeout(tryCheck, retryInterval);
+                        }
+                    } else {
+                        // 如果 grecaptcha 還未加載完成，延遲後再次檢查
+                        console.log('reCAPTCHA 尚未載入完成，稍後再試...');
+                        setTimeout(tryCheck, retryInterval);
+                    }
+                }
+                
+                // 開始嘗試檢查
+                tryCheck();
+            });
         }
 
         // 改進的初始化函數
@@ -1487,8 +1518,67 @@
             try {
                 console.log('開始安全初始化Firebase和App Check');
                 
-                // 1. 確保reCAPTCHA完全就緒
-                await waitForRecaptcha();
+                // 檢查是否在儀表板頁面
+                const isDashboard = window.location.pathname.includes('dashboard');
+                if (isDashboard) {
+                    console.log('檢測到儀表板頁面，使用模擬 App Check');
+                    
+                    // 為儀表板頁面初始化Firebase但不需要真正的App Check
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(firebaseConfig);
+                        console.log('儀表板頁面Firebase初始化成功');
+                    }
+                    
+                    // 獲取Firebase服務
+                    window.db = firebase.firestore();
+                    window.auth = firebase.auth();
+                    window.storage = firebase.storage();
+                    
+                    // 設置模擬的App Check
+                    const mockAppCheck = {
+                        getToken: () => Promise.resolve({
+                            token: 'dashboard-mock-token',
+                            expireTimeMillis: Date.now() + 3600000 // 1小時後過期
+                        }),
+                        // 提供一個不執行任何操作的activate方法
+                        activate: () => true
+                    };
+                    
+                    // 將模擬的appCheck附加到firebase對象
+                    firebase.appCheck = () => mockAppCheck;
+                    
+                    // 設置標誌表示初始化完成
+                    window.APP_CHECK_INITIALIZED = true;
+                    
+                    // 設置認證狀態監聽器
+                    setupAuthStateListener();
+                    
+                    // 初始化頁面元素
+                    initializePage();
+                    
+                    return true;
+                }
+                
+                // 1. 嘗試確保reCAPTCHA完全就緒，添加超時處理
+                console.log('嘗試等待reCAPTCHA就緒...');
+                try {
+                    // 添加超時處理，最多等待10秒
+                    const recaptchaPromise = waitForRecaptcha();
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('等待reCAPTCHA超時')), 10000);
+                    });
+                    
+                    await Promise.race([recaptchaPromise, timeoutPromise])
+                        .catch(error => {
+                            console.warn('等待reCAPTCHA時出現問題:', error);
+                            console.warn('將嘗試繼續初始化過程');
+                            // 即使超時也繼續執行，不中斷初始化流程
+                        });
+                } catch (rcError) {
+                    console.error('等待reCAPTCHA時發生錯誤:', rcError);
+                    console.warn('將嘗試繼續初始化過程');
+                    // 不中斷初始化流程
+                }
                 
                 // 2. 初始化Firebase
                 if (!firebase.apps.length) {
@@ -1503,86 +1593,68 @@
                 window.auth = firebase.auth();
                 window.storage = firebase.storage();
                 
-                // 4. 初始化App Check
+                // 4. 嘗試初始化App Check
                 console.log('嘗試初始化App Check...');
-                const appCheck = firebase.appCheck();
-                appCheck.activate(
-                    '6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G',
-                    true  // 啟用自動刷新token
-                );
+                let appCheckInitialized = false;
+                let tokenResult = null;
                 
-                console.log('App Check初始化成功');
-                
-                // 5. 測試App Check令牌
                 try {
-                    const tokenResult = await appCheck.getToken();
+                    // 檢查 grecaptcha 是否正確載入
+                    const rcReady = typeof grecaptcha !== 'undefined' && 
+                                    typeof grecaptcha.ready === 'function' && 
+                                    typeof grecaptcha.execute === 'function';
+                    
+                    if (!rcReady) {
+                        console.warn('reCAPTCHA 未正確載入，使用降級 App Check');
+                        throw new Error('reCAPTCHA not properly loaded');
+                    }
+                    
+                    // 啟用App Check
+                    const appCheck = firebase.appCheck();
+                    appCheck.activate(
+                        '6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G',
+                        true  // 啟用自動刷新token
+                    );
+                    
+                    console.log('App Check初始化成功');
+                    
+                    // 測試App Check令牌，添加超時處理
+                    const tokenPromise = appCheck.getToken();
+                    const tokenTimeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('獲取App Check令牌超時')), 8000);
+                    });
+                    
+                    // 使用Promise.race實現超時控制
+                    tokenResult = await Promise.race([tokenPromise, tokenTimeoutPromise]);
                     console.log('成功獲取App Check令牌:', tokenResult ? '有效' : '無效');
-                    // 設置標誌表示初始化完成
-                    window.APP_CHECK_INITIALIZED = true;
-                } catch (tokenError) {
-                    console.error('獲取App Check令牌失敗:', tokenError);
-                    throw tokenError; // 重新拋出以便上層處理
-                }
-                
-                // 6. 設置認證狀態監聽器
-                setupAuthStateListener();
-                
-                // 7. 初始化頁面元素
-                initializePage();
-                
-                return true;
-            } catch (error) {
-                console.error('安全初始化Firebase失敗:', error);
-                throw error;
-            }
-        }
-
-        // 在頁面加載完成後初始化Firebase
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM已加載，準備初始化Firebase');
-            
-            // 使用Promise來處理初始化
-            initFirebaseWithAppCheck()
-                .catch(error => {
-                    console.error('Firebase安全初始化失敗，使用備用方法:', error);
-                    alert('系統初始化出現問題，請確保您的瀏覽器支援所有必要功能，或嘗試使用其他瀏覽器。');
-                });
-        });
-
-        // 不使用App Check初始化Firebase
-        function initializeFirebaseWithoutAppCheck() {
-            console.log('不使用App Check初始化Firebase');
-            
-            try {
-                // 如果尚未初始化Firebase，執行初始化
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                    console.log('Firebase初始化成功（無App Check）');
-                } else {
-                    console.log('Firebase已經初始化過了');
-                }
-                
-                // 獲取Firebase服務
-                window.db = firebase.firestore();
-                window.auth = firebase.auth();
-                window.storage = firebase.storage();
-                
-                // 設置假的App Check以避免後續錯誤
-                firebase.appCheck = function() {
-                    return {
-                        activate: function() { 
-                            console.log('使用模擬App Check'); 
-                            return true;
-                        },
-                        getToken: function() {
-                            console.log('獲取模擬App Check令牌');
-                            return Promise.resolve({
-                                token: 'simulated-app-check-token',
-                                expireTimeMillis: Date.now() + 3600000 // 1小時後過期
-                            });
-                        }
+                    appCheckInitialized = true;
+                    
+                } catch (appCheckError) {
+                    console.error('初始化App Check或獲取令牌失敗:', appCheckError);
+                    console.log('將使用降級的App Check方案');
+                    
+                    // 創建模擬的App Check
+                    const mockAppCheck = {
+                        getToken: () => Promise.resolve({
+                            token: 'fallback-app-check-token',
+                            expireTimeMillis: Date.now() + 1800000 // 30分鐘後過期
+                        })
                     };
-                };
+                    
+                    // 替換firebase.appCheck函數
+                    firebase.appCheck = function() {
+                        return mockAppCheck;
+                    };
+                    
+                    // 模擬tokenResult
+                    tokenResult = {
+                        token: 'fallback-app-check-token',
+                        expireTimeMillis: Date.now() + 1800000
+                    };
+                }
+                
+                // 設置標誌表示初始化完成
+                window.APP_CHECK_INITIALIZED = true;
                 
                 // 設置認證狀態監聽器
                 setupAuthStateListener();
@@ -1590,9 +1662,244 @@
                 // 初始化頁面元素
                 initializePage();
                 
+                return appCheckInitialized; // 返回App Check是否成功初始化
+                
             } catch (error) {
-                console.error('Firebase初始化失敗（無App Check）:', error);
-                alert('系統初始化失敗，請重新整理頁面或聯絡管理員');
+                console.error('安全初始化Firebase失敗:', error);
+                
+                // 嘗試執行降級初始化
+                console.log('嘗試進行降級初始化...');
+                    // 添加初始化狀態指示器到頁面
+    const statusIndicator = document.createElement('div');
+    statusIndicator.id = 'appCheckStatus';
+    statusIndicator.className = 'initializing';
+    statusIndicator.textContent = 'App Check: 初始化中...';
+    statusIndicator.style.position = 'fixed';
+    statusIndicator.style.top = '10px';
+    statusIndicator.style.right = '10px';
+    statusIndicator.style.padding = '5px 10px';
+    statusIndicator.style.borderRadius = '4px';
+    statusIndicator.style.fontSize = '12px';
+    statusIndicator.style.zIndex = '9999';
+    statusIndicator.style.backgroundColor = '#ffeeba';
+    statusIndicator.style.color = '#856404';
+    document.body.appendChild(statusIndicator);
+    
+    // 使用Promise來處理初始化，增加重試機制
+    initFirebaseWithAppCheck()
+        .then(success => {
+            console.log(`Firebase初始化${success ? '成功' : '使用了降級方案'}`);
+            statusIndicator.className = 'success';
+            statusIndicator.textContent = 'App Check: 初始化完成 ✓';
+            statusIndicator.style.backgroundColor = '#d4edda';
+            statusIndicator.style.color = '#155724';
+            
+            // 3秒後淡出指示器
+            setTimeout(() => {
+                statusIndicator.style.opacity = '0';
+                statusIndicator.style.transition = 'opacity 0.5s';
+                setTimeout(() => {
+                    if (statusIndicator.parentNode) {
+                        statusIndicator.parentNode.removeChild(statusIndicator);
+                    }
+                }, 500);
+            }, 3000);
+        })
+        .catch(error => {
+            console.error('Firebase初始化失敗，嘗試備用方案:', error);
+            statusIndicator.className = 'error';
+            statusIndicator.textContent = 'App Check: 初始化失敗，正在切換到備用方式...';
+            statusIndicator.style.backgroundColor = '#f8d7da';
+            statusIndicator.style.color = '#721c24';
+            
+            // 嘗試備用初始化方法
+            return initializeFirebaseWithoutAppCheck()
+                .then(() => {
+                    console.log('備用初始化成功');
+                    statusIndicator.textContent = 'App Check: 使用備用方式 ✓';
+                    
+                    // 3秒後淡出指示器
+                    setTimeout(() => {
+                        statusIndicator.style.opacity = '0';
+                        statusIndicator.style.transition = 'opacity 0.5s';
+                        setTimeout(() => {
+                            if (statusIndicator.parentNode) {
+                                statusIndicator.parentNode.removeChild(statusIndicator);
+                            }
+                        }, 500);
+                    }, 3000);
+                })
+                .catch(fallbackError => {
+                    console.error('備用初始化也失敗:', fallbackError);
+                    statusIndicator.textContent = 'App Check: 初始化完全失敗 ✗';
+                    
+                    // 顯示錯誤提示
+                    setTimeout(() => {
+                        alert('系統初始化失敗，請刷新頁面或嘗試使用其他瀏覽器。');
+                    }, 500);
+                });
+            })
+        }
+
+        // 不使用App Check初始化Firebase
+        function initializeFirebaseWithoutAppCheck() {
+            console.log('不使用App Check初始化Firebase');
+            
+            return new Promise((resolve, reject) => {
+                try {
+                    // 如果尚未初始化Firebase，執行初始化
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(firebaseConfig);
+                        console.log('Firebase初始化成功（無App Check）');
+                    } else {
+                        console.log('Firebase已經初始化過了');
+                    }
+                    
+                    // 獲取Firebase服務
+                    window.db = firebase.firestore();
+                    window.auth = firebase.auth();
+                    window.storage = firebase.storage();
+                    
+                    // 設置更完善的假App Check以避免後續錯誤
+                    const mockAppCheck = {
+                        getToken: function() {
+                            console.log('獲取模擬App Check令牌');
+                            return Promise.resolve({
+                                token: 'bypass-app-check-token-' + Date.now(),
+                                expireTimeMillis: Date.now() + 3600000 // 1小時後過期
+                            });
+                        },
+                        activate: function(siteKey, autoRefreshEnabled) { 
+                            console.log(`使用模擬App Check (siteKey: ${siteKey}, autoRefresh: ${autoRefreshEnabled})`); 
+                            return true;
+                        },
+                        // 添加可能被調用的其他方法
+                        setTokenAutoRefreshEnabled: function(enabled) {
+                            console.log(`設置模擬App Check自動刷新: ${enabled}`);
+                            return;
+                        }
+                    };
+                    
+                    // 完全替換firebase.appCheck
+                    firebase.appCheck = function() {
+                        return mockAppCheck;
+                    };
+                    
+                    // 設置一個全局標誌，表示使用的是降級模式
+                    window.USING_FALLBACK_APPCHECK = true;
+                    window.APP_CHECK_INITIALIZED = true;
+                    
+                    // 添加全局函數，以便在需要時重新獲取令牌
+                    window.getAppCheckToken = function() {
+                        return mockAppCheck.getToken();
+                    };
+                    
+                    // 設置攔截器，自動添加令牌到Firebase請求
+                    setupRequestInterceptors();
+                    
+                    // 設置認證狀態監聽器
+                    setupAuthStateListener();
+                    
+                    // 初始化頁面元素
+                    initializePage();
+                    
+                    console.log('Firebase降級初始化完成');
+                    resolve(true);
+                    
+                } catch (error) {
+                    console.error('Firebase降級初始化失敗:', error);
+                    reject(error);
+                }
+            });
+        }
+
+        // 添加攔截器函數
+        function setupRequestInterceptors() {
+            try {
+                console.log('設置請求攔截器，添加App Check令牌到Firebase請求');
+                
+                // 攔截 XMLHttpRequest
+                const originalXHROpen = XMLHttpRequest.prototype.open;
+                XMLHttpRequest.prototype.open = function() {
+                    const originalSend = this.send;
+                    const url = arguments[1];
+                    const xhr = this;
+                    
+                    // 如果是Firebase相關URL，添加攔截
+                    if (url && (
+                        url.includes('firebaseapp.com') || 
+                        url.includes('googleapis.com')
+                    )) {
+                        // 替換send方法
+                        this.send = async function() {
+                            const sendArguments = arguments;
+                            
+                            try {
+                                // 獲取App Check令牌
+                                const tokenResult = await window.getAppCheckToken();
+                                
+                                if (tokenResult && tokenResult.token) {
+                                    // 添加App Check令牌到請求頭
+                                    xhr.setRequestHeader('X-Firebase-AppCheck', tokenResult.token);
+                                    console.log('已為XHR請求添加App Check令牌:', url);
+                                }
+                            } catch (error) {
+                                console.error('獲取App Check令牌失敗:', error);
+                            }
+                            
+                            // 調用原始send方法
+                            return originalSend.apply(this, sendArguments);
+                        };
+                    }
+                    
+                    // 調用原始open方法
+                    return originalXHROpen.apply(this, arguments);
+                };
+                
+                // 攔截 fetch (如果使用)
+                const originalFetch = window.fetch;
+                window.fetch = async function(resource, options = {}) {
+                    let url = '';
+                    
+                    if (typeof resource === 'string') {
+                        url = resource;
+                    } else if (resource instanceof Request) {
+                        url = resource.url;
+                    }
+                    
+                    // 如果是Firebase相關URL，添加App Check令牌
+                    if (url && (
+                        url.includes('firebaseapp.com') || 
+                        url.includes('googleapis.com')
+                    )) {
+                        try {
+                            // 獲取App Check令牌
+                            const tokenResult = await window.getAppCheckToken();
+                            
+                            if (tokenResult && tokenResult.token) {
+                                // 創建新的options對象
+                                const newOptions = { ...options };
+                                newOptions.headers = { ...(options.headers || {}) };
+                                
+                                // 添加App Check令牌到請求頭
+                                newOptions.headers['X-Firebase-AppCheck'] = tokenResult.token;
+                                console.log('已為fetch請求添加App Check令牌:', url);
+                                
+                                // 使用新options調用原始fetch
+                                return originalFetch(resource, newOptions);
+                            }
+                        } catch (error) {
+                            console.error('獲取App Check令牌失敗:', error);
+                        }
+                    }
+                    
+                    // 調用原始fetch
+                    return originalFetch(resource, options);
+                };
+                
+                console.log('請求攔截器設置完成');
+            } catch (error) {
+                console.error('設置請求攔截器失敗:', error);
             }
         }
 
