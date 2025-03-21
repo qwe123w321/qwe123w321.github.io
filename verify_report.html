@@ -1531,6 +1531,38 @@
             }
         }
 
+        function setupAuthStateListener() {
+            console.log('設置認證狀態監聽器');
+            
+            let isProcessingAuthChange = false;
+            
+            auth.onAuthStateChanged(user => {
+                if (isProcessingAuthChange) {
+                    console.log('正在處理認證狀態變更，忽略重複事件');
+                    return;
+                }
+                
+                isProcessingAuthChange = true;
+                console.log(`認證狀態變更: ${user ? '已登入 ' + user.email : '已登出'}`);
+                
+                try {
+                    if (user) {
+                        onLoginSuccess(user);
+                    } else {
+                        onLogout();
+                    }
+                } catch (error) {
+                    console.error('處理認證狀態變更時出錯:', error);
+                }
+                
+                // 延遲重置處理標記，避免處理多次快速觸發的事件
+                setTimeout(() => {
+                    isProcessingAuthChange = false;
+                }, 500);
+            });
+        }
+
+
         // DOM 元素
         const loginSection = document.getElementById('loginSection');
         const emailInput = document.getElementById('emailInput');
