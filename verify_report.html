@@ -1518,7 +1518,7 @@
             try {
                 console.log('開始安全初始化Firebase和App Check');
                 
-                // 首先確保Firebase應用已初始化
+                // 1. 初始化Firebase應用
                 if (!firebase.apps.length) {
                 firebase.initializeApp(firebaseConfig);
                 console.log('Firebase應用初始化成功');
@@ -1526,44 +1526,59 @@
                 console.log('Firebase應用已存在');
                 }
                 
-                // 在初始化Firebase之後再獲取服務
+                // 2. 獲取Firebase服務
                 window.db = firebase.firestore();
                 window.auth = firebase.auth();
                 window.storage = firebase.storage();
                 
-                // 設置App Check (使用模擬版本以確保登入順利)
-                const mockAppCheck = {
-                getToken: () => Promise.resolve({
-                    token: 'mock-app-check-token-' + Date.now(),
-                    expireTimeMillis: Date.now() + 3600000 // 1小時後過期
-                }),
-                activate: function(siteKey, autoRefreshEnabled) { 
-                    console.log(`模擬啟用App Check (siteKey: ${siteKey})`); 
-                    return true;
+                // 3. 等待reCAPTCHA加載
+                await waitForRecaptcha();
+                
+                // 4. 初始化真實的App Check
+                console.log('嘗試初始化App Check...');
+                
+                // 確認reCAPTCHA是否可用
+                if (typeof grecaptcha === 'undefined' || 
+                    typeof grecaptcha.ready !== 'function' || 
+                    typeof grecaptcha.execute !== 'function') {
+                throw new Error('reCAPTCHA未正確加載，無法啟用App Check');
                 }
-                };
                 
-                // 替換App Check函數
-                firebase.appCheck = function() {
-                return mockAppCheck;
-                };
+                // 啟用真實的App Check
+                const appCheck = firebase.appCheck();
+                appCheck.activate(
+                '6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G',
+                true  // 啟用自動刷新token
+                );
                 
-                // 設置標誌表示初始化完成
+                console.log('App Check初始化成功');
+                
+                // 獲取App Check令牌以驗證是否正常工作
+                try {
+                const tokenResult = await appCheck.getToken();
+                console.log('成功獲取App Check令牌');
+                } catch (tokenError) {
+                console.error('獲取App Check令牌失敗:', tokenError);
+                throw tokenError; // 重要：此處不降級，確保使用真實App Check
+                }
+                
+                // 5. 設置標誌表示初始化完成
                 window.APP_CHECK_INITIALIZED = true;
                 
-                // 設置認證狀態監聽器
+                // 6. 設置認證狀態監聽器
                 setupAuthStateListener();
                 
-                // 初始化頁面元素
+                // 7. 初始化頁面元素
                 initializePage();
                 
                 return true;
                 
             } catch (error) {
                 console.error('Firebase初始化失敗:', error);
-                return false;
+                throw error; // 重拋錯誤，不嘗試降級
             }
             }
+
 
         function showInitializationStatus() {
             const statusIndicator = document.createElement('div');
@@ -2157,15 +2172,40 @@
                 
                 console.log('嘗試登入:', email);
                 
-                // 確保Firebase已經正確初始化
-                if (!firebase.apps.length) {
-                console.log('Firebase尚未初始化，執行初始化...');
-                initFirebaseWithAppCheck();
+                // 檢查App Check是否初始化
+                if (!window.APP_CHECK_INITIALIZED) {
+                throw new Error('App Check尚未初始化，無法登入');
                 }
                 
-                // 使用更簡單的登入流程，不嘗試設置持久性
+                // 確保我們使用的是真實的App Check
+                try {
+                const appCheck = firebase.appCheck();
+                const token = await appCheck.getToken();
+                console.log('登入前已獲取有效的App Check令牌');
+                } catch (appCheckError) {
+                console.error('登入前無法獲取App Check令牌:', appCheckError);
+                throw new Error('安全驗證失敗，請刷新頁面重試');
+                }
+                
+                // 設置認證持久性
+                try {
+                await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                console.log('成功設置認證持久性為 LOCAL');
+                } catch (persistenceError) {
+                console.error('設置認證持久性失敗:', persistenceError);
+                // 繼續嘗試登入，持久性錯誤不一定會阻止登入流程
+                }
+                
+                // 嘗試登入
                 console.log('開始執行登入...');
-                const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+                
+                // 設置登入超時
+                const loginPromise = auth.signInWithEmailAndPassword(email, password);
+                const loginTimeout = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('登入請求超時')), 15000);
+                });
+                
+                const userCredential = await Promise.race([loginPromise, loginTimeout]);
                 console.log('登入成功:', userCredential.user.email);
                 
                 // 清除輸入字段
@@ -2175,51 +2215,14 @@
             } catch (error) {
                 console.error('登入錯誤:', error);
                 
-                // 當出現App Check錯誤時，嘗試降級登入
-                if (error.code === 'auth/firebase-app-check-token-is-invalid' || 
-                    error.message.includes('app-check') || 
-                    error.code === 'auth/internal-error') {
-                
-                console.warn('偵測到App Check相關錯誤，嘗試降級登入方式');
-                showError('登入安全驗證失敗。正在嘗試備用登入方式，請稍候...');
-                
-                try {
-                    // 重新初始化Firebase，完全禁用App Check
-                    firebase.apps.forEach(app => app.delete());
-                    firebase.initializeApp(firebaseConfig);
-                    window.auth = firebase.auth();
-                    window.db = firebase.firestore();
-                    window.storage = firebase.storage();
-                    
-                    // 等待短暫延遲後重試登入
-                    setTimeout(async () => {
-                    try {
-                        const userCred = await firebase.auth().signInWithEmailAndPassword(email, password);
-                        console.log('降級登入成功:', userCred.user.email);
-                        emailInput.value = '';
-                        passwordInput.value = '';
-                        clearErrorMessage();
-                    } catch (retryError) {
-                        console.error('降級登入失敗:', retryError);
-                        showError('登入失敗: ' + getErrorMessage(retryError));
-                        loginButton.textContent = '登入';
-                        loginButton.disabled = false;
-                    }
-                    }, 1000);
-                    
-                    return;
-                } catch (error) {
-                    console.error('降級嘗試失敗:', error);
-                }
-                }
-                
-                // 顯示常規錯誤
+                // 顯示錯誤訊息，不嘗試降級
                 showError(getErrorMessage(error));
+                
+                // 重置登入按鈕
                 loginButton.textContent = '登入';
                 loginButton.disabled = false;
             }
             }
-
 
         // 重置Firebase初始化函數 - 停用App Check
         function resetFirebaseInitialization() {
