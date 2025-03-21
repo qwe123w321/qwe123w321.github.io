@@ -1,30 +1,38 @@
 // Firebase v9 與 v8 相容層
 // 此文件創建一個橋接層，允許使用Firebase v8風格的語法，但底層使用Firebase v9 API
-
-import { 
-  initializeAppCheck, 
-  ReCaptchaV3Provider,
-  getToken 
-} from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-check.js';
-
-// 初始化 App Check（在應用初始化後）
-let appCheck;
-try {
-  appCheck = initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
-      isTokenAutoRefreshEnabled: true
-  });
-  console.log('App Check 初始化成功');
-} catch (error) {
-  console.error('App Check 初始化失敗:', error);
-  // 設置後備 App Check
-  appCheck = {
-      getToken: () => Promise.resolve({
-          token: 'fallback-token',
-          expireTimeMillis: Date.now() + 300000
-      })
+import firebaseCompat from './firebase-compat.js';
+  
+  // 導入 App Check 攔截器
+  import { installXHRInterceptor, installFetchInterceptor } from './app-check-module.js';
+  
+  // 將變數暴露給全局範圍
+  window.auth = firebaseCompat.auth;
+  window.db = firebaseCompat.db;
+  window.storage = firebaseCompat.storage;
+  
+  // 設置 Firebase 全局對象
+  window.firebase = {
+    auth: firebaseCompat.auth,
+    firestore: {
+      FieldValue: firebaseCompat.firestore.FieldValue,
+      GeoPoint: firebaseCompat.firestore.GeoPoint,
+      Timestamp: firebaseCompat.firestore.Timestamp
+    },
+    storage: firebaseCompat.storage
   };
-}
+  
+  // 安裝攔截器
+  installXHRInterceptor();
+  installFetchInterceptor();
+  
+  // 創建一個事件，通知頁面 Firebase 已初始化完成
+  window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      const event = new CustomEvent('firebase-ready');
+      document.dispatchEvent(event);
+      console.log('Firebase 已初始化完成，全局變數已設置');
+    }, 500);
+});
 
 import { 
   getFirestore, 
