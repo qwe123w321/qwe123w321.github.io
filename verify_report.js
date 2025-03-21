@@ -3075,3 +3075,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('管理員按鈕診斷完成');
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 先執行Firebase初始化
+    initializeApplication();
+    
+    // 其餘的DOMContentLoaded事件處理可以保留
+    setupEnhancedLightbox();
+    // 這裡原有的診斷代碼可以移至initializeApplication完成後執行
+});
