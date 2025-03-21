@@ -29,6 +29,8 @@
     <script type="module">
         // 從相容層引入Firebase服務
         import firebaseCompat from './firebase-compat.js';
+        // 導入 App Check 攔截器
+        import { installXHRInterceptor, installFetchInterceptor } from './app-check-module.js';
         
         // 將變數暴露給全局範圍
         window.auth = firebaseCompat.auth;
@@ -45,6 +47,10 @@
             },
             storage: firebaseCompat.storage
         };
+
+        // 安裝攔截器
+        installXHRInterceptor();
+        installFetchInterceptor();
         
         // 創建一個事件，通知頁面 Firebase 已初始化完成
         window.addEventListener('DOMContentLoaded', () => {
