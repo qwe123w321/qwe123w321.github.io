@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>優惠核銷系統 - BrewDate</title>
+    <!-- SEO 優化 meta 標籤 -->
+    <meta name="description" content="BREWDATE 商家合作平台 - 快速便捷的優惠核銷系統，讓核銷流程更輕鬆。">
+    <meta name="keywords" content="BREWDATE, 優惠核銷, 店家平台, 約會場所, 合作夥伴">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="auth.css">
+    <link rel="icon" href="logo_s.png" type="image/png">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+    <!-- 1. 首先加載 reCAPTCHA 腳本 (非常重要) -->
+    <script src="https://www.google.com/recaptcha/api.js?render=6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G" 
+        async 
+        onload="console.log('reCAPTCHA 腳本加載成功', new Date().toISOString())" 
+        onerror="console.error('reCAPTCHA 腳本加載失敗', new Date().toISOString())"></script>
+    
+    <!-- 2. 然後加載 Firebase 和 App Check 模組 -->
+    <script type="module">
+        // 先導入 Firebase 配置
+        import './firebase-config.js';
+        
+        // 導入統一的 App Check 模組
+        import { addDiagnosticsPanel, checkAppCheckStatus, getAppCheckToken, installXHRInterceptor, installFetchInterceptor } from './app-check-module.js';
+        
+        // 添加診斷按鈕
+        document.addEventListener('DOMContentLoaded', () => {
+            // 創建診斷按鈕
+            const diagnosticsBtn = document.createElement('button');
+            diagnosticsBtn.id = 'appCheckDiagnosticsBtn';
+            diagnosticsBtn.innerHTML = '🔍';
+            diagnosticsBtn.title = 'App Check 診斷';
+            diagnosticsBtn.style.position = 'fixed';
+            diagnosticsBtn.style.bottom = '20px';
+            diagnosticsBtn.style.right = '20px';
+            diagnosticsBtn.style.width = '50px';
+            diagnosticsBtn.style.height = '50px';
+            diagnosticsBtn.style.borderRadius = '50%';
+            diagnosticsBtn.style.backgroundColor = '#007bff';
+            diagnosticsBtn.style.color = 'white';
+            diagnosticsBtn.style.border = 'none';
+            diagnosticsBtn.style.fontSize = '20px';
+            diagnosticsBtn.style.display = 'flex';
+            diagnosticsBtn.style.alignItems = 'center';
+            diagnosticsBtn.style.justifyContent = 'center';
+            diagnosticsBtn.style.cursor = 'pointer';
+            diagnosticsBtn.style.zIndex = '9999';
+            diagnosticsBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+            
+            // 添加點擊事件
+            diagnosticsBtn.addEventListener('click', () => {
+                addDiagnosticsPanel();
+                diagnosticsBtn.style.display = 'none';
+            });
+            
+            // 添加到頁面
+            document.body.appendChild(diagnosticsBtn);
+        });
+        
+        // 導入核銷頁面專用的 JavaScript
+        import './verify.js';
+    </script>
+    
+    <!-- 添加 App Check 狀態指示器的樣式 -->
+    <style>
+        #appCheckStatus {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 9999;
+            display: none;
+        }
+        
+        #appCheckStatus.initializing {
+            background-color: #ffeeba;
+            color: #856404;
+            display: block;
+        }
+        
+        #appCheckStatus.success {
+            background-color: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        
+        #appCheckStatus.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+        
+        /* 核銷系統樣式 */
+        .verification-section {
+            padding: 100px 0 60px;
+            min-height: calc(100vh - 200px);
+            background-color: var(--background-color);
+        }
+        
+        .verification-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .verification-card {
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 0;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .verification-tabs {
+            display: flex;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .verification-tab {
+            flex: 1;
+            text-align: center;
+            padding: 15px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .verification-tab.active {
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+        }
+        
+        .verification-content {
+            padding: 40px;
+        }
+        
+        .verification-title {
+            font-size: 24px;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .verification-description {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .verification-form {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .verification-input {
+            margin-bottom: 20px;
+        }
+        
+        .verification-input label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .verification-input input {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .verification-input input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(157, 127, 134, 0.2);
+            outline: none;
+        }
+        
+        .verification-button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 15px 30px;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .verification-button:hover {
+            background: #86686F;
+            transform: translateY(-2px);
+        }
+        
+        .verification-scanner {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        #qrScanner {
+            width: 100%;
+            max-width: 400px;
+            height: 300px;
+            background-color: #f9f9f9;
+            margin: 0 auto;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .scan-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .scan-frame {
+            width: 200px;
+            height: 200px;
+            border: 2px solid var(--primary-color);
+            border-radius: 20px;
+            position: relative;
+        }
+        
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: var(--primary-color);
+            top: 50%;
+            animation: scan 2s infinite linear;
+        }
+        
+        @keyframes scan {
+            0% { top: 20%; }
+            50% { top: 80%; }
+            100% { top: 20%; }
+        }
+        
+        .verification-result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+            display: none;
+        }
+        
+        .verification-result.success {
+            background-color: #d4edda;
+            border-left: 5px solid #28a745;
+        }
+        
+        .verification-result.error {
+            background-color: #f8d7da;
+            border-left: 5px solid #dc3545;
+        }
+        
+        .tabs-container {
+            display: none;
+        }
+        
+        .tabs-container.active {
+            display: block;
+        }
+        
+        .camera-permission-btn {
+            margin-top: 10px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        
+        .camera-permission-btn:hover {
+            background-color: #5a6268;
+        }
+    </style>
+    
+    <script src="error-handler.js"></script>
+</head>
+<body>
+    <!-- 在頁面頂部添加 App Check 狀態指示器 -->
+    <div id="appCheckStatus" class="initializing">App Check: 初始化中...</div>
+    
+    <!-- 導航欄 -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <img src="logo.png" alt="BREWDATE" height="40">
+                BREWDATE
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#home">首頁</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#features">特色</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#business">商家合作</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#download">下載APP</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="business-login.html">店家登入</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 核銷系統區塊 -->
+    <section class="verification-section">
+        <div class="container verification-container">
+            <div class="verification-card">
+                <div class="verification-tabs">
+                    <div class="verification-tab active" data-tab="scan">掃描QR碼</div>
+                    <div class="verification-tab" data-tab="code">輸入驗證碼</div>
+                </div>
+                
+                <div class="verification-content">
+                    <h2 class="verification-title">BREWDATE 優惠核銷系統</h2>
+                    <p class="verification-description">
+                        快速便捷地驗證顧客的優惠券，無需下載額外應用。掃描顧客的QR碼或輸入6位數驗證碼即可核銷優惠。
+                    </p>
+                    
+                    <div id="scan-tab" class="tabs-container active">
+                        <div class="verification-scanner">
+                            <div id="qrScanner">
+                                <div class="scan-overlay">
+                                    <div class="scan-frame">
+                                        <div class="scan-line"></div>
+                                    </div>
+                                </div>
+                                <video id="preview"></video>
+                            </div>
+                            <button id="requestCameraBtn" class="camera-permission-btn">
+                                <i class="fas fa-camera me-2"></i>開啟攝影機
+                            </button>
+                        </div>
+                        
+                        <div class="verification-form">
+                            <button id="scanQrBtn" class="verification-button">
+                                <i class="fas fa-qrcode me-2"></i>開始掃描
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="code-tab" class="tabs-container">
+                        <div class="verification-form">
+                            <div class="verification-input">
+                                <label for="verificationCode">驗證碼 (6位數)</label>
+                                <input type="text" id="verificationCode" maxlength="6" placeholder="請輸入顧客APP上顯示的6位數驗證碼">
+                            </div>
+                            
+                            <button id="verifyCodeBtn" class="verification-button">
+                                <i class="fas fa-check-circle me-2"></i>驗證優惠
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="verification-result" class="verification-result">
+                        <!-- 結果將通過JavaScript動態填充 -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 使用說明 -->
+            <div class="row mt-5">
+                <div class="col-lg-10 mx-auto">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title mb-4"><i class="fas fa-info-circle me-2"></i>如何使用核銷系統</h4>
+                            
+                            <div class="row g-4">
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <div class="text-center mb-3">
+                                                <i class="fas fa-qrcode fa-3x text-primary"></i>
+                                            </div>
+                                            <h5 class="text-center">掃描QR碼</h5>
+                                            <p class="text-muted">點擊「開始掃描」並對準顧客APP上的QR碼，系統會自動識別並驗證優惠。</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <div class="text-center mb-3">
+                                                <i class="fas fa-keyboard fa-3x text-primary"></i>
+                                            </div>
+                                            <h5 class="text-center">輸入驗證碼</h5>
+                                            <p class="text-muted">如果無法掃描QR碼，可以輸入顧客APP上顯示的6位數驗證碼進行核銷。</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <div class="text-center mb-3">
+                                                <i class="fas fa-check-circle fa-3x text-primary"></i>
+                                            </div>
+                                            <h5 class="text-center">完成核銷</h5>
+                                            <p class="text-muted">核銷成功後，系統會顯示優惠詳情，顧客APP上的優惠將被標記為已使用。</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 頁腳 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="footer-info">
+                        <h3>BREWDATE</h3>
+                        <p>用一杯咖啡的時間，找到真實的火花</p>
+                        <div class="social-links">
+                            <a href="#"><i class="fab fa-facebook-f"></i></a>
+                            <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <div class="footer-links">
+                        <h4>快速連結</h4>
+                        <ul>
+                            <li><a href="index.html#home">首頁</a></li>
+                            <li><a href="index.html#features">特色</a></li>
+                            <li><a href="index.html#business">商家合作</a></li>
+                            <li><a href="index.html#download">下載應用</a></li>
+                            <li><a href="index.html#faq">常見問題</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="footer-links">
+                        <h4>聯絡我們</h4>
+                        <ul>
+                            <li><i class="fas fa-envelope"></i> <a href="mailto:info@brewdate.com">info@brewdate.com</a></li>
+                            <li><i class="fas fa-phone"></i> <a href="tel:+886912345678">+886 912 345 678</a></li>
+                            <li><i class="fas fa-map-marker-alt"></i> <span>台北市信義區松仁路 100 號</span></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="footer-newsletter">
+                        <h4>店家訂閱</h4>
+                        <p>訂閱我們的電子報，獲取最新的活動和合作信息</p>
+                        <form>
+                            <div class="input-group">
+                                <input type="email" name="email" class="form-control" placeholder="您的電子郵件">
+                                <button class="btn btn-primary" type="submit">訂閱</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="copyright">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p>&copy; 2025 BREWDATE. 保留所有權利.</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="footer-bottom-links">
+                            <a href="#">隱私政策</a>
+                            <a href="#">使用條款</a>
+                            <a href="#">Cookie 政策</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- QR Code 掃描庫 -->
+    <script src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- 在頁面最後添加初始化腳本 -->
+    <script type="module">
+        // 導入必要的模組，確保正確的初始化順序
+        import { auth, db, appCheck } from './firebase-config.js';
+        import { checkAppCheckStatus, getAppCheckToken, installXHRInterceptor, installFetchInterceptor } from './app-check-module.js';
+        
+        // DOM 加載完成後初始化 UI 元素
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('頁面加載完成，開始設置 App Check 狀態指示器...');
+            const statusElement = document.getElementById('appCheckStatus');
+            
+            try {
+                // 確保攔截器已安裝
+                installXHRInterceptor();
+                installFetchInterceptor();
+                
+                // 延遲執行檢查，給 reCAPTCHA 足夠的加載時間
+                setTimeout(async () => {
+                    try {
+                        console.log('檢查 App Check 狀態...');
+                        const result = await checkAppCheckStatus();
+                        if (result.success) {
+                            statusElement.className = 'success';
+                            statusElement.textContent = 'App Check: 已驗證 ✓';
+                            setTimeout(() => { statusElement.style.display = 'none'; }, 3000);
+                            
+                            console.log('App Check 驗證成功');
+                            // 預先獲取一個令牌，確保後續請求能使用
+                            try {
+                                const token = await getAppCheckToken();
+                                console.log('成功獲取 App Check 令牌');
+                            } catch (tokenError) {
+                                console.error('獲取 App Check 令牌失敗:', tokenError);
+                            }
+                        } else {
+                            statusElement.className = 'error';
+                            statusElement.textContent = 'App Check: 驗證失敗 ✗';
+                            console.error('App Check 驗證失敗:', result.error);
+                            setTimeout(() => { statusElement.style.display = 'none'; }, 5000);
+                            
+                            // 顯示錯誤提示
+                            showAppCheckError();
+                        }
+                    } catch (error) {
+                        statusElement.className = 'error';
+                        statusElement.textContent = 'App Check: 發生錯誤 ✗';
+                        console.error('App Check 初始化錯誤:', error);
+                        setTimeout(() => { statusElement.style.display = 'none'; }, 5000);
+                        
+                        // 顯示錯誤提示
+                        showAppCheckError();
+                    }
+                }, 2000); // 延遲 2 秒後檢查，提高成功率
+            } catch (error) {
+                console.error('設置狀態指示器時發生錯誤:', error);
+            }
+        });
+        
+        // 顯示 App Check 錯誤提示
+        function showAppCheckError() {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger mt-3';
+            errorDiv.innerHTML = `
+                <strong>App Check 驗證失敗</strong>
+                <p>這可能導致核銷功能無法正常使用。請刷新頁面重試，或聯繫系統管理員。</p>
+                <button class="btn btn-sm btn-outline-danger mt-2" onclick="location.reload()">刷新頁面</button>
+            `;
+            
+            // 添加到頁面
+            const verificationContent = document.querySelector('.verification-content');
+            if (verificationContent) {
+                verificationContent.prepend(errorDiv);
+            }
+        }
+    </script>
+</body>
+</html>
