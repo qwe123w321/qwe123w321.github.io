@@ -1667,56 +1667,121 @@
             } catch (error) {
                 console.error('安全初始化Firebase失敗:', error);
                 
-                // 嘗試執行降級初始化
+                // 嘗試執行降級初始化 - 這裡不再遞迴調用自己，而是調用另一個降級函數
                 console.log('嘗試進行降級初始化...');
-                    // 添加初始化狀態指示器到頁面
-    const statusIndicator = document.createElement('div');
-    statusIndicator.id = 'appCheckStatus';
-    statusIndicator.className = 'initializing';
-    statusIndicator.textContent = 'App Check: 初始化中...';
-    statusIndicator.style.position = 'fixed';
-    statusIndicator.style.top = '10px';
-    statusIndicator.style.right = '10px';
-    statusIndicator.style.padding = '5px 10px';
-    statusIndicator.style.borderRadius = '4px';
-    statusIndicator.style.fontSize = '12px';
-    statusIndicator.style.zIndex = '9999';
-    statusIndicator.style.backgroundColor = '#ffeeba';
-    statusIndicator.style.color = '#856404';
-    document.body.appendChild(statusIndicator);
-    
-    // 使用Promise來處理初始化，增加重試機制
-    initFirebaseWithAppCheck()
-        .then(success => {
-            console.log(`Firebase初始化${success ? '成功' : '使用了降級方案'}`);
-            statusIndicator.className = 'success';
-            statusIndicator.textContent = 'App Check: 初始化完成 ✓';
-            statusIndicator.style.backgroundColor = '#d4edda';
-            statusIndicator.style.color = '#155724';
+                try {
+                    const fallbackSuccess = await initializeFirebaseWithoutAppCheck();
+                    return fallbackSuccess;
+                } catch (fallbackError) {
+                    console.error('降級初始化也失敗:', fallbackError);
+                    return false; // 明確返回失敗
+                }
+            }
+        }
+
+        function showInitializationStatus() {
+            const statusIndicator = document.createElement('div');
+            statusIndicator.id = 'appCheckStatus';
+            statusIndicator.className = 'initializing';
+            statusIndicator.textContent = 'App Check: 初始化中...';
+            statusIndicator.style.position = 'fixed';
+            statusIndicator.style.top = '10px';
+            statusIndicator.style.right = '10px';
+            statusIndicator.style.padding = '5px 10px';
+            statusIndicator.style.borderRadius = '4px';
+            statusIndicator.style.fontSize = '12px';
+            statusIndicator.style.zIndex = '9999';
+            statusIndicator.style.backgroundColor = '#ffeeba';
+            statusIndicator.style.color = '#856404';
+            document.body.appendChild(statusIndicator);
             
-            // 3秒後淡出指示器
-            setTimeout(() => {
-                statusIndicator.style.opacity = '0';
-                statusIndicator.style.transition = 'opacity 0.5s';
-                setTimeout(() => {
-                    if (statusIndicator.parentNode) {
-                        statusIndicator.parentNode.removeChild(statusIndicator);
+            return statusIndicator;
+        }
+
+        // 不使用App Check初始化Firebase
+        async function initializeFirebaseWithoutAppCheck() {
+            console.log('不使用App Check初始化Firebase');
+            
+            try {
+                // 如果尚未初始化Firebase，執行初始化
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                    console.log('Firebase初始化成功（無App Check）');
+                } else {
+                    console.log('Firebase已經初始化過了');
+                }
+                
+                // 獲取Firebase服務
+                window.db = firebase.firestore();
+                window.auth = firebase.auth();
+                window.storage = firebase.storage();
+                
+                // 設置更完善的假App Check以避免後續錯誤
+                const mockAppCheck = {
+                    getToken: function() {
+                        console.log('獲取模擬App Check令牌');
+                        return Promise.resolve({
+                            token: 'bypass-app-check-token-' + Date.now(),
+                            expireTimeMillis: Date.now() + 3600000 // 1小時後過期
+                        });
+                    },
+                    activate: function(siteKey, autoRefreshEnabled) { 
+                        console.log(`使用模擬App Check (siteKey: ${siteKey}, autoRefresh: ${autoRefreshEnabled})`); 
+                        return true;
+                    },
+                    // 添加可能被調用的其他方法
+                    setTokenAutoRefreshEnabled: function(enabled) {
+                        console.log(`設置模擬App Check自動刷新: ${enabled}`);
+                        return;
                     }
-                }, 500);
-            }, 3000);
-        })
-        .catch(error => {
-            console.error('Firebase初始化失敗，嘗試備用方案:', error);
-            statusIndicator.className = 'error';
-            statusIndicator.textContent = 'App Check: 初始化失敗，正在切換到備用方式...';
-            statusIndicator.style.backgroundColor = '#f8d7da';
-            statusIndicator.style.color = '#721c24';
+                };
+                
+                // 完全替換firebase.appCheck
+                firebase.appCheck = function() {
+                    return mockAppCheck;
+                };
+                
+                // 設置一個全局標誌，表示使用的是降級模式
+                window.USING_FALLBACK_APPCHECK = true;
+                window.APP_CHECK_INITIALIZED = true;
+                
+                // 添加全局函數，以便在需要時重新獲取令牌
+                window.getAppCheckToken = function() {
+                    return mockAppCheck.getToken();
+                };
+                
+                // 設置攔截器，自動添加令牌到Firebase請求
+                setupRequestInterceptors();
+                
+                // 設置認證狀態監聽器
+                setupAuthStateListener();
+                
+                // 初始化頁面元素
+                initializePage();
+                
+                console.log('Firebase降級初始化完成');
+                return true;
+                
+            } catch (error) {
+                console.error('Firebase降級初始化失敗:', error);
+                throw error; // 讓上層函數處理這個錯誤
+            }
+        }
+
+
+        // 使用函數的入口點
+        function initializeApplication() {
+            // 添加初始化狀態指示器
+            const statusIndicator = showInitializationStatus();
             
-            // 嘗試備用初始化方法
-            return initializeFirebaseWithoutAppCheck()
-                .then(() => {
-                    console.log('備用初始化成功');
-                    statusIndicator.textContent = 'App Check: 使用備用方式 ✓';
+            // 使用Promise來處理初始化，增加重試機制
+            initFirebaseWithAppCheck()
+                .then(success => {
+                    console.log(`Firebase初始化${success ? '成功' : '使用了降級方案'}`);
+                    statusIndicator.className = 'success';
+                    statusIndicator.textContent = 'App Check: 初始化完成 ✓';
+                    statusIndicator.style.backgroundColor = '#d4edda';
+                    statusIndicator.style.color = '#155724';
                     
                     // 3秒後淡出指示器
                     setTimeout(() => {
@@ -1729,88 +1794,18 @@
                         }, 500);
                     }, 3000);
                 })
-                .catch(fallbackError => {
-                    console.error('備用初始化也失敗:', fallbackError);
-                    statusIndicator.textContent = 'App Check: 初始化完全失敗 ✗';
+                .catch(error => {
+                    console.error('Firebase初始化失敗:', error);
+                    statusIndicator.className = 'error';
+                    statusIndicator.textContent = 'App Check: 初始化失敗 ✗';
+                    statusIndicator.style.backgroundColor = '#f8d7da';
+                    statusIndicator.style.color = '#721c24';
                     
                     // 顯示錯誤提示
                     setTimeout(() => {
                         alert('系統初始化失敗，請刷新頁面或嘗試使用其他瀏覽器。');
                     }, 500);
                 });
-            })
-        }
-
-        // 不使用App Check初始化Firebase
-        function initializeFirebaseWithoutAppCheck() {
-            console.log('不使用App Check初始化Firebase');
-            
-            return new Promise((resolve, reject) => {
-                try {
-                    // 如果尚未初始化Firebase，執行初始化
-                    if (!firebase.apps.length) {
-                        firebase.initializeApp(firebaseConfig);
-                        console.log('Firebase初始化成功（無App Check）');
-                    } else {
-                        console.log('Firebase已經初始化過了');
-                    }
-                    
-                    // 獲取Firebase服務
-                    window.db = firebase.firestore();
-                    window.auth = firebase.auth();
-                    window.storage = firebase.storage();
-                    
-                    // 設置更完善的假App Check以避免後續錯誤
-                    const mockAppCheck = {
-                        getToken: function() {
-                            console.log('獲取模擬App Check令牌');
-                            return Promise.resolve({
-                                token: 'bypass-app-check-token-' + Date.now(),
-                                expireTimeMillis: Date.now() + 3600000 // 1小時後過期
-                            });
-                        },
-                        activate: function(siteKey, autoRefreshEnabled) { 
-                            console.log(`使用模擬App Check (siteKey: ${siteKey}, autoRefresh: ${autoRefreshEnabled})`); 
-                            return true;
-                        },
-                        // 添加可能被調用的其他方法
-                        setTokenAutoRefreshEnabled: function(enabled) {
-                            console.log(`設置模擬App Check自動刷新: ${enabled}`);
-                            return;
-                        }
-                    };
-                    
-                    // 完全替換firebase.appCheck
-                    firebase.appCheck = function() {
-                        return mockAppCheck;
-                    };
-                    
-                    // 設置一個全局標誌，表示使用的是降級模式
-                    window.USING_FALLBACK_APPCHECK = true;
-                    window.APP_CHECK_INITIALIZED = true;
-                    
-                    // 添加全局函數，以便在需要時重新獲取令牌
-                    window.getAppCheckToken = function() {
-                        return mockAppCheck.getToken();
-                    };
-                    
-                    // 設置攔截器，自動添加令牌到Firebase請求
-                    setupRequestInterceptors();
-                    
-                    // 設置認證狀態監聽器
-                    setupAuthStateListener();
-                    
-                    // 初始化頁面元素
-                    initializePage();
-                    
-                    console.log('Firebase降級初始化完成');
-                    resolve(true);
-                    
-                } catch (error) {
-                    console.error('Firebase降級初始化失敗:', error);
-                    reject(error);
-                }
-            });
         }
 
         // 添加攔截器函數
