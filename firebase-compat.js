@@ -2,6 +2,31 @@
 // 此文件創建一個橋接層，允許使用Firebase v8風格的語法，但底層使用Firebase v9 API
 
 import { 
+  initializeAppCheck, 
+  ReCaptchaV3Provider,
+  getToken 
+} from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-check.js';
+
+// 初始化 App Check（在應用初始化後）
+let appCheck;
+try {
+  appCheck = initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G'),
+      isTokenAutoRefreshEnabled: true
+  });
+  console.log('App Check 初始化成功');
+} catch (error) {
+  console.error('App Check 初始化失敗:', error);
+  // 設置後備 App Check
+  appCheck = {
+      getToken: () => Promise.resolve({
+          token: 'fallback-token',
+          expireTimeMillis: Date.now() + 300000
+      })
+  };
+}
+
+import { 
   getFirestore, 
   collection, 
   doc, 
@@ -66,6 +91,18 @@ const firestoreStorage = getStorage(app);
 
 // 創建一個Firebase v8風格的API相容層
 function createCompatibilityLayer() {
+  // 添加 App Check 相容層
+  const appCheckCompat = {
+    getToken: async (forceRefresh = false) => {
+        try {
+            const tokenResult = await getToken(appCheck, forceRefresh);
+            return tokenResult;
+        } catch (error) {
+            console.error('獲取 App Check 令牌失敗:', error);
+            return null;
+        }
+    }
+  };
   // 用於轉換文檔快照到 v8 風格的文檔
   function wrapDocumentSnapshot(docSnap) {
     if (!docSnap.exists()) {
@@ -292,7 +329,8 @@ function createCompatibilityLayer() {
         increment: (number) => increment(number)
       },
       batch: () => firestoreCompat.batch()
-    }
+    },
+    appCheck: appCheckCompat
   };
 }
 
