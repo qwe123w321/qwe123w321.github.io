@@ -1392,3 +1392,1686 @@ async function handleReportAction() {
         actionButton.disabled = false;
     }
 }
+
+// 限制用戶功能
+async function applyUserRestriction(userId, restrictType, days) {
+    try {
+        const expireAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+        
+        // 更新用戶狀態
+        const userStatusRef = db.collection('userStatus').doc(userId);
+        const doc = await userStatusRef.get();
+        
+        if (doc.exists) {
+            // 更新現有記錄
+            await userStatusRef.update({
+                [`restrictions.${restrictType}`]: {
+                    active: true,
+                    expireAt: expireAt,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                },
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } else {
+            // 創建新記錄
+            await userStatusRef.set({
+                userId: userId,
+                isBanned: false,
+                restrictions: {
+                    [restrictType]: {
+                        active: true,
+                        expireAt: expireAt,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }
+                },
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        
+        // 發送通知給用戶
+        await sendUserNotification(userId, 'restriction', {
+            restrictType: restrictType,
+            duration: days
+        });
+        
+    } catch (error) {
+        console.error('限制用戶功能錯誤:', error);
+        throw error;
+    }
+}
+
+// 暫停用戶帳號
+async function suspendUser(userId, days) {
+    try {
+        const expireAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+        
+        // 更新用戶狀態
+        const userStatusRef = db.collection('userStatus').doc(userId);
+        await userStatusRef.set({
+            userId: userId,
+            isSuspended: true,
+            suspendExpireAt: expireAt,
+            suspendedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            suspendReason: 'violation',
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        
+        // 發送通知給用戶
+        await sendUserNotification(userId, 'suspension', {
+            duration: days
+        });
+        
+    } catch (error) {
+        console.error('暫停用戶帳號錯誤:', error);
+        throw error;
+    }
+}
+
+// 永久封禁用戶
+async function banUser(userId) {
+    try {
+        // 更新用戶狀態
+        const userStatusRef = db.collection('userStatus').doc(userId);
+        await userStatusRef.set({
+            userId: userId,
+            isBanned: true,
+            bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            banReason: 'severe_violation',
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        
+        // 發送通知給用戶
+        await sendUserNotification(userId, 'ban', {});
+        
+    } catch (error) {
+        console.error('封禁用戶錯誤:', error);
+        throw error;
+    }
+}
+
+// 警告用戶
+async function warnUser(userId, reasons) {
+    try {
+        // 更新用戶警告計數
+        const userStatusRef = db.collection('userStatus').doc(userId);
+        const doc = await userStatusRef.get();
+        
+        if (doc.exists) {
+            await userStatusRef.update({
+                warningCount: firebase.firestore.FieldValue.increment(1),
+                lastWarningAt: firebase.firestore.FieldValue.serverTimestamp(),
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } else {
+            await userStatusRef.set({
+                userId: userId,
+                warningCount: 1,
+                lastWarningAt: firebase.firestore.FieldValue.serverTimestamp(),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        
+        // 發送通知給用戶
+        await sendUserNotification(userId, 'warning', {
+            reasons: reasons
+        });
+        
+    } catch (error) {
+        console.error('警告用戶錯誤:', error);
+        throw error;
+    }
+}
+
+// 發送通知給用戶
+async function sendUserNotification(userId, type, data) {
+    try {
+        // 根據通知類型獲取模板
+        let message = '';
+        
+        switch (type) {
+            case 'warning':
+                message = document.getElementById('warningTemplate').value;
+                message = message.replace('{reason}', data.reasons ? data.reasons.map(r => getReasonText(r)).join('、') : '違反社區規範');
+                break;
+            case 'restriction':
+                message = `您的帳號因違反社區規範，${getRestrictionTypeText(data.restrictType)}功能已被限制${data.duration}天。`;
+                break;
+            case 'suspension':
+                message = document.getElementById('suspensionTemplate').value;
+                message = message.replace('{reason}', '違反社區規範').replace('{days}', data.duration);
+                break;
+            case 'ban':
+                message = '您的帳號因嚴重違反社區規範已被永久封禁。';
+                break;
+        }
+        
+        // 創建通知
+        await db.collection('notifications').add({
+            userId: userId,
+            type: type,
+            message: message,
+            data: data,
+            isRead: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+    } catch (error) {
+        console.error('發送通知錯誤:', error);
+        // 這裡的錯誤不應該影響主要流程，所以只記錄不拋出
+    }
+}
+
+// 檢查重複檢舉情況
+async function checkFrequentReports() {
+    try {
+        // 獲取所有待處理檢舉
+        const pendingReportsSnapshot = await db.collection('reports')
+            .where('status', '==', 'pending')
+            .get();
+        
+        if (pendingReportsSnapshot.empty) {
+            document.querySelector('.tab[data-tab="frequentReports"]').setAttribute('data-count', '0');
+            return;
+        }
+        
+        // 統計每個被檢舉用戶的檢舉數量
+        const reportCounts = {};
+        
+        pendingReportsSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.reportedUserId) {
+                reportCounts[data.reportedUserId] = (reportCounts[data.reportedUserId] || 0) + 1;
+            }
+        });
+        
+        // 篩選出被多次檢舉的用戶
+        const multiReportedUsers = Object.keys(reportCounts).filter(userId => 
+            reportCounts[userId] >= 3  // 可以根據需要調整閾值
+        );
+        
+        // 更新標籤頁徽章數字
+        document.querySelector('.tab[data-tab="frequentReports"]').setAttribute('data-count', multiReportedUsers.length.toString());
+        
+        // 如果有多次檢舉的用戶，添加視覺提示
+        if (multiReportedUsers.length > 0) {
+            document.querySelector('.tab[data-tab="frequentReports"]').classList.add('notification-badge');
+        } else {
+            document.querySelector('.tab[data-tab="frequentReports"]').classList.remove('notification-badge');
+        }
+        
+    } catch (error) {
+        console.error('檢查重複檢舉錯誤:', error);
+        // 不影響主要流程
+    }
+}
+
+// 加載重複檢舉標籤頁
+async function loadFrequentReports() {
+    const container = document.getElementById('frequent-reports-container');
+    const loadingElement = document.getElementById('frequent-loading');
+    
+    container.innerHTML = '';
+    loadingElement.style.display = 'flex';
+    
+    try {
+        // 獲取所有待處理檢舉
+        const pendingReportsSnapshot = await db.collection('reports')
+            .where('status', '==', 'pending')
+            .get();
+        
+        if (pendingReportsSnapshot.empty) {
+            loadingElement.style.display = 'none';
+            container.innerHTML = '<div style="text-align: center; padding: 30px;">沒有待處理檢舉</div>';
+            return;
+        }
+        
+        // 統計每個被檢舉用戶的檢舉數量和檢舉
+        const reportCounts = {};
+        const userReports = {};
+        
+        pendingReportsSnapshot.forEach(doc => {
+            const data = doc.data();
+            data.id = doc.id;
+            
+            if (data.reportedUserId) {
+                reportCounts[data.reportedUserId] = (reportCounts[data.reportedUserId] || 0) + 1;
+                
+                if (!userReports[data.reportedUserId]) {
+                    userReports[data.reportedUserId] = [];
+                }
+                userReports[data.reportedUserId].push(data);
+            }
+        });
+        
+        // 篩選出被多次檢舉的用戶
+        const multiReportedUsers = Object.keys(reportCounts).filter(userId => 
+            reportCounts[userId] >= 3  // 可以根據需要調整閾值
+        );
+        
+        loadingElement.style.display = 'none';
+        
+        if (multiReportedUsers.length === 0) {
+            container.innerHTML = '<div style="text-align: center; padding: 30px;">沒有被多次檢舉的用戶</div>';
+            return;
+        }
+        
+        // 為每個多次被檢舉的用戶創建卡片
+        for (const userId of multiReportedUsers) {
+            const reports = userReports[userId];
+            const reportCount = reportCounts[userId];
+            
+            // 獲取用戶信息
+            const userDoc = await db.collection('userStatus').doc(userId).get();
+            const userData = userDoc.exists ? userDoc.data() : null;
+            const userName = userData ? (userData.name || '未知用戶') : '未知用戶';
+            
+            // 創建用戶卡片
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.style.marginBottom = '20px';
+            
+            // 收集所有檢舉原因
+            const allReasons = new Set();
+            reports.forEach(report => {
+                if (report.reasons && report.reasons.length > 0) {
+                    report.reasons.forEach(reason => allReasons.add(reason));
+                }
+            });
+            
+            const reasonTags = Array.from(allReasons).map(reason => 
+                `<span class="tag">${getReasonText(reason)}</span>`
+            ).join('');
+            
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>${userName}</h3>
+                    <span class="status-badge badge-warning">被檢舉 ${reportCount} 次</span>
+                </div>
+                <p><strong>檢舉原因:</strong></p>
+                <div class="tag-list">${reasonTags}</div>
+                <div style="margin-top: 15px;">
+                    <button class="btn-primary view-reports" data-id="${userId}">查看所有檢舉</button>
+                    <button class="btn-danger handle-all" data-id="${userId}">批量處理</button>
+                </div>
+            `;
+            
+            // 添加查看所有檢舉事件
+            card.querySelector('.view-reports').addEventListener('click', () => {
+                showUserReports(userId, reports);
+            });
+            
+            // 添加批量處理事件
+            card.querySelector('.handle-all').addEventListener('click', () => {
+                batchHandleReports(userId, reports);
+            });
+            
+            container.appendChild(card);
+        }
+        
+    } catch (error) {
+        console.error('加載重複檢舉錯誤:', error);
+        loadingElement.style.display = 'none';
+        container.innerHTML = `<div style="text-align: center; padding: 30px;">加載資料時發生錯誤: ${error.message}</div>`;
+    }
+}
+
+// 顯示用戶所有檢舉
+function showUserReports(userId, reports) {
+    // 創建一個模態對話框來顯示所有檢舉
+    const modal = document.createElement('div');
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.backgroundColor = 'rgba(0,0,0,0.7)';
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.zIndex = '1000';
+    
+    const dialog = document.createElement('div');
+    dialog.style.backgroundColor = 'white';
+    dialog.style.borderRadius = '12px';
+    dialog.style.padding = '20px';
+    dialog.style.maxWidth = '800px';
+    dialog.style.width = '90%';
+    dialog.style.maxHeight = '80vh';
+    dialog.style.overflowY = 'auto';
+    
+    dialog.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2>用戶檢舉列表</h2>
+            <button id="close-modal" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+        </div>
+        <div id="reports-list"></div>
+    `;
+    
+    modal.appendChild(dialog);
+    document.body.appendChild(modal);
+    
+    // 關閉按鈕事件
+    document.getElementById('close-modal').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+    
+    // 填充檢舉列表
+    const reportsList = document.getElementById('reports-list');
+    
+    reports.forEach(report => {
+        const createdAt = report.createdAt ? formatDate(report.createdAt.toDate()) : '未知時間';
+        const reasons = report.reasons ? report.reasons.map(r => getReasonText(r)).join('、') : '未指定';
+        
+        const reportItem = document.createElement('div');
+        reportItem.style.borderBottom = '1px solid #eee';
+        reportItem.style.padding = '15px 0';
+        
+        reportItem.innerHTML = `
+            <p><strong>檢舉人:</strong> ${report.reporterName || '未知'}</p>
+            <p><strong>時間:</strong> ${createdAt}</p>
+            <p><strong>原因:</strong> ${reasons}</p>
+            <p><strong>詳細描述:</strong> ${report.detail || '無'}</p>
+            <button class="btn-primary view-detail" data-id="${report.id}">查看詳情</button>
+        `;
+        
+        // 添加查看詳情事件
+        reportItem.querySelector('.view-detail').addEventListener('click', () => {
+            document.body.removeChild(modal);
+            showReportDetail(report.id);
+        });
+        
+        reportsList.appendChild(reportItem);
+    });
+}
+
+// 批量處理檢舉
+async function batchHandleReports(userId, reports) {
+    if (reports.length === 0) return;
+    
+    // 創建選擇處理方式的對話框
+    const modal = document.createElement('div');
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.backgroundColor = 'rgba(0,0,0,0.7)';
+    modal.style.display = 'flex';
+    modal.style.alignItems = 'center';
+    modal.style.justifyContent = 'center';
+    modal.style.zIndex = '1000';
+    
+    const dialog = document.createElement('div');
+    dialog.style.backgroundColor = 'white';
+    dialog.style.borderRadius = '12px';
+    dialog.style.padding = '20px';
+    dialog.style.maxWidth = '500px';
+    dialog.style.width = '90%';
+    
+    dialog.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2>批量處理檢舉</h2>
+            <button id="close-batch-modal" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+        </div>
+        <p>您正在處理 <strong>${reports.length}</strong> 個針對同一用戶的檢舉。</p>
+        <form id="batch-form">
+            <div class="punishment-options">
+                <div class="punishment-type">
+                    <label>
+                        <input type="radio" name="batchAction" value="warning" checked>
+                        發出警告
+                    </label>
+                </div>
+                
+                <div class="punishment-type">
+                    <label>
+                        <input type="radio" name="batchAction" value="restrict">
+                        功能限制
+                    </label>
+                    <div style="margin-left: 25px; margin-top: 10px;">
+                        <select id="batchRestrictType">
+                            <option value="chat">聊天功能</option>
+                            <option value="match">配對功能</option>
+                            <option value="photo">上傳照片</option>
+                            <option value="all">所有功能</option>
+                        </select>
+                        <input type="number" id="batchRestrictDays" min="1" max="30" value="7" style="width: 60px; margin-left: 10px;"> 天
+                    </div>
+                </div>
+                
+                <div class="punishment-type">
+                    <label>
+                        <input type="radio" name="batchAction" value="suspend">
+                        暫停帳號
+                    </label>
+                    <div style="margin-left: 25px; margin-top: 10px;">
+                        <input type="number" id="batchSuspendDays" min="1" max="90" value="30" style="width: 60px;"> 天
+                    </div>
+                </div>
+                
+                <div class="punishment-type">
+                    <label>
+                        <input type="radio" name="batchAction" value="ban">
+                        永久封禁
+                    </label>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <label for="batchActionNote">處理備註 (僅管理員可見):</label>
+                <textarea id="batchActionNote" rows="3" style="width: 100%; margin-top: 10px;"></textarea>
+            </div>
+            
+            <div style="margin-top: 20px; display: flex; justify-content: center; gap: 10px;">
+                <button type="button" id="cancel-batch" class="btn-danger">取消</button>
+                <button type="button" id="confirm-batch" class="btn-success">確認處理</button>
+            </div>
+        </form>
+    `;
+    
+    modal.appendChild(dialog);
+    document.body.appendChild(modal);
+    
+    // 關閉按鈕事件
+    document.getElementById('close-batch-modal').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+    
+    document.getElementById('cancel-batch').addEventListener('click', () => {
+        document.body.removeChild(modal);
+    });
+    
+    // 提交處理
+    document.getElementById('confirm-batch').addEventListener('click', async () => {
+        const actionType = document.querySelector('input[name="batchAction"]:checked').value;
+        const actionNote = document.getElementById('batchActionNote').value.trim();
+        
+        if (!actionType) {
+            alert('請選擇處理方式');
+            return;
+        }
+        
+        try {
+            // 顯示處理中
+            document.getElementById('confirm-batch').disabled = true;
+            document.getElementById('confirm-batch').textContent = '處理中...';
+            
+            // 根據選擇的處理方式進行處理
+            let punishment = null;
+            
+            if (actionType === 'restrict') {
+                const restrictType = document.getElementById('batchRestrictType').value;
+                const restrictDays = parseInt(document.getElementById('batchRestrictDays').value);
+                
+                punishment = {
+                    type: 'restrict',
+                    restrictType: restrictType,
+                    duration: restrictDays,
+                    expireAt: new Date(Date.now() + restrictDays * 24 * 60 * 60 * 1000)
+                };
+                
+                // 更新用戶狀態
+                await applyUserRestriction(userId, restrictType, restrictDays);
+                
+            } else if (actionType === 'suspend') {
+                const suspendDays = parseInt(document.getElementById('batchSuspendDays').value);
+                
+                punishment = {
+                    type: 'suspend',
+                    duration: suspendDays,
+                    expireAt: new Date(Date.now() + suspendDays * 24 * 60 * 60 * 1000)
+                };
+                
+                // 更新用戶狀態
+                await suspendUser(userId, suspendDays);
+                
+            } else if (actionType === 'ban') {
+                punishment = {
+                    type: 'ban',
+                    permanent: true
+                };
+                
+                // 更新用戶狀態
+                await banUser(userId);
+                
+            } else if (actionType === 'warning') {
+                punishment = {
+                    type: 'warning',
+                    warningCount: firebase.firestore.FieldValue.increment(1)
+                };
+                
+                // 更新用戶狀態
+                const allReasons = new Set();
+                reports.forEach(report => {
+                    if (report.reasons && report.reasons.length > 0) {
+                        report.reasons.forEach(reason => allReasons.add(reason));
+                    }
+                });
+                
+                await warnUser(userId, Array.from(allReasons));
+            }
+            
+            // 批量更新檢舉記錄
+            const batch = db.batch();
+            
+            reports.forEach(report => {
+                const reportRef = db.collection('reports').doc(report.id);
+                
+                batch.update(reportRef, {
+                    status: 'resolved',
+                    handledBy: auth.currentUser.uid,
+                    handlerName: auth.currentUser.email,
+                    handledAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    actionType: actionType,
+                    actionNote: actionNote || '批量處理',
+                    punishment: punishment
+                });
+                
+                // 更新檢舉人信用分數
+                if (report.reporterId) {
+                    updateReporterCredibility(report.reporterId, 5);
+                }
+            });
+            
+            await batch.commit();
+            
+            // 關閉對話框
+            document.body.removeChild(modal);
+            
+            // 顯示處理成功
+            alert(`已成功處理 ${reports.length} 個檢舉`);
+            
+            // 重新加載數據
+            loadFrequentReports();
+            loadReports();
+            
+        } catch (error) {
+            console.error('批量處理檢舉錯誤:', error);
+            alert('處理檢舉時發生錯誤: ' + error.message);
+            
+            if (document.getElementById('confirm-batch')) {
+                document.getElementById('confirm-batch').disabled = false;
+                document.getElementById('confirm-batch').textContent = '確認處理';
+            }
+        }
+    });
+}
+
+// 加載統計數據
+async function loadStatistics() {
+    try {
+        // 獲取所有檢舉記錄
+        const reportsSnapshot = await db.collection('reports').get();
+        const reports = [];
+        
+        reportsSnapshot.forEach(doc => {
+            const data = doc.data();
+            data.id = doc.id;
+            reports.push(data);
+        });
+        
+        // 添加照片驗證統計
+        const verificationsSnapshot = await db.collection('PhotoVerificationRequest').get();
+        const totalVerifications = verificationsSnapshot.size;
+        const pendingVerifications = verificationsSnapshot.docs.filter(doc => doc.data().status === 'pending').length;
+        const approvedVerifications = verificationsSnapshot.docs.filter(doc => doc.data().status === 'approved').length;
+        const rejectedVerifications = verificationsSnapshot.docs.filter(doc => doc.data().status === 'rejected').length;
+
+        document.getElementById('total-verifications').textContent = totalVerifications;
+        document.getElementById('pending-verifications').textContent = pendingVerifications;
+        document.getElementById('approved-verifications').textContent = approvedVerifications;
+        document.getElementById('rejected-verifications').textContent = rejectedVerifications;
+
+        
+        // 統計檢舉類型
+        const typeCounts = {};
+        reports.forEach(report => {
+            if (report.reasons && report.reasons.length > 0) {
+                report.reasons.forEach(reason => {
+                    typeCounts[reason] = (typeCounts[reason] || 0) + 1;
+                });
+            }
+        });
+        
+        // 顯示檢舉類型分布
+        const typeStatsContainer = document.getElementById('report-types-stats');
+        typeStatsContainer.innerHTML = '';
+        
+        const sortedTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+        
+        sortedTypes.forEach(([type, count]) => {
+            const percentage = Math.round((count / totalReports) * 100);
+            
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span>${getReasonText(type)}</span>
+                    <span>${count} (${percentage}%)</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: ${percentage}%"></div>
+                </div>
+            `;
+            
+            typeStatsContainer.appendChild(li);
+        });
+        
+        // 統計平均處理時間
+        const handledReports = reports.filter(report => 
+            report.status !== 'pending' && report.createdAt && report.handledAt
+        );
+        
+        let totalHandleTime = 0;
+        
+        handledReports.forEach(report => {
+            const createdAt = report.createdAt.toDate();
+            const handledAt = report.handledAt.toDate();
+            const handleTimeHours = (handledAt - createdAt) / (1000 * 60 * 60);
+            totalHandleTime += handleTimeHours;
+        });
+        
+        const avgHandleTime = handledReports.length > 0 
+            ? (totalHandleTime / handledReports.length).toFixed(1) 
+            : 0;
+        
+        document.getElementById('avg-handle-time').textContent = avgHandleTime;
+        
+        // 本週處理量
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        
+        const weeklyHandled = handledReports.filter(report => 
+            report.handledAt.toDate() >= oneWeekAgo
+        ).length;
+        
+        document.getElementById('weekly-handled').textContent = weeklyHandled;
+        
+        // 最常被檢舉用戶
+        const reportedUserCounts = {};
+        reports.forEach(report => {
+            if (report.reportedUserId) {
+                reportedUserCounts[report.reportedUserId] = (reportedUserCounts[report.reportedUserId] || 0) + 1;
+            }
+        });
+        
+        const mostReportedUsers = Object.entries(reportedUserCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+        
+        const mostReportedUsersContainer = document.getElementById('most-reported-users');
+        mostReportedUsersContainer.innerHTML = '';
+        
+        if (mostReportedUsers.length === 0) {
+            mostReportedUsersContainer.innerHTML = '<li>沒有足夠數據</li>';
+            return;
+        }
+        
+        // 獲取用戶名
+        for (const [userId, count] of mostReportedUsers) {
+            try {
+                const userDoc = await db.collection('userprofileData').doc(userId).get();
+                const userName = userDoc.exists ? (userDoc.data().name || '未知用戶') : '未知用戶';
+                
+                const validReports = reports.filter(report => 
+                    report.reportedUserId === userId && report.status === 'resolved'
+                ).length;
+                
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>${userName}</span>
+                        <span>${count}次 (${validReports}次成立)</span>
+                    </div>
+                `;
+                
+                mostReportedUsersContainer.appendChild(li);
+            } catch (error) {
+                console.error('獲取用戶名錯誤:', error);
+            }
+        }
+        
+        // 加載檢舉信用統計
+        await loadCredibilityStatistics();
+        
+    } catch (error) {
+        console.error('加載統計數據錯誤:', error);
+        alert('加載統計數據時發生錯誤: ' + error.message);
+    }
+}
+
+// 加載檢舉信用統計
+async function loadCredibilityStatistics() {
+try {
+    // 獲取所有檢舉信用記錄
+    const credibilitySnapshot = await db.collection('userReportCredibility').get();
+    const credibilityData = [];
+    
+    credibilitySnapshot.forEach(doc => {
+    const data = doc.data();
+    data.id = doc.id;
+    credibilityData.push(data);
+    });
+    
+    // 檢舉信用分數分布
+    let highCreditCount = 0;
+    let mediumCreditCount = 0;
+    let lowCreditCount = 0;
+    
+    credibilityData.forEach(data => {
+    const score = data.score || 100;
+    if (score >= 80) {
+        highCreditCount++;
+    } else if (score >= 50) {
+        mediumCreditCount++;
+    } else {
+        lowCreditCount++;
+    }
+    });
+    
+    // 更新UI前檢查元素是否存在
+    const highCreditElement = document.getElementById('high-credit-count');
+    const mediumCreditElement = document.getElementById('medium-credit-count');
+    const lowCreditElement = document.getElementById('low-credit-count');
+    
+    if (highCreditElement) highCreditElement.textContent = highCreditCount;
+    if (mediumCreditElement) mediumCreditElement.textContent = mediumCreditCount;
+    if (lowCreditElement) lowCreditElement.textContent = lowCreditCount;
+    
+    // 最活躍檢舉人
+    const mostActiveReporters = credibilityData
+    .sort((a, b) => (b.reportCount || 0) - (a.reportCount || 0))
+    .slice(0, 5);
+    
+    const mostActiveReportersContainer = document.getElementById('most-active-reporters');
+    if (mostActiveReportersContainer) {
+    mostActiveReportersContainer.innerHTML = '';
+    
+    if (mostActiveReporters.length === 0) {
+        mostActiveReportersContainer.innerHTML = '<li>沒有足夠數據</li>';
+    } else {
+        for (const data of mostActiveReporters) {
+        try {
+            const userDoc = await db.collection('userprofileData').doc(data.userId).get();
+            const userName = userDoc.exists ? (userDoc.data().name || '未知用戶') : '未知用戶';
+            
+            const validRate = ((data.validReports || 0) / (data.reportCount || 1) * 100).toFixed(0);
+            
+            const li = document.createElement('li');
+            li.innerHTML = `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>${userName}</span>
+                <span>${data.reportCount || 0}次 (${validRate}%有效)</span>
+            </div>
+            `;
+            
+            mostActiveReportersContainer.appendChild(li);
+        } catch (error) {
+            console.error('獲取用戶名錯誤:', error);
+        }
+        }
+    }
+    }
+    
+    // 最低信用分數用戶
+    const lowestCreditUsers = credibilityData
+    .sort((a, b) => (a.score || 100) - (b.score || 100))
+    .slice(0, 5);
+    
+    const lowestCreditUsersContainer = document.getElementById('lowest-credit-users');
+    if (lowestCreditUsersContainer) {
+    lowestCreditUsersContainer.innerHTML = '';
+    
+    if (lowestCreditUsers.length === 0) {
+        lowestCreditUsersContainer.innerHTML = '<li>沒有足夠數據</li>';
+    } else {
+        for (const data of lowestCreditUsers) {
+        try {
+            const userDoc = await db.collection('userprofileData').doc(data.userId).get();
+            const userName = userDoc.exists ? (userDoc.data().name || '未知用戶') : '未知用戶';
+            
+            const li = document.createElement('li');
+            li.innerHTML = `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span>${userName}</span>
+                <span>信用分數: ${data.score || 100}</span>
+            </div>
+            `;
+            
+            lowestCreditUsersContainer.appendChild(li);
+        } catch (error) {
+            console.error('獲取用戶名錯誤:', error);
+        }
+        }
+    }
+    }
+    
+} catch (error) {
+    console.error('加載檢舉信用統計錯誤:', error);
+        // 不影響主要流程
+    }
+}
+
+// 加載歷史記錄
+async function loadHistory() {
+    const historyContainer = document.getElementById('history-container');
+    const loadingIndicator = document.getElementById('history-loading');
+    
+    historyContainer.innerHTML = '';
+    loadingIndicator.style.display = 'flex';
+    
+    try {
+        // 獲取過濾條件
+        const searchTerm = document.getElementById('historySearchInput').value.trim().toLowerCase();
+        const statusFilter = document.getElementById('historyStatusFilter').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        // 構建查詢
+        let query = db.collection('reports')
+            .where('status', '!=', 'pending')
+            .orderBy('status')
+            .orderBy('handledAt', 'desc')
+            .limit(50);
+        
+        // 應用狀態過濾
+        if (statusFilter !== 'all') {
+            query = db.collection('reports')
+                .where('status', '==', statusFilter)
+                .orderBy('handledAt', 'desc')
+                .limit(50);
+        }
+        
+        const querySnapshot = await query.get();
+        
+        loadingIndicator.style.display = 'none';
+        
+        if (querySnapshot.empty) {
+            historyContainer.innerHTML = '<div style="text-align: center; padding: 30px;">沒有處理歷史記錄</div>';
+            return;
+        }
+        
+        let records = [];
+        querySnapshot.forEach(doc => {
+            const data = doc.data();
+            data.id = doc.id;
+            records.push(data);
+        });
+        
+        // 應用日期過濾
+        if (startDate) {
+            const startDateTime = new Date(startDate).getTime();
+            records = records.filter(record => {
+                if (!record.handledAt) return true;
+                return record.handledAt.toDate().getTime() >= startDateTime;
+            });
+        }
+        
+        if (endDate) {
+            const endDateTime = new Date(endDate);
+            endDateTime.setHours(23, 59, 59, 999);
+            const endTime = endDateTime.getTime();
+            
+            records = records.filter(record => {
+                if (!record.handledAt) return true;
+                return record.handledAt.toDate().getTime() <= endTime;
+            });
+        }
+        
+        // 應用搜尋過濾
+        if (searchTerm) {
+            records = records.filter(record => {
+                return (
+                    (record.reportedUserName && record.reportedUserName.toLowerCase().includes(searchTerm)) ||
+                    (record.reporterName && record.reporterName.toLowerCase().includes(searchTerm)) ||
+                    (record.id && record.id.toLowerCase().includes(searchTerm)) ||
+                    (record.handlerName && record.handlerName.toLowerCase().includes(searchTerm))
+                );
+            });
+        }
+        
+        // 檢查過濾後是否有記錄
+        if (records.length === 0) {
+            historyContainer.innerHTML = '<div style="text-align: center; padding: 30px;">沒有符合條件的歷史記錄</div>';
+            return;
+        }
+        
+        // 顯示歷史記錄
+        records.forEach(record => {
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            
+            // 格式化處理時間
+            const handledAt = record.handledAt ? formatDate(record.handledAt.toDate()) : '未知時間';
+            
+            // 構建狀態標籤
+            let statusBadge = '';
+            switch (record.status) {
+                case 'resolved':
+                    statusBadge = '<span class="status-badge badge-resolved">已處理</span>';
+                    break;
+                case 'rejected':
+                    statusBadge = '<span class="status-badge badge-rejected">已拒絕</span>';
+                    break;
+            }
+            
+            // 構建懲罰描述
+            let punishmentText = '';
+            if (record.punishment) {
+                switch (record.punishment.type) {
+                    case 'warning':
+                        punishmentText = '發出警告';
+                        break;
+                    case 'restrict':
+                        punishmentText = `限制${getRestrictionTypeText(record.punishment.restrictType)}功能 ${record.punishment.duration} 天`;
+                        break;
+                    case 'suspend':
+                        punishmentText = `暫停帳號 ${record.punishment.duration} 天`;
+                        break;
+                    case 'ban':
+                        punishmentText = '永久封禁帳號';
+                        break;
+                }
+            } else if (record.status === 'rejected') {
+                punishmentText = '無處罰 (拒絕檢舉)';
+            }
+            
+            historyItem.innerHTML = `
+                <div class="date">${handledAt} · 處理人: ${record.handlerName || '未知'}</div>
+                <h4>
+                    ${statusBadge}
+                    <span style="margin-left: 5px;">
+                        ${record.reportedUserName || '未知用戶'} 被 ${record.reporterName || '未知用戶'} 檢舉
+                    </span>
+                </h4>
+                <p>
+                    <strong>原因:</strong> ${record.reasons ? record.reasons.map(r => getReasonText(r)).join('、') : '未指定'}
+                    <br>
+                    <strong>處理結果:</strong> ${punishmentText}
+                    ${record.actionNote ? `<br><strong>備註:</strong> ${record.actionNote}` : ''}
+                </p>
+            `;
+            
+            // 添加點擊事件，顯示詳情
+            historyItem.addEventListener('click', () => {
+                showReportDetail(record.id);
+            });
+            
+            historyContainer.appendChild(historyItem);
+        });
+        
+    } catch (error) {
+        console.error('加載歷史記錄錯誤:', error);
+        loadingIndicator.style.display = 'none';
+        historyContainer.innerHTML = `<div style="text-align: center; padding: 30px;">加載歷史記錄時發生錯誤: ${error.message}</div>`;
+    }
+}
+
+// 加載設置
+async function loadSettings() {
+    try {
+        const settingsDoc = await db.collection('systemSettings').doc('reportManagement').get();
+        
+        if (settingsDoc.exists) {
+            const settings = settingsDoc.data();
+            
+            // 檢舉處理規則
+            if (settings.reportRules) {
+                document.getElementById('multipleReportThreshold').value = settings.reportRules.multipleReportThreshold || 3;
+                document.getElementById('falseReportPenalty').value = settings.reportRules.falseReportPenalty || 'limit';
+                document.getElementById('defaultPunishDays').value = settings.reportRules.defaultPunishDays || 7;
+            }
+            
+            // 自動化流程
+            if (settings.automation) {
+                document.getElementById('autoRejectFalseReports').checked = settings.automation.autoRejectFalseReports !== false;
+                document.getElementById('autoNotifyUser').checked = settings.automation.autoNotifyUser !== false;
+                document.getElementById('prioritizeMultipleReports').checked = settings.automation.prioritizeMultipleReports !== false;
+                
+                // 檢舉信用系統
+                if (document.getElementById('enableCreditSystem')) {
+                    document.getElementById('enableCreditSystem').checked = settings.automation.enableCreditSystem !== false;
+                }
+                
+                if (document.getElementById('creditThreshold')) {
+                    document.getElementById('creditThreshold').value = settings.automation.creditThreshold || 40;
+                }
+            }
+            
+            // 警告訊息模板
+            if (settings.messageTemplates) {
+                document.getElementById('warningTemplate').value = settings.messageTemplates.warning || '';
+                document.getElementById('suspensionTemplate').value = settings.messageTemplates.suspension || '';
+                
+                // 虛假檢舉警告
+                if (document.getElementById('falseReportTemplate')) {
+                    document.getElementById('falseReportTemplate').value = settings.messageTemplates.falseReport || '';
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('加載設置錯誤:', error);
+    }
+}
+
+// 保存設置
+async function saveSettings(section) {
+    try {
+        const settingsRef = db.collection('systemSettings').doc('reportManagement');
+        
+        switch (section) {
+            case 'reportRules':
+                await settingsRef.set({
+                    reportRules: {
+                        multipleReportThreshold: parseInt(document.getElementById('multipleReportThreshold').value),
+                        falseReportPenalty: document.getElementById('falseReportPenalty').value,
+                        defaultPunishDays: parseInt(document.getElementById('defaultPunishDays').value)
+                    }
+                }, { merge: true });
+                break;
+                
+            case 'automation':
+                const automation = {
+                    autoRejectFalseReports: document.getElementById('autoRejectFalseReports').checked,
+                    autoNotifyUser: document.getElementById('autoNotifyUser').checked,
+                    prioritizeMultipleReports: document.getElementById('prioritizeMultipleReports').checked
+                };
+                
+                // 添加檢舉信用系統設置
+                if (document.getElementById('enableCreditSystem')) {
+                    automation.enableCreditSystem = document.getElementById('enableCreditSystem').checked;
+                }
+                
+                if (document.getElementById('creditThreshold')) {
+                    automation.creditThreshold = parseInt(document.getElementById('creditThreshold').value);
+                }
+                
+                await settingsRef.set({
+                    automation: automation
+                }, { merge: true });
+                break;
+                
+            case 'messageTemplates':
+                const templates = {
+                    warning: document.getElementById('warningTemplate').value,
+                    suspension: document.getElementById('suspensionTemplate').value
+                };
+                
+                // 添加虛假檢舉警告模板
+                if (document.getElementById('falseReportTemplate')) {
+                    templates.falseReport = document.getElementById('falseReportTemplate').value;
+                }
+                
+                await settingsRef.set({
+                    messageTemplates: templates
+                }, { merge: true });
+                break;
+        }
+        
+        alert('設置已保存');
+        
+    } catch (error) {
+        console.error('保存設置錯誤:', error);
+        alert('保存設置時發生錯誤: ' + error.message);
+    }
+}
+
+// 格式化日期
+function formatDate(date) {
+    return new Intl.DateTimeFormat('zh-TW', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    }).format(date);
+}
+
+// 獲取檢舉原因文字
+function getReasonText(reason) {
+    switch (reason) {
+        case 'harassment': return '騷擾行為';
+        case 'inappropriate': return '不當內容';
+        case 'scam': return '詐騙/釣魚';
+        case 'fake': return '冒充他人';
+        case 'spam': return '廣告/垃圾訊息';
+        case 'hate': return '仇恨言論';
+        case 'violence': return '暴力/威脅行為';
+        case 'other': return '其他違規';
+        default: return reason;
+    }
+}
+
+// 獲取狀態文字
+function getStatusText(status) {
+    switch (status) {
+        case 'pending': return '待處理';
+        case 'resolved': return '已處理';
+        case 'rejected': return '已拒絕';
+        default: return status;
+    }
+}
+
+// 獲取限制類型文字
+function getRestrictionTypeText(type) {
+    switch (type) {
+        case 'chat': return '聊天';
+        case 'match': return '配對';
+        case 'photo': return '上傳照片';
+        case 'all': return '所有';
+        case 'report': return '檢舉';
+        default: return type;
+    }
+}
+
+// 顯示驗證詳情
+async function showVerificationDetail(requestId, userId) {
+    // 切換視圖
+    mainContent.style.display = 'none';
+    
+    // 確保有一個驗證詳情視圖容器
+    let verificationDetailContainer = document.getElementById('verification-detail');
+    if (!verificationDetailContainer) {
+        verificationDetailContainer = createVerificationDetailContainer();
+    }
+    
+    verificationDetailContainer.style.display = 'block';
+    
+    try {
+        // 獲取驗證請求數據
+        const requestDoc = await db.collection('PhotoVerificationRequest').doc(requestId).get();
+        if (!requestDoc.exists) {
+            alert('找不到驗證請求');
+            backToVerificationList();
+            return;
+        }
+        
+        const requestData = requestDoc.data();
+        
+        // 獲取用戶數據
+        const userDoc = await db.collection('userprofileData').doc(userId).get();
+        if (!userDoc.exists) {
+            alert('找不到用戶資料');
+            backToVerificationList();
+            return;
+        }
+        
+        const userData = userDoc.data();
+        
+        // 設置請求ID和用戶ID到隱藏字段
+        document.getElementById('verification-requestid').value = requestId;
+        document.getElementById('verification-userid').textContent = userId;
+        
+        // 填充驗證詳情表單
+        document.getElementById('verification-username').textContent = requestData.userName || '未知用戶';
+        document.getElementById('verification-selfie').src = requestData.selfiePhotoUrl || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"%3E%3Crect width="300" height="300" fill="%23f0f0f0"/%3E%3Ctext x="50%25" y="50%25" font-family="Arial" font-size="24" fill="%23999" text-anchor="middle" dominant-baseline="middle"%3E無照片%3C/text%3E%3C/svg%3E';
+        document.getElementById('verification-action').textContent = requestData.action || '未指定動作';
+        
+        // 格式化提交時間
+        const createdAt = requestData.createdAt ? new Date(requestData.createdAt.toDate()) : new Date();
+        document.getElementById('verification-time').textContent = formatDate(createdAt);
+        
+        // 顯示用戶照片
+        const photosContainer = document.getElementById('verification-photos');
+        photosContainer.innerHTML = '';
+        
+        // 獲取照片URLs
+        const photoUrls = userData.photoUrls || [];
+        // 獲取照片順序
+        const photoOrder = userData.photoOrder || [];
+        
+        if (photoUrls.length === 0) {
+            photosContainer.innerHTML = '<p>用戶沒有上傳照片</p>';
+            return;
+        }
+        
+        // 加載已驗證的照片信息
+        const verifiedPhotos = userData.verifiedPhotos || {};
+        console.log('已驗證照片狀態:', verifiedPhotos);
+        
+        // 沒有順序或順序為空時，直接按索引顯示
+        if (photoOrder.length === 0) {
+            for (let i = 0; i < photoUrls.length; i++) {
+                if (photoUrls[i]) {
+                    addPhotoItemToContainer(i, photoUrls[i], verifiedPhotos, photosContainer);
+                }
+            }
+        } else {
+            // 按照順序顯示照片
+            for (let i = 0; i < photoOrder.length; i++) {
+                const photoIndex = photoOrder[i];
+                if (photoIndex >= 0 && photoIndex < photoUrls.length && photoUrls[photoIndex]) {
+                    addPhotoItemToContainer(photoIndex, photoUrls[photoIndex], verifiedPhotos, photosContainer);
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('顯示驗證詳情錯誤:', error);
+        alert(`載入驗證詳情時發生錯誤: ${error.message}`);
+        backToVerificationList();
+    }
+}
+
+// 輔助函數：添加照片項目到容器
+function addPhotoItemToContainer(photoIndex, photoUrl, verifiedPhotos, container) {
+    const photoItem = document.createElement('div');
+    photoItem.className = 'photo-item';
+    
+    // 檢查照片是否已驗證
+    const isVerified = verifiedPhotos[photoIndex] === true;
+    
+    photoItem.innerHTML = `
+        <img src="${photoUrl}" alt="用戶照片 ${photoIndex}" 
+            onerror="this.src='data:image/svg+xml,%3Csvg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;300&quot; height=&quot;300&quot; viewBox=&quot;0 0 300 300&quot;%3E%3Crect width=&quot;300&quot; height=&quot;300&quot; fill=&quot;%23f0f0f0&quot;/%3E%3Ctext x=&quot;50%%&quot; y=&quot;50%%&quot; font-family=&quot;Arial&quot; font-size=&quot;24&quot; fill=&quot;%23999&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;middle&quot;%3E載入失敗%3C/text%3E%3C/svg%3E';"
+            loading="lazy">
+        <span class="index">#${photoIndex}${isVerified ? ' ✓' : ''}</span>
+        <input type="checkbox" class="checkbox" data-index="${photoIndex}" ${isVerified ? 'checked' : ''}>
+    `;
+    
+    container.appendChild(photoItem);
+    
+    // 添加照片預覽功能
+    photoItem.querySelector('img').addEventListener('click', () => {
+        document.getElementById('lightboxImage').src = photoUrl;
+        document.getElementById('imageLightbox').style.display = 'flex';
+    });
+}
+
+
+// 創建驗證詳情容器
+function createVerificationDetailContainer() {
+    const container = document.createElement('div');
+    container.id = 'verification-detail';
+    container.className = 'verification-detail card';
+    container.style.display = 'none';
+    
+    container.innerHTML = `
+        <div class="detail-header">
+            <h2>照片驗證詳情</h2>
+            <button id="verification-back" class="btn-info">返回列表</button>
+        </div>
+        
+        <input type="hidden" id="verification-requestid">
+        
+        <div class="info-grid">
+            <div class="info-card">
+                <h3>用戶資訊</h3>
+                <p><strong>用戶名:</strong> <span id="verification-username">未知用戶</span></p>
+                <p><strong>用戶ID:</strong> <span id="verification-userid">未知</span></p>
+                <p><strong>提交時間:</strong> <span id="verification-time">未知</span></p>
+            </div>
+            
+            <div class="info-card">
+                <h3>驗證動作</h3>
+                <p id="verification-action">未指定動作</p>
+            </div>
+        </div>
+        
+        <div class="selfie-container">
+            <h3>驗證自拍照 <small>(用戶按照指定動作拍攝的照片)</small></h3>
+            <img id="verification-selfie" class="selfie-photo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Crect width='300' height='300' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='24' fill='%23999' text-anchor='middle' dominant-baseline='middle'%3E無照片%3C/text%3E%3C/svg%3E" alt="驗證自拍照">
+        </div>
+        
+        <div class="verification-instruction" style="margin: 20px 0; padding: 15px; background-color: rgba(157, 127, 134, 0.1); border-radius: 8px;">
+            <h3>驗證說明</h3>
+            <ul style="margin-top: 10px; padding-left: 20px;">
+                <li>請比對自拍照與用戶照片是否為同一人</li>
+                <li>勾選符合身分的照片後點擊「核准所選照片」</li>
+                <li>未勾選的照片將被移除驗證狀態</li>
+                <li>核准後照片將顯示已驗證標記</li>
+            </ul>
+        </div>
+        
+        <h3>用戶照片 <small>(勾選確認為用戶本人的照片)</small></h3>
+        <div class="photos-container" id="verification-photos">
+            <!-- 用戶照片將被動態載入到這裡 -->
+            <div id="loadingPhotos" style="grid-column: 1 / -1; text-align: center; padding: 20px;">
+                <div class="loading-spinner"></div>
+                <span>載入中...</span>
+            </div>
+        </div>
+        
+        <div class="button-group" style="margin-top: 20px; display: flex; gap: 15px; justify-content: center;">
+            <button id="verification-approve" class="btn-success">核准所選照片</button>
+            <button id="verification-reject" class="btn-danger">拒絕驗證</button>
+        </div>
+    `;
+    
+    document.body.appendChild(container);
+    
+    // 添加事件監聽器
+    container.querySelector('#verification-back').addEventListener('click', backToVerificationList);
+    container.querySelector('#verification-approve').addEventListener('click', approveVerification);
+    container.querySelector('#verification-reject').addEventListener('click', rejectVerification);
+    
+    return container;
+}
+
+// 返回列表
+function backToVerificationList() {
+    document.getElementById('verification-detail').style.display = 'none';
+    mainContent.style.display = 'block';
+    
+    // 重新加載驗證請求
+    loadVerificationRequests();
+}
+
+// 核准驗證
+async function approveVerification() {
+    const requestId = document.getElementById('verification-requestid').value;
+    const userId = document.getElementById('verification-userid').textContent;
+    
+    if (!requestId || !userId) {
+        alert('缺少請求ID或用戶ID');
+        return;
+    }
+    
+    // 獲取選中的照片索引
+    const selectedCheckboxes = document.querySelectorAll('#verification-photos input[type="checkbox"]:checked');
+    const verifiedIndices = Array.from(selectedCheckboxes).map(checkbox => {
+        return parseInt(checkbox.getAttribute('data-index'));
+    });
+    
+    if (verifiedIndices.length === 0) {
+        alert('請選擇至少一張符合驗證條件的照片');
+        return;
+    }
+    
+    try {
+        const approveBtn = document.getElementById('verification-approve');
+        approveBtn.disabled = true;
+        approveBtn.innerHTML = '<div class="loading-spinner"></div> 處理中...';
+        
+        // 1. 獲取當前驗證請求數據
+        const requestDoc = await db.collection('PhotoVerificationRequest').doc(requestId).get();
+        if (!requestDoc.exists) {
+            throw new Error('找不到驗證請求');
+        }
+        const requestData = requestDoc.data();
+        
+        // 2. 更新驗證請求狀態
+        await db.collection('PhotoVerificationRequest').doc(requestId).update({
+            status: 'approved',
+            verifiedPhotoIndices: verifiedIndices,
+            verifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            verifiedBy: auth.currentUser ? auth.currentUser.uid : 'admin',
+            synced: false
+        });
+        
+        // 3. 更新用戶資料中的驗證狀態
+        const userDoc = await db.collection('userprofileData').doc(userId).get();
+        if (userDoc.exists) {
+            const userData = userDoc.data();
+            
+            // 3.1 獲取或初始化 verifiedPhotos 物件
+            let verifiedPhotos = userData.verifiedPhotos || {};
+            
+            // 3.2 獲取所有顯示的照片索引 (所有被顯示在驗證界面的照片)
+            const allCheckboxes = document.querySelectorAll('#verification-photos input[type="checkbox"]');
+            const allDisplayedIndices = Array.from(allCheckboxes).map(checkbox => {
+                return parseInt(checkbox.getAttribute('data-index'));
+            });
+            
+            // 3.3 更新驗證狀態
+            // 重要：先將界面上所有顯示的照片設置為 false，再將選中的設為 true
+            allDisplayedIndices.forEach(index => {
+                verifiedPhotos[index.toString()] = false;
+            });
+            
+            // 3.4 將選中的照片設置為 true
+            verifiedIndices.forEach(index => {
+                verifiedPhotos[index.toString()] = true;
+            });
+            
+            // 3.5 更新用戶文檔中的 verifiedPhotos 字段
+            await db.collection('userprofileData').doc(userId).update({
+                verifiedPhotos: verifiedPhotos
+            });
+            
+            console.log('已更新用戶已驗證照片:', verifiedPhotos);
+        }
+        
+        // 4. 刪除驗證請求記錄 (改為使用 delete 而不是更新)
+        await db.collection('PhotoVerificationRequest').doc(requestId).delete();
+        console.log('已刪除驗證請求:', requestId);
+        
+        // 5. 發送通知給用戶
+        await db.collection('notifications').add({
+            userId: userId,
+            type: 'verification_approved',
+            message: '您的照片驗證請求已通過審核',
+            data: {
+                verifiedIndices: verifiedIndices
+            },
+            isRead: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        alert('已核准選定的照片並刪除驗證請求');
+        
+        // 重置按鈕狀態，以便下次使用
+        approveBtn.disabled = false;
+        approveBtn.textContent = '核准所選照片';
+        
+        backToVerificationList();
+        
+    } catch (error) {
+        console.error('核准驗證錯誤:', error);
+        alert(`核准驗證時發生錯誤: ${error.message}`);
+        
+        const approveBtn = document.getElementById('verification-approve');
+        approveBtn.disabled = false;
+        approveBtn.textContent = '核准所選照片';
+    }
+}
+
+
+// 拒絕驗證
+async function rejectVerification() {
+    const requestId = document.getElementById('verification-requestid').value;
+    const userId = document.getElementById('verification-userid').textContent;
+    
+    if (!requestId || !userId) {
+        alert('缺少請求ID或用戶ID');
+        return;
+    }
+    
+    const confirmReject = confirm('確定要拒絕此驗證請求嗎？');
+    if (!confirmReject) return;
+    
+    try {
+        const rejectBtn = document.getElementById('verification-reject');
+        rejectBtn.disabled = true;
+        rejectBtn.innerHTML = '<div class="loading-spinner"></div> 處理中...';
+        
+        // 先獲取驗證請求數據，用於之後發送通知
+        const requestDoc = await db.collection('PhotoVerificationRequest').doc(requestId).get();
+        if (!requestDoc.exists) {
+            throw new Error('找不到驗證請求');
+        }
+        const requestData = requestDoc.data();
+        
+        // 直接刪除驗證請求記錄，而不是更新它的狀態
+        await db.collection('PhotoVerificationRequest').doc(requestId).delete();
+        console.log('已刪除驗證請求:', requestId);
+        
+        // 發送拒絕通知給用戶
+        await db.collection('notifications').add({
+            userId: userId,
+            type: 'verification_rejected',
+            message: '您的照片驗證請求未通過審核，請確保照片清晰顯示您本人，並按照指示的動作拍攝。',
+            isRead: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        alert('已拒絕驗證請求並刪除記錄');
+        backToVerificationList();
+        
+    } catch (error) {
+        console.error('拒絕驗證錯誤:', error);
+        alert(`拒絕驗證時發生錯誤: ${error.message}`);
+        
+        const rejectBtn = document.getElementById('verification-reject');
+        rejectBtn.disabled = false;
+        rejectBtn.textContent = '拒絕驗證';
+    }
+}
+
+
+// 加載照片驗證請求
+async function loadVerificationRequests() {
+    const container = document.getElementById('verification-container');
+    const loadingElement = document.getElementById('verification-loading');
+    
+    if (!container || !loadingElement) {
+        console.error('驗證請求容器元素未找到');
+        return;
+    }
+    
+    container.innerHTML = '';
+    loadingElement.style.display = 'flex';
+    
+    try {
+        // 獲取所有待處理驗證請求
+        const querySnapshot = await db.collection('PhotoVerificationRequest')
+            .where('status', '==', 'pending')
+            .orderBy('createdAt', 'desc')
+            .get();
+        
+        loadingElement.style.display = 'none';
+        
+        if (querySnapshot.empty) {
+            container.innerHTML = '<div style="text-align: center; padding: 30px;">沒有待處理的驗證請求</div>';
+            return;
+        }
+        
+        // 顯示驗證請求卡片
+        querySnapshot.forEach(doc => {
+            const data = doc.data();
+            const requestCard = document.createElement('div');
+            requestCard.className = 'report-card pending';
+            
+            // 格式化日期
+            const createdAt = data.createdAt ? new Date(data.createdAt.toDate()) : new Date();
+            const formattedDate = formatDate(createdAt);
+            
+            requestCard.innerHTML = `
+                <h3>
+                    <span class="status-badge badge-pending">待驗證</span>
+                    <span style="margin-left: 5px;">${data.userName || '未知用戶'}</span>
+                </h3>
+                <p><strong>提交時間:</strong> ${formattedDate}</p>
+                <p><strong>要求動作:</strong> ${data.action || '未指定'}</p>
+            `;
+            
+            // 添加點擊事件
+            requestCard.addEventListener('click', () => {
+                showVerificationDetail(doc.id, data.userId);
+            });
+            
+            container.appendChild(requestCard);
+        });
+        
+    } catch (error) {
+        console.error('加載驗證請求錯誤:', error);
+        loadingElement.style.display = 'none';
+        container.innerHTML = `<div style="text-align: center; padding: 30px;">加載驗證請求時發生錯誤: ${error.message}</div>`;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('管理員按鈕診斷開始...');
+    
+    // 檢查按鈕是否存在
+    const adminButton = document.getElementById('adminButton');
+    if (!adminButton) {
+        console.error('找不到adminButton元素');
+        return;
+    }
+    console.log('找到adminButton元素:', adminButton);
+    
+    // 檢查Firebase是否初始化
+    if (typeof firebase === 'undefined' || !firebase.apps.length) {
+        console.error('Firebase尚未初始化');
+        return;
+    }
+    console.log('Firebase已初始化');
+    
+    // 檢查用戶認證狀態
+    const auth = firebase.auth();
+    console.log('檢查用戶認證狀態...');
+    
+    // 直接顯示按鈕，無論用戶是否登入（用於測試）
+    // adminButton.style.display = 'inline-block';
+    // console.log('已強制顯示管理員按鈕（測試用）');
+    
+    // 監聽認證狀態變化
+    auth.onAuthStateChanged(async (user) => {
+        console.log('認證狀態變更:', user ? '已登入: ' + user.email : '未登入');
+        
+        if (user) {
+            try {
+                // 檢查用戶是否在管理員集合中
+                const db = firebase.firestore();
+                console.log('嘗試查詢管理員文檔:', user.uid);
+                
+                const adminDoc = await db.collection('admins').doc(user.uid).get();
+                
+                if (!adminDoc.exists) {
+                    console.log('用戶不是管理員，顯示申請按鈕');
+                    adminButton.style.display = 'inline-block';
+                    
+                    // 強制更新DOM
+                    setTimeout(() => {
+                        console.log('延遲後按鈕顯示狀態:', adminButton.style.display);
+                        // 再次確保按鈕可見
+                        if (adminButton.style.display === 'none') {
+                            adminButton.style.display = 'inline-block';
+                            console.log('已強制顯示管理員按鈕');
+                        }
+                    }, 1000);
+                } else {
+                    console.log('用戶已是管理員');
+                    // 更新用戶狀態顯示
+                    const userStatus = document.getElementById('userStatus');
+                    if (userStatus) {
+                        userStatus.innerHTML = `已登入: ${user.email} <span style="color: #4CAF50; font-weight: bold; margin-left: 5px;">[管理員]</span>`;
+                    }
+                }
+            } catch (error) {
+                console.error('檢查管理員狀態失敗:', error);
+                // 出錯時也顯示按鈕（可能是權限問題）
+                adminButton.style.display = 'inline-block';
+                console.log('出錯後已強制顯示管理員按鈕');
+            }
+        }
+    });
+    
+    // 檢查按鈕點擊事件是否正確綁定
+    const adminKeyModal = document.getElementById('adminKeyModal');
+    if (!adminKeyModal) {
+        console.error('找不到adminKeyModal元素');
+    } else {
+        console.log('找到adminKeyModal元素');
+        
+        // 確保按鈕點擊後顯示對話框
+        adminButton.addEventListener('click', function() {
+            console.log('點擊管理員按鈕');
+            adminKeyModal.style.display = 'block';
+        });
+        
+        // 確保取消按鈕可以關閉對話框
+        const cancelAdminKey = document.getElementById('cancelAdminKey');
+        if (cancelAdminKey) {
+            cancelAdminKey.addEventListener('click', function() {
+                adminKeyModal.style.display = 'none';
+            });
+        }
+    }
+    
+    console.log('管理員按鈕診斷完成');
+});
