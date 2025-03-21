@@ -1448,6 +1448,7 @@
     </div>
     <script src="admin-manager.js"></script>
     <script>
+        // Firebase 配置
         const firebaseConfig = {
             apiKey: "AIzaSyDslE4rgN8ZiUam3MCT_bJiSfusUxZS-wU",
             authDomain: "test1-b1d68.firebaseapp.com",
@@ -1462,75 +1463,73 @@
         // 確保 reCAPTCHA 已加載
         function waitForRecaptcha(callback) {
             if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.ready === 'function') {
+                console.log('reCAPTCHA 已準備好');
                 grecaptcha.ready(() => {
-                    console.log('reCAPTCHA 已準備好');
+                    console.log('reCAPTCHA 已載入完成');
                     callback();
                 });
             } else {
                 console.log('等待 reCAPTCHA 加載...');
-                setTimeout(() => waitForRecaptcha(callback), 100);
+                setTimeout(() => waitForRecaptcha(callback), 200); // 稍微增加延遲時間
             }
         }
+
+        // 在頁面加載完成後等待 reCAPTCHA 並初始化 Firebase
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM已加載，等待reCAPTCHA...');
+            waitForRecaptcha(initializeFirebaseWithAppCheck);
+        });
 
         // 初始化 Firebase 和 App Check
         function initializeFirebaseWithAppCheck() {
             console.log('開始初始化 Firebase 和 App Check');
             
-            // 如果尚未初始化 Firebase，執行初始化
-            if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-            }
-            
             try {
-                // 啟用 App Check
-                var appCheck = firebase.appCheck();
-                appCheck.activate('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G', {
-                    isTokenAutoRefreshEnabled: true
-                });
+                // 如果尚未初始化 Firebase，執行初始化
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                    console.log('Firebase 成功初始化');
+                } else {
+                    console.log('Firebase 已經初始化過了');
+                }
+
+                // 獲取 Firestore / Auth / Storage 等服務
+                window.db = firebase.firestore();
+                window.auth = firebase.auth();
+                window.storage = firebase.storage();
                 
-                console.log('App Check 初始化成功');
+                // 嘗試啟用 App Check
+                try {
+                    // 僅在開發環境使用 debug token
+                    if (window.location.hostname === 'localhost' || 
+                        window.location.hostname === '127.0.0.1' || 
+                        window.location.hostname.includes('192.168.')) {
+                        console.log('開發環境中啟用 debug token');
+                        self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+                    }
+                    
+                    var appCheck = firebase.appCheck();
+                    appCheck.activate('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G', {
+                        isTokenAutoRefreshEnabled: true
+                    });
+                    
+                    console.log('App Check 初始化成功');
+                } catch (error) {
+                    console.error('App Check 初始化失敗，但繼續執行:', error);
+                }
+                
+                console.log('Firebase 和 App Check 初始化完成');
+                
+                // 設置一次性的認證狀態監聽器
+                setupAuthStateListener();
+                
+                // 觸發頁面初始化
+                initializePage();
             } catch (error) {
-                console.error('App Check 初始化失敗:', error);
-                // 在開發環境中使用 debug token
-                // if (window.location.hostname === 'localhost' || 
-                //     window.location.hostname === '127.0.0.1' || 
-                //     window.location.hostname.includes('192.168.')) {
-                //     console.log('開發環境中啟用 debug token');
-                //     self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-                // }
+                console.error('Firebase 初始化失敗:', error);
+                alert('系統初始化失敗，請重新整理頁面或聯絡管理員');
             }
-            
-            // 接著取得 Firestore / Auth / Storage 等服務
-            window.db = firebase.firestore();
-            window.auth = firebase.auth();
-            window.storage = firebase.storage();
-            
-            console.log('Firebase 和 App Check 初始化完成');
-            
-            // 觸發頁面初始化
-            initializePage();
         }
-
-
-        // // Firebase 配置
-        // const firebaseConfig = {
-        //     apiKey: "AIzaSyDslE4rgN8ZiUam3MCT_bJiSfusUxZS-wU",
-        //     authDomain: "test1-b1d68.firebaseapp.com",
-        //     databaseURL: "https://test1-b1d68-default-rtdb.asia-southeast1.firebasedatabase.app",
-        //     projectId: "test1-b1d68",
-        //     storageBucket: "test1-b1d68.appspot.com",
-        //     messagingSenderId: "1010412789448",
-        //     appId: "1:1010412789448:web:2843afa459b3644d118ffd",
-        //     measurementId: "G-X7RQ8DRZ7P"
-        // };
-        
-        // // 初始化 Firebase
-        // firebase.initializeApp(firebaseConfig);
-        // const db = firebase.firestore();
-        // const auth = firebase.auth();
-        // const storage = firebase.storage();
-        
-        waitForRecaptcha(initializeFirebaseWithAppCheck);
 
         // DOM 元素
         const loginSection = document.getElementById('loginSection');
@@ -1554,23 +1553,8 @@
         
         // 初始化頁面
         function initializePage() {
-            // 監聽認證狀態
-            auth.onAuthStateChanged(user => {
-                if (isProcessingAuthChange) return;
-                
-                isProcessingAuthChange = true;
-                
-                if (user) {
-                    console.log('認證狀態變更: 已登入', user.email);
-                    onLoginSuccess(user);
-                } else {
-                    console.log('認證狀態變更: 已登出');
-                    onLogout();
-                }
-                
-                isProcessingAuthChange = false;
-            });
-
+            console.log('開始初始化頁面');
+            
             // 檢查DOM元素是否正確獲取
             if (!loginSection) console.error('無法找到loginSection元素');
             if (!mainContent) console.error('無法找到mainContent元素');
@@ -1578,16 +1562,25 @@
             if (!userStatus) console.error('無法找到userStatus元素');
             
             // 登入按鈕事件
-            loginButton.addEventListener('click', handleLogin);
+            if (loginButton) {
+                loginButton.addEventListener('click', handleLogin);
+                console.log('已綁定登入按鈕事件');
+            }
             
             // 登出按鈕事件
-            logoutButton.addEventListener('click', handleLogout);
+            if (logoutButton) {
+                logoutButton.addEventListener('click', handleLogout);
+                console.log('已綁定登出按鈕事件');
+            }
             
             // 返回列表按鈕事件
-            backToListBtn.addEventListener('click', function() {
-                reportDetail.style.display = 'none';
-                mainContent.style.display = 'block';
-            });
+            if (backToListBtn) {
+                backToListBtn.addEventListener('click', function() {
+                    reportDetail.style.display = 'none';
+                    mainContent.style.display = 'block';
+                });
+                console.log('已綁定返回列表按鈕事件');
+            }
             
             // 標籤頁切換事件
             const tabs = document.querySelectorAll('.tab');
@@ -1602,76 +1595,238 @@
                     // 切換內容區
                     const tabContents = document.querySelectorAll('.tab-content');
                     tabContents.forEach(content => content.classList.remove('active'));
-                    document.getElementById(`${tabId}-tab`).classList.add('active');
                     
-                    // 根據標籤頁加載相應數據
-                    if (tabId === 'statistics') {
-                        loadStatistics();
-                    } else if (tabId === 'history') {
-                        loadHistory();
-                    } else if (tabId === 'frequentReports') {
-                        loadFrequentReports();
-                    } else if (tabId === 'verification') {
-                        loadVerificationRequests();
-                    } else if (tabId === 'report') {
-                        loadReports();
+                    const targetContent = document.getElementById(`${tabId}-tab`);
+                    if (targetContent) {
+                        targetContent.classList.add('active');
+                        
+                        // 根據標籤頁加載相應數據
+                        if (tabId === 'statistics') {
+                            loadStatistics();
+                        } else if (tabId === 'history') {
+                            loadHistory();
+                        } else if (tabId === 'frequentReports') {
+                            loadFrequentReports();
+                        } else if (tabId === 'verification') {
+                            loadVerificationRequests();
+                        } else if (tabId === 'report') {
+                            loadReports();
+                        } else if (tabId === 'businessApproval') {
+                            loadBusinessApprovalRequests();
+                        }
+                    } else {
+                        console.error(`找不到標籤頁內容元素: ${tabId}-tab`);
                     }
                 });
             });
+            console.log('已綁定標籤頁切換事件');
             
             // 應用過濾按鈕事件
-            document.getElementById('applyFilters').addEventListener('click', function() {
-                currentPage = 1;
-                loadReports();
-            });
+            const applyFiltersBtn = document.getElementById('applyFilters');
+            if (applyFiltersBtn) {
+                applyFiltersBtn.addEventListener('click', function() {
+                    currentPage = 1;
+                    loadReports();
+                });
+                console.log('已綁定應用過濾按鈕事件');
+            }
             
             // 提交處理按鈕事件
-            document.getElementById('submitAction').addEventListener('click', handleReportAction);
+            const submitActionBtn = document.getElementById('submitAction');
+            if (submitActionBtn) {
+                submitActionBtn.addEventListener('click', handleReportAction);
+                console.log('已綁定提交處理按鈕事件');
+            }
             
             // 取消處理按鈕事件
-            document.getElementById('cancelAction').addEventListener('click', function() {
-                reportDetail.style.display = 'none';
-                mainContent.style.display = 'block';
-            });
+            const cancelActionBtn = document.getElementById('cancelAction');
+            if (cancelActionBtn) {
+                cancelActionBtn.addEventListener('click', function() {
+                    reportDetail.style.display = 'none';
+                    mainContent.style.display = 'block';
+                });
+                console.log('已綁定取消處理按鈕事件');
+            }
             
-            // 設置保存按鈕事件
-            document.getElementById('reportRulesForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                saveSettings('reportRules');
-            });
+            // 設置表單提交事件
+            const reportRulesForm = document.getElementById('reportRulesForm');
+            if (reportRulesForm) {
+                reportRulesForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    saveSettings('reportRules');
+                });
+                console.log('已綁定報告規則表單提交事件');
+            }
             
-            document.getElementById('automationForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                saveSettings('automation');
-            });
+            const automationForm = document.getElementById('automationForm');
+            if (automationForm) {
+                automationForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    saveSettings('automation');
+                });
+                console.log('已綁定自動化表單提交事件');
+            }
             
-            document.getElementById('messageTemplateForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                saveSettings('messageTemplates');
-            });
+            const messageTemplateForm = document.getElementById('messageTemplateForm');
+            if (messageTemplateForm) {
+                messageTemplateForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    saveSettings('messageTemplates');
+                });
+                console.log('已綁定消息模板表單提交事件');
+            }
             
             // 圖片查看事件
-            document.querySelector('.lightbox .close').addEventListener('click', function() {
-                document.getElementById('imageLightbox').style.display = 'none';
-            });
+            const lightboxClose = document.querySelector('.lightbox .close');
+            if (lightboxClose) {
+                lightboxClose.addEventListener('click', function() {
+                    document.getElementById('imageLightbox').style.display = 'none';
+                });
+                console.log('已綁定燈箱關閉事件');
+            }
 
             // 設置Enter鍵登入
-            passwordInput.addEventListener('keyup', function(event) {
-                if (event.key === 'Enter') {
-                    handleLogin();
-                }
-            });
+            if (passwordInput) {
+                passwordInput.addEventListener('keyup', function(event) {
+                    if (event.key === 'Enter') {
+                        handleLogin();
+                    }
+                });
+                console.log('已設置Enter鍵登入');
+            }
 
             // 添加店家審核標籤頁點擊處理
-            document.querySelector('.tab[data-tab="businessApproval"]').addEventListener('click', function() {
-                loadBusinessApprovalRequests();
-            });
+            const businessApprovalTab = document.querySelector('.tab[data-tab="businessApproval"]');
+            if (businessApprovalTab) {
+                businessApprovalTab.addEventListener('click', function() {
+                    loadBusinessApprovalRequests();
+                });
+                console.log('已設置店家審核標籤頁點擊事件');
+            }
             
-            // // 添加店家審核詳情頁相關按鈕事件
-            // document.getElementById('business-approval-back').addEventListener('click', backToBusinessApprovalList);
-            // document.getElementById('business-approve').addEventListener('click', approveBusinessRequest);
-            // document.getElementById('business-reject').addEventListener('click', rejectBusinessRequest);
+            // 初始化管理員申請按鈕
+            initAdminButtons();
+            
+            console.log('頁面初始化完成');
         }
+
+        // 初始化管理員申請按鈕
+        function initAdminButtons() {
+            console.log('初始化管理員申請按鈕');
+            
+            const adminButton = document.getElementById('adminButton');
+            const adminKeyModal = document.getElementById('adminKeyModal');
+            const cancelAdminKey = document.getElementById('cancelAdminKey');
+            const submitAdminKey = document.getElementById('submitAdminKey');
+            
+            if (adminButton && adminKeyModal) {
+                adminButton.addEventListener('click', function() {
+                    console.log('點擊管理員申請按鈕');
+                    adminKeyModal.style.display = 'block';
+                });
+                
+                if (cancelAdminKey) {
+                    cancelAdminKey.addEventListener('click', function() {
+                        adminKeyModal.style.display = 'none';
+                    });
+                }
+                
+                if (submitAdminKey) {
+                    submitAdminKey.addEventListener('click', function() {
+                        applyForAdmin();
+                    });
+                }
+                
+                console.log('管理員申請按鈕初始化完成');
+            } else {
+                console.log('找不到管理員申請按鈕或對話框');
+            }
+        }
+
+        // 管理員申請功能
+        async function applyForAdmin() {
+            const adminKeyError = document.getElementById('adminKeyError');
+            const submitAdminKey = document.getElementById('submitAdminKey');
+            
+            try {
+                if (!auth.currentUser) {
+                    throw new Error('請先登入');
+                }
+                
+                // 顯示處理中狀態
+                submitAdminKey.disabled = true;
+                submitAdminKey.innerHTML = '<div class="loading-spinner"></div> 處理中...';
+                
+                if (adminKeyError) adminKeyError.style.display = 'none';
+                
+                console.log('嘗試申請管理員權限');
+                
+                // 檢查用戶是否已有管理員權限
+                const adminDoc = await db.collection('admins').doc(auth.currentUser.uid).get();
+                if (adminDoc.exists) {
+                    throw new Error('您已具有管理員權限');
+                }
+                
+                // 創建管理員請求
+                await db.collection('adminRequests').add({
+                    userId: auth.currentUser.uid,
+                    email: auth.currentUser.email,
+                    status: 'pending',
+                    ipAddress: '自動檢測', // 實際應用中可使用函數獲取
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                // 顯示成功提示
+                document.getElementById('adminKeyModal').style.display = 'none';
+                const adminSuccessModal = document.getElementById('adminSuccessModal');
+                if (adminSuccessModal) {
+                    adminSuccessModal.style.display = 'block';
+                    
+                    // 自動重載倒計時
+                    let countdown = 3;
+                    const countdownElem = document.getElementById('reloadCountdown');
+                    if (countdownElem) {
+                        const timer = setInterval(() => {
+                            countdown--;
+                            countdownElem.textContent = countdown;
+                            if (countdown <= 0) {
+                                clearInterval(timer);
+                                window.location.reload();
+                            }
+                        }, 1000);
+                    }
+                    
+                    // 立即重載按鈕
+                    const reloadNow = document.getElementById('reloadNow');
+                    if (reloadNow) {
+                        reloadNow.addEventListener('click', () => {
+                            window.location.reload();
+                        });
+                    }
+                } else {
+                    alert('申請成功！請等待審核。');
+                    window.location.reload();
+                }
+                
+            } catch (error) {
+                console.error('申請管理員權限失敗:', error);
+                
+                if (adminKeyError) {
+                    adminKeyError.textContent = error.message;
+                    adminKeyError.style.display = 'block';
+                } else {
+                    alert('申請失敗: ' + error.message);
+                }
+                
+            } finally {
+                // 恢復按鈕狀態
+                if (submitAdminKey) {
+                    submitAdminKey.disabled = false;
+                    submitAdminKey.textContent = '確認申請';
+                }
+            }
+        }
+
         
         // 處理登入
         async function handleLogin() {
@@ -1684,64 +1839,37 @@
             }
             
             try {
+                // 顯示登入中狀態
                 loginButton.innerHTML = '<div class="loading-spinner"></div> 登入中...';
                 loginButton.disabled = true;
+                errorMessage.style.display = 'none';
                 
-                // 使用await確保完成
-                firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-                    .then(() => {
-                        console.log("設置認證持久性為LOCAL");
-                        
-                        // 使用一個專用變量追蹤目前的認證狀態
-                        let currentLoggedIn = false;
-                        
-                        // 替換原有的onAuthStateChanged
-                        auth.onAuthStateChanged(user => {
-                        const wasLoggedIn = currentLoggedIn;
-                        currentLoggedIn = !!user;
-                        
-                        console.log(`認證狀態變更: ${user ? '已登入 ' + user.email : '已登出'}`);
-                        
-                        // 檢測意外登出
-                        if (wasLoggedIn && !currentLoggedIn) {
-                            console.warn("警告：用戶被意外登出！");
-                            // 可以嘗試自動重新登入，但需要額外的邏輯
-                        }
-                        
-                        if (user) {
-                            // 正常登入處理...
-                            onLoginSuccess(user);
-                        } else {
-                            // 正常登出處理...
-                            onLogout();
-                        }
-                        });
-                    })
-                    .catch(error => {
-                        console.error("設置認證持久性失敗:", error);
-                    });
-                await auth.signInWithEmailAndPassword(email, password);
+                console.log('嘗試登入:', email);
                 
-                console.log('登入成功，正在等待認證狀態更新...');
+                // 設置認證持久性
+                try {
+                    await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                    console.log('成功設置認證持久性為 LOCAL');
+                } catch (persistenceError) {
+                    console.error('設置認證持久性失敗:', persistenceError);
+                    // 繼續嘗試登入，持久性錯誤不一定會阻止登入流程
+                }
                 
-                // 明確設置界面狀態
-                setTimeout(function() {
-                    loginSection.style.display = 'none';
-                    mainContent.style.display = 'block';
-                    logoutButton.style.display = 'block';
-                    userStatus.textContent = `已登入: ${email}`;
-                    
-                    // 清空輸入值
-                    emailInput.value = '';
-                    passwordInput.value = '';
-                    
-                    loginButton.textContent = '登入';
-                    loginButton.disabled = false;
-                }, 500);
+                // 嘗試登入
+                console.log('開始執行登入...');
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                console.log('登入成功:', userCredential.user.email);
+                
+                // 登入成功後，onAuthStateChanged 會處理其餘的操作
+                // 此處可以清除輸入字段
+                emailInput.value = '';
+                passwordInput.value = '';
+                
             } catch (error) {
                 console.error('登入錯誤:', error);
                 showError(getErrorMessage(error));
                 
+                // 即使出錯，也要重置登入按鈕狀態
                 loginButton.textContent = '登入';
                 loginButton.disabled = false;
             }
@@ -1753,13 +1881,16 @@
                 logoutButton.innerHTML = '<div class="loading-spinner"></div> 登出中...';
                 logoutButton.disabled = true;
                 
+                console.log('嘗試登出');
                 await auth.signOut();
+                console.log('登出成功');
                 
-                // 登出成功由 onAuthStateChanged 處理
+                // onAuthStateChanged 會處理其餘的操作
             } catch (error) {
                 console.error('登出錯誤:', error);
                 alert('登出時發生錯誤: ' + error.message);
                 
+                // 重置登出按鈕
                 logoutButton.textContent = '登出';
                 logoutButton.disabled = false;
             }
@@ -1769,43 +1900,111 @@
         function onLoginSuccess(user) {
             try {
                 console.log('登入成功處理開始，用戶郵箱:', user.email);
+                
+                // 更新用戶界面
                 userStatus.textContent = `已登入: ${user.email}`;
                 loginSection.style.display = 'none';
                 logoutButton.style.display = 'block';
                 mainContent.style.display = 'block';
                 
-                // 初始化活動標籤頁但延遲加載數據
+                // 檢查用戶是否為管理員
+                checkAdminStatus(user.uid);
+                
+                // 初始化活動標籤頁
                 const activeTab = document.querySelector('.tab.active');
                 if (activeTab) {
-                const tabId = activeTab.getAttribute('data-tab');
-                console.log(`初始化活動標籤頁: ${tabId}`);
-                
-                // 延遲加載報告，以確保UI更新和認證完全穩定
-                setTimeout(() => {
-                    if (tabId === 'report') {
-                    console.log("開始延遲加載報告");
-                    loadReports();
-                    } else if (tabId === 'verification') {
-                    loadVerificationRequests();
-                    } // 其他標籤頁...
-                }, 1000); // 延遲1秒後加載
+                    const tabId = activeTab.getAttribute('data-tab');
+                    console.log(`初始化活動標籤頁: ${tabId}`);
+                    
+                    // 使用 setTimeout 確保 UI 已更新
+                    setTimeout(() => {
+                        if (tabId === 'report') {
+                            console.log("延遲加載報告");
+                            loadReports();
+                        } else if (tabId === 'verification') {
+                            loadVerificationRequests();
+                        } else if (tabId === 'businessApproval') {
+                            loadBusinessApprovalRequests();
+                        } else if (tabId === 'statistics') {
+                            loadStatistics();
+                        }
+                    }, 500);
                 }
+                
+                // 重置登入按鈕
+                loginButton.textContent = '登入';
+                loginButton.disabled = false;
                 
                 console.log('登入成功處理完成');
             } catch (error) {
                 console.error('登入成功處理出錯:', error);
+                
+                // 確保界面正確顯示，即使出錯
+                userStatus.textContent = `已登入: ${user.email}`;
+                loginSection.style.display = 'none';
+                logoutButton.style.display = 'block';
+                mainContent.style.display = 'block';
+                
+                loginButton.textContent = '登入';
+                loginButton.disabled = false;
             }
+        }
+
+        // 添加檢查管理員狀態的函數
+        async function checkAdminStatus(userId) {
+            try {
+                const adminDoc = await db.collection('admins').doc(userId).get();
+                
+                if (adminDoc.exists) {
+                    console.log('用戶已是管理員');
+                    // 更新用戶狀態顯示
+                    userStatus.innerHTML = `${userStatus.textContent} <span style="color: #4CAF50; font-weight: bold; margin-left: 5px;">[管理員]</span>`;
+                    
+                    // 隱藏申請管理員按鈕
+                    if (document.getElementById('adminButton')) {
+                        document.getElementById('adminButton').style.display = 'none';
+                    }
+                } else {
+                    console.log('用戶不是管理員，顯示申請按鈕');
+                    if (document.getElementById('adminButton')) {
+                        document.getElementById('adminButton').style.display = 'inline-block';
+                    }
+                }
+            } catch (error) {
+                console.error('檢查管理員狀態失敗:', error);
             }
-        
-        // 登出成功
+        }
+ 
+        // 登出成功處理函數
         function onLogout() {
+            console.log('執行登出後處理');
+            
+            // 更新界面
             userStatus.textContent = '';
             loginSection.style.display = 'block';
             logoutButton.style.display = 'none';
             mainContent.style.display = 'none';
-            reportDetail.style.display = 'none';
+            
+            // 隱藏所有可能開啟的詳情頁面
+            if (document.getElementById('report-detail')) {
+                document.getElementById('report-detail').style.display = 'none';
+            }
+            
+            if (document.getElementById('verification-detail')) {
+                document.getElementById('verification-detail').style.display = 'none';
+            }
+            
+            if (document.getElementById('business-approval-detail')) {
+                document.getElementById('business-approval-detail').style.display = 'none';
+            }
+            
+            // 重置登出按鈕
+            logoutButton.textContent = '登出';
+            logoutButton.disabled = false;
+            
+            console.log('登出後處理完成');
         }
-        
+                
         // 顯示錯誤信息
         function showError(message) {
             errorMessage.textContent = message;
