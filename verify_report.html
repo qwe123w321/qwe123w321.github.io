@@ -1459,26 +1459,73 @@
             measurementId: "G-X7RQ8DRZ7P"
         }
 
+         // 確保 reCAPTCHA 已加載
+    function waitForRecaptcha(callback) {
+        if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.ready === 'function') {
+            grecaptcha.ready(() => {
+                console.log('reCAPTCHA 已準備好');
+                callback();
+            });
+        } else {
+            console.log('等待 reCAPTCHA 加載...');
+            setTimeout(() => waitForRecaptcha(callback), 100);
+        }
+    }
+
+    // 初始化 Firebase 和 App Check
+    function initializeFirebaseWithAppCheck() {
+        console.log('開始初始化 Firebase 和 App Check');
+        
         // 如果尚未初始化 Firebase，執行初始化
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
-
-        // ★ 開發階段想看除錯，可啟用 (只建議在 localhost 或內網)
-        // self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-
-        // 啟用 App Check
-        var appCheck = firebase.appCheck();
-        // 替換成您自己的 reCAPTCHA site key
-        appCheck.activate('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G', {
-          isTokenAutoRefreshEnabled: true
-        });
-
+        
+        try {
+            // 啟用 App Check
+            var appCheck = firebase.appCheck();
+            appCheck.activate('6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G', {
+                isTokenAutoRefreshEnabled: true
+            });
+            
+            console.log('App Check 初始化成功');
+        } catch (error) {
+            console.error('App Check 初始化失敗:', error);
+            // 在開發環境中使用 debug token
+            if (window.location.hostname === 'localhost' || 
+                window.location.hostname === '127.0.0.1' || 
+                window.location.hostname.includes('192.168.')) {
+                console.log('開發環境中啟用 debug token');
+                self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+            }
+        }
+        
         // 接著取得 Firestore / Auth / Storage 等服務
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const storage = firebase.storage();
+        window.db = firebase.firestore();
+        window.auth = firebase.auth();
+        window.storage = firebase.storage();
+        
+        console.log('Firebase 和 App Check 初始化完成');
+        
+        // 觸發頁面初始化
+        initializePage();
+    }
 
+    // 等待 reCAPTCHA 加載完成後初始化 Firebase
+    waitForRecaptcha(initializeFirebaseWithAppCheck);
+    
+    // 頁面初始化函數
+    function initializePage() {
+        // 監聽認證狀態
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                console.log('認證狀態變更: 已登入', user.email);
+                onLoginSuccess(user);
+            } else {
+                console.log('認證狀態變更: 已登出');
+                onLogout();
+            }
+        });
         // // Firebase 配置
         // const firebaseConfig = {
         //     apiKey: "AIzaSyDslE4rgN8ZiUam3MCT_bJiSfusUxZS-wU",
@@ -1517,24 +1564,24 @@
         let totalReports = 0;
         let isProcessingAuthChange = false;
         
-        // 初始化頁面
-        document.addEventListener('DOMContentLoaded', function() {
-            // 監聽認證狀態
-            auth.onAuthStateChanged(user => {
-                if (isProcessingAuthChange) return;
+        // // 初始化頁面
+        // document.addEventListener('DOMContentLoaded', function() {
+        //     // 監聽認證狀態
+        //     auth.onAuthStateChanged(user => {
+        //         if (isProcessingAuthChange) return;
                 
-                isProcessingAuthChange = true;
+        //         isProcessingAuthChange = true;
                 
-                if (user) {
-                    console.log('認證狀態變更: 已登入', user.email);
-                    onLoginSuccess(user);
-                } else {
-                    console.log('認證狀態變更: 已登出');
-                    onLogout();
-                }
+        //         if (user) {
+        //             console.log('認證狀態變更: 已登入', user.email);
+        //             onLoginSuccess(user);
+        //         } else {
+        //             console.log('認證狀態變更: 已登出');
+        //             onLogout();
+        //         }
                 
-                isProcessingAuthChange = false;
-            });
+        //         isProcessingAuthChange = false;
+        //     });
 
             // 檢查DOM元素是否正確獲取
             if (!loginSection) console.error('無法找到loginSection元素');
