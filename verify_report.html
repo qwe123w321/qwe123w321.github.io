@@ -1492,12 +1492,12 @@
             } catch (error) {
                 console.error('App Check 初始化失敗:', error);
                 // 在開發環境中使用 debug token
-                if (window.location.hostname === 'localhost' || 
-                    window.location.hostname === '127.0.0.1' || 
-                    window.location.hostname.includes('192.168.')) {
-                    console.log('開發環境中啟用 debug token');
-                    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-                }
+                // if (window.location.hostname === 'localhost' || 
+                //     window.location.hostname === '127.0.0.1' || 
+                //     window.location.hostname.includes('192.168.')) {
+                //     console.log('開發環境中啟用 debug token');
+                //     self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+                // }
             }
             
             // 接著取得 Firestore / Auth / Storage 等服務
@@ -1671,7 +1671,7 @@
             // document.getElementById('business-approval-back').addEventListener('click', backToBusinessApprovalList);
             // document.getElementById('business-approve').addEventListener('click', approveBusinessRequest);
             // document.getElementById('business-reject').addEventListener('click', rejectBusinessRequest);
-        });
+        }
         
         // 處理登入
         async function handleLogin() {
