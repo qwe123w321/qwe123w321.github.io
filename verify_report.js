@@ -9,7 +9,7 @@ import {
     signOut
 } from './firebase-config.js';
 
-// 从统一的 App Check 模块导入需要的函数
+// 從統一的 App Check 模組匯入需要的函數
 import { 
     checkAppCheckStatus,
     getAppCheckToken,
@@ -17,68 +17,195 @@ import {
     runFullDiagnostics
 } from './app-check-module.js';
 
-// 全局变量
+// 全域變數
 let currentReportId = null;
 let currentPage = 1;
 let reportsPerPage = 12;
 let totalReports = 0;
 let isProcessingAuthChange = false;
+let APP_CHECK_INITIALIZED = false;
 
-// 初始化页面
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('開始初始化管理後台頁面...');
+// 初始化應用程序
+function initializeApplication() {
+    console.log('開始初始化應用程序...');
     
-    // 检查 App Check 状态
-    setTimeout(async () => {
-        console.log('正在檢查 App Check 狀態...');
-        try {
-            const result = await checkAppCheckStatus();
-            if (result.success) {
-                console.log('App Check 驗證成功！');
-                // 安装XHR拦截器来添加App Check令牌
-                installXHRInterceptor();
-            } else {
-                console.error('App Check 驗證失敗，可能導致未經驗證的請求錯誤');
-                // 添加错误提示
-                addAppCheckWarning();
-            }
-        } catch (error) {
-            console.error('檢查 App Check 狀態時發生錯誤:', error);
+    // 優先檢查 App Check 狀態
+    checkAppCheckInitialization()
+        .then(() => {
+            // 在 App Check 初始化後設置其他初始化
+            console.log('App Check 檢查完成，繼續初始化頁面');
+            initializePage();
+            setupAuthStateListener();
+        })
+        .catch(error => {
+            console.error('App Check 初始化失敗:', error);
+            // 顯示友好的錯誤訊息
+            showAppCheckError();
+        });
+}
+
+// 檢查 App Check 初始化
+async function checkAppCheckInitialization() {
+    console.log('正在檢查 App Check 狀態...');
+    
+    try {
+        // 顯示初始化狀態
+        const statusElement = document.getElementById('appCheckStatus');
+        if (statusElement) {
+            statusElement.className = 'initializing';
+            statusElement.style.display = 'block';
+            statusElement.textContent = 'App Check: 初始化中...';
         }
-    }, 1000);
-    
-    // 初始化页面元素
-    initializePage();
-    
-    // 设置认证状态监听器
-    setupAuthStateListener();
-});
+        
+        // 檢查是否已在全局範圍初始化
+        if (window.APP_CHECK_INITIALIZED) {
+            console.log('App Check 已初始化');
+            return true;
+        }
+        
+        // 帶延遲的檢查，確保 reCAPTCHA 有足夠時間載入
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // 檢查 reCAPTCHA 是否已載入
+        if (typeof grecaptcha === 'undefined') {
+            console.error('reCAPTCHA 尚未載入');
+            throw new Error('reCAPTCHA 尚未載入，App Check 無法初始化');
+        }
+        
+        // 檢查 firebase 和 appCheck 是否可用
+        if (typeof firebase === 'undefined') {
+            console.error('Firebase 尚未載入');
+            throw new Error('Firebase 尚未載入，App Check 無法初始化');
+        }
+        
+        console.log('開始 App Check 驗證...');
+        
+        // 執行 App Check 狀態檢查
+        const result = await checkAppCheckStatus();
+        if (result.success) {
+            console.log('App Check 驗證成功!');
+            
+            // 安裝攔截器添加 App Check 令牌到所有請求
+            installXHRInterceptor();
+            
+            // 更新狀態元素
+            if (statusElement) {
+                statusElement.className = 'success';
+                statusElement.textContent = 'App Check: 已驗證 ✓';
+                // 3秒後隱藏
+                setTimeout(() => { statusElement.style.display = 'none'; }, 3000);
+            }
+            
+            // 標記為已初始化
+            window.APP_CHECK_INITIALIZED = true;
+            APP_CHECK_INITIALIZED = true;
+            return true;
+        } else {
+            console.error('App Check 驗證失敗:', result.error);
+            
+            // 更新狀態元素
+            if (statusElement) {
+                statusElement.className = 'error';
+                statusElement.textContent = 'App Check: 驗證失敗 ✗';
+            }
+            
+            throw new Error('App Check 驗證失敗: ' + (result.error || '未知錯誤'));
+        }
+    } catch (error) {
+        console.error('App Check 初始化錯誤:', error);
+        
+        // 更新狀態元素
+        const statusElement = document.getElementById('appCheckStatus');
+        if (statusElement) {
+            statusElement.className = 'error';
+            statusElement.textContent = 'App Check: 發生錯誤 ✗';
+        }
+        
+        throw error;
+    }
+}
 
-// 初始化页面元素
+// 顯示 App Check 錯誤
+function showAppCheckError() {
+    const container = document.body;
+    
+    // 創建錯誤面板
+    const errorPanel = document.createElement('div');
+    errorPanel.style.position = 'fixed';
+    errorPanel.style.top = '0';
+    errorPanel.style.left = '0';
+    errorPanel.style.width = '100%';
+    errorPanel.style.height = '100%';
+    errorPanel.style.backgroundColor = 'rgba(0,0,0,0.8)';
+    errorPanel.style.zIndex = '10000';
+    errorPanel.style.display = 'flex';
+    errorPanel.style.flexDirection = 'column';
+    errorPanel.style.alignItems = 'center';
+    errorPanel.style.justifyContent = 'center';
+    errorPanel.style.color = 'white';
+    errorPanel.style.textAlign = 'center';
+    errorPanel.style.padding = '20px';
+    
+    // 錯誤內容
+    errorPanel.innerHTML = `
+        <h2 style="margin-bottom: 20px;">安全驗證失敗</h2>
+        <p style="margin-bottom: 15px; max-width: 600px;">系統無法完成安全驗證 (App Check)，可能是由於以下原因:</p>
+        <ul style="text-align: left; max-width: 600px; margin-bottom: 20px;">
+            <li style="margin-bottom: 10px;">reCAPTCHA 未能正確載入</li>
+            <li style="margin-bottom: 10px;">瀏覽器封鎖了第三方 Cookie 或腳本</li>
+            <li style="margin-bottom: 10px;">網路連接問題</li>
+            <li style="margin-bottom: 10px;">安全性擴充功能干擾</li>
+        </ul>
+        <p style="margin-bottom: 20px; max-width: 600px;">建議操作：</p>
+        <ol style="text-align: left; max-width: 600px; margin-bottom: 20px;">
+            <li style="margin-bottom: 10px;">重新整理頁面</li>
+            <li style="margin-bottom: 10px;">確保允許第三方 Cookie</li>
+            <li style="margin-bottom: 10px;">暫時停用任何內容阻擋器或隱私保護工具</li>
+            <li style="margin-bottom: 10px;">檢查網路連線</li>
+        </ol>
+        <button id="retryAppCheck" style="padding: 10px 20px; background-color: #9D7F86; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">重試連接</button>
+        <button id="runDiagnostics" style="padding: 10px 20px; background-color: #555; color: white; border: none; border-radius: 5px; cursor: pointer;">執行診斷</button>
+    `;
+    
+    // 添加到頁面
+    container.appendChild(errorPanel);
+    
+    // 添加按鈕事件
+    document.getElementById('retryAppCheck').addEventListener('click', function() {
+        location.reload();
+    });
+    
+    document.getElementById('runDiagnostics').addEventListener('click', function() {
+        runFullDiagnostics();
+        alert('診斷已執行，請查看瀏覽器控制台以獲取詳細資訊。');
+    });
+}
+
+// 初始化頁面元素
 function initializePage() {
     console.log('開始初始化頁面');
     
-    // 检查DOM元素是否正确获取
+    // 檢查DOM元素是否正確獲取
     if (!document.getElementById('loginSection')) console.error('無法找到loginSection元素');
     if (!document.getElementById('main-content')) console.error('無法找到mainContent元素');
     if (!document.getElementById('logoutButton')) console.error('無法找到logoutButton元素');
     if (!document.getElementById('userStatus')) console.error('無法找到userStatus元素');
     
-    // 登录按钮事件
+    // 登入按鈕事件
     const loginButton = document.getElementById('loginButton');
     if (loginButton) {
         loginButton.addEventListener('click', handleLogin);
         console.log('已綁定登入按鈕事件');
     }
     
-    // 登出按钮事件
+    // 登出按鈕事件
     const logoutButton = document.getElementById('logoutButton');
     if (logoutButton) {
         logoutButton.addEventListener('click', handleLogout);
         console.log('已綁定登出按鈕事件');
     }
     
-    // 返回列表按钮事件
+    // 返回列表按鈕事件
     const backToListBtn = document.getElementById('backToList');
     if (backToListBtn) {
         backToListBtn.addEventListener('click', function() {
@@ -88,17 +215,17 @@ function initializePage() {
         console.log('已綁定返回列表按鈕事件');
     }
     
-    // 标签页切换事件
+    // 標籤頁切換事件
     const tabs = document.querySelectorAll('.tab');
     tabs.forEach(tab => {
         tab.addEventListener('click', function() {
             const tabId = this.getAttribute('data-tab');
             
-            // 切换标签页样式
+            // 切換標籤頁樣式
             tabs.forEach(t => t.classList.remove('active'));
             this.classList.add('active');
             
-            // 切换内容区
+            // 切換內容區
             const tabContents = document.querySelectorAll('.tab-content');
             tabContents.forEach(content => content.classList.remove('active'));
             
@@ -106,7 +233,7 @@ function initializePage() {
             if (targetContent) {
                 targetContent.classList.add('active');
                 
-                // 根据标签页加载相应数据
+                // 根據標籤頁載入相應數據
                 if (tabId === 'statistics') {
                     loadStatistics();
                 } else if (tabId === 'history') {
@@ -127,7 +254,7 @@ function initializePage() {
     });
     console.log('已綁定標籤頁切換事件');
     
-    // 应用过滤按钮事件
+    // 應用過濾按鈕事件
     const applyFiltersBtn = document.getElementById('applyFilters');
     if (applyFiltersBtn) {
         applyFiltersBtn.addEventListener('click', function() {
@@ -137,14 +264,14 @@ function initializePage() {
         console.log('已綁定應用過濾按鈕事件');
     }
     
-    // 提交处理按钮事件
+    // 提交處理按鈕事件
     const submitActionBtn = document.getElementById('submitAction');
     if (submitActionBtn) {
         submitActionBtn.addEventListener('click', handleReportAction);
         console.log('已綁定提交處理按鈕事件');
     }
     
-    // 取消处理按钮事件
+    // 取消處理按鈕事件
     const cancelActionBtn = document.getElementById('cancelAction');
     if (cancelActionBtn) {
         cancelActionBtn.addEventListener('click', function() {
@@ -154,7 +281,7 @@ function initializePage() {
         console.log('已綁定取消處理按鈕事件');
     }
     
-    // 设置表单提交事件
+    // 設置表單提交事件
     const reportRulesForm = document.getElementById('reportRulesForm');
     if (reportRulesForm) {
         reportRulesForm.addEventListener('submit', function(e) {
@@ -182,16 +309,10 @@ function initializePage() {
         console.log('已綁定消息模板表單提交事件');
     }
     
-    // 图片查看事件
-    const lightboxClose = document.querySelector('.lightbox .close');
-    if (lightboxClose) {
-        lightboxClose.addEventListener('click', function() {
-            document.getElementById('imageLightbox').style.display = 'none';
-        });
-        console.log('已綁定燈箱關閉事件');
-    }
+    // 圖片查看事件
+    setupEnhancedLightbox();
     
-    // 设置Enter键登录
+    // 設置Enter鍵登入
     const passwordInput = document.getElementById('passwordInput');
     if (passwordInput) {
         passwordInput.addEventListener('keyup', function(event) {
@@ -202,7 +323,7 @@ function initializePage() {
         console.log('已設置Enter鍵登入');
     }
     
-    // 添加店家审核标签页点击处理
+    // 添加店家審核標籤頁點擊處理
     const businessApprovalTab = document.querySelector('.tab[data-tab="businessApproval"]');
     if (businessApprovalTab) {
         businessApprovalTab.addEventListener('click', function() {
@@ -211,25 +332,25 @@ function initializePage() {
         console.log('已設置店家審核標籤頁點擊事件');
     }
     
-    // 初始化管理员申请按钮
+    // 初始化管理員申請按鈕
     initAdminButtons();
     
     console.log('頁面初始化完成');
 }
 
-// 设置认证状态监听器
+// 設置認證狀態監聽器
 function setupAuthStateListener() {
     console.log('設置認證狀態監聽器');
     
-    let isProcessingAuthChange = false;
+    let processingAuthChange = false;
     
     auth.onAuthStateChanged(user => {
-        if (isProcessingAuthChange) {
+        if (processingAuthChange) {
             console.log('正在處理認證狀態變更，忽略重複事件');
             return;
         }
         
-        isProcessingAuthChange = true;
+        processingAuthChange = true;
         console.log(`認證狀態變更: ${user ? '已登入 ' + user.email : '已登出'}`);
         
         try {
@@ -242,78 +363,44 @@ function setupAuthStateListener() {
             console.error('處理認證狀態變更時出錯:', error);
         }
         
-        // 延迟重置处理标记，避免处理多次快速触发的事件
+        // 延遲重置處理標記，避免處理多次快速觸發的事件
         setTimeout(() => {
-            isProcessingAuthChange = false;
+            processingAuthChange = false;
         }, 500);
     });
 }
 
-// 添加 App Check 警告
-function addAppCheckWarning() {
-    const warningDiv = document.createElement('div');
-    warningDiv.className = 'alert alert-warning alert-dismissible fade show mt-3';
-    warningDiv.id = 'appCheckWarning';
-    warningDiv.innerHTML = `
-        <strong>注意:</strong> App Check 驗證未完成，這可能導致請求被拒絕。
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>
-        <div class="mt-2">
-            <button class="btn btn-sm btn-warning" id="retryAppCheck">重試 App Check 驗證</button>
-        </div>
-    `;
+// 設置增強版燈箱
+function setupEnhancedLightbox() {
+    const lightbox = document.getElementById('imageLightbox');
+    const lightboxImg = document.getElementById('lightboxImage');
+    const closeBtn = lightbox.querySelector('.close');
     
-    // 添加到登录表单前
-    const loginSection = document.getElementById('loginSection');
-    if (loginSection) {
-        loginSection.parentNode.insertBefore(warningDiv, loginSection);
-        
-        // 添加重试按钮事件
-        setTimeout(() => {
-            const retryBtn = document.getElementById('retryAppCheck');
-            if (retryBtn) {
-                retryBtn.addEventListener('click', async function() {
-                    this.disabled = true;
-                    this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 驗證中...';
-                    
-                    const result = await checkAppCheckStatus();
-                    if (result.success) {
-                        // 移除警告并显示成功消息
-                        document.getElementById('appCheckWarning').remove();
-                        showSuccess('App Check 驗證成功！您現在可以嘗試登入。');
-                    } else {
-                        // 更新警告
-                        this.disabled = false;
-                        this.textContent = '重試 App Check 驗證';
-                        showError('App Check 驗證仍然失敗，請刷新頁面或檢查網絡連接。');
-                    }
-                });
-            }
-        }, 100);
-    }
-}
-
-// 显示成功消息
-function showSuccess(message) {
-    const successAlert = document.createElement('div');
-    successAlert.className = 'alert alert-success mt-3';
-    successAlert.textContent = message;
-    
-    // 清除之前的错误消息
-    clearErrorMessage();
-    
-    // 插入成功消息
-    const loginSection = document.getElementById('loginSection');
-    if (loginSection) {
-        loginSection.parentNode.insertBefore(successAlert, loginSection);
+    // 關閉燈箱事件
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+            lightbox.style.display = 'none';
+        });
     }
     
-    // 5秒后自动移除
-    setTimeout(() => {
-        successAlert.remove();
-    }, 5000);
+    // 點擊燈箱背景關閉
+    lightbox.addEventListener('click', function(e) {
+        if (e.target === lightbox) {
+            lightbox.style.display = 'none';
+        }
+    });
+    
+    // 鍵盤事件 - ESC 關閉燈箱
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && lightbox.style.display === 'flex') {
+            lightbox.style.display = 'none';
+        }
+    });
+    
+    console.log('增強型燈箱設置完成');
 }
 
-// 初始化管理员申请按钮
+// 初始化管理員申請按鈕
 function initAdminButtons() {
     console.log('初始化管理員申請按鈕');
     
@@ -346,7 +433,73 @@ function initAdminButtons() {
     }
 }
 
-// 管理员申请功能(续)
+// 添加 App Check 警告
+function addAppCheckWarning() {
+    const warningDiv = document.createElement('div');
+    warningDiv.className = 'alert alert-warning alert-dismissible fade show mt-3';
+    warningDiv.id = 'appCheckWarning';
+    warningDiv.innerHTML = `
+        <strong>注意:</strong> App Check 驗證未完成，這可能導致請求被拒絕。
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>
+        <div class="mt-2">
+            <button class="btn btn-sm btn-warning" id="retryAppCheck">重試 App Check 驗證</button>
+        </div>
+    `;
+    
+    // 添加到登入表單前
+    const loginSection = document.getElementById('loginSection');
+    if (loginSection) {
+        loginSection.parentNode.insertBefore(warningDiv, loginSection);
+        
+        // 添加重試按鈕事件
+        setTimeout(() => {
+            const retryBtn = document.getElementById('retryAppCheck');
+            if (retryBtn) {
+                retryBtn.addEventListener('click', async function() {
+                    this.disabled = true;
+                    this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 驗證中...';
+                    
+                    const result = await checkAppCheckStatus();
+                    if (result.success) {
+                        // 移除警告並顯示成功訊息
+                        document.getElementById('appCheckWarning').remove();
+                        showSuccess('App Check 驗證成功！您現在可以嘗試登入。');
+                        window.APP_CHECK_INITIALIZED = true;
+                        APP_CHECK_INITIALIZED = true;
+                    } else {
+                        // 更新警告
+                        this.disabled = false;
+                        this.textContent = '重試 App Check 驗證';
+                        showError('App Check 驗證仍然失敗，請刷新頁面或檢查網絡連接。');
+                    }
+                });
+            }
+        }, 100);
+    }
+}
+
+// 顯示成功訊息
+function showSuccess(message) {
+    const successAlert = document.createElement('div');
+    successAlert.className = 'alert alert-success mt-3';
+    successAlert.textContent = message;
+    
+    // 清除之前的錯誤訊息
+    clearErrorMessage();
+    
+    // 插入成功訊息
+    const loginSection = document.getElementById('loginSection');
+    if (loginSection) {
+        loginSection.parentNode.insertBefore(successAlert, loginSection);
+    }
+    
+    // 5秒後自動移除
+    setTimeout(() => {
+        successAlert.remove();
+    }, 5000);
+}
+
+// 管理員申請功能
 async function applyForAdmin() {
     const adminKeyError = document.getElementById('adminKeyError');
     const submitAdminKey = document.getElementById('submitAdminKey');
@@ -356,7 +509,7 @@ async function applyForAdmin() {
             throw new Error('請先登入');
         }
         
-        // 显示处理中状态
+        // 顯示處理中狀態
         submitAdminKey.disabled = true;
         submitAdminKey.innerHTML = '<div class="loading-spinner"></div> 處理中...';
         
@@ -364,28 +517,28 @@ async function applyForAdmin() {
         
         console.log('嘗試申請管理員權限');
         
-        // 检查用户是否已有管理员权限
+        // 檢查用戶是否已有管理員權限
         const adminDoc = await db.collection('admins').doc(auth.currentUser.uid).get();
         if (adminDoc.exists) {
             throw new Error('您已具有管理員權限');
         }
         
-        // 创建管理员请求
+        // 創建管理員請求
         await db.collection('adminRequests').add({
             userId: auth.currentUser.uid,
             email: auth.currentUser.email,
             status: 'pending',
-            ipAddress: '自動檢測', // 实际应用中可使用函数获取
+            ipAddress: '自動檢測', // 實際應用中可使用函數獲取
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        // 显示成功提示
+        // 顯示成功提示
         document.getElementById('adminKeyModal').style.display = 'none';
         const adminSuccessModal = document.getElementById('adminSuccessModal');
         if (adminSuccessModal) {
             adminSuccessModal.style.display = 'block';
             
-            // 自动重载倒计时
+            // 自動重載倒計時
             let countdown = 3;
             const countdownElem = document.getElementById('reloadCountdown');
             if (countdownElem) {
@@ -399,7 +552,7 @@ async function applyForAdmin() {
                 }, 1000);
             }
             
-            // 立即重载按钮
+            // 立即重載按鈕
             const reloadNow = document.getElementById('reloadNow');
             if (reloadNow) {
                 reloadNow.addEventListener('click', () => {
@@ -422,7 +575,7 @@ async function applyForAdmin() {
         }
         
     } finally {
-        // 恢复按钮状态
+        // 恢復按鈕狀態
         if (submitAdminKey) {
             submitAdminKey.disabled = false;
             submitAdminKey.textContent = '確認申請';
@@ -430,7 +583,7 @@ async function applyForAdmin() {
     }
 }
 
-// 处理登录动作
+// 處理登入動作
 async function handleLogin() {
     const email = document.getElementById('emailInput').value.trim();
     const password = document.getElementById('passwordInput').value;
@@ -441,42 +594,57 @@ async function handleLogin() {
     }
     
     try {
-        // 显示登录中状态
+        // 顯示登入中狀態
         const loginButton = document.getElementById('loginButton');
         loginButton.innerHTML = '<div class="loading-spinner"></div> 登入中...';
         loginButton.disabled = true;
-        document.getElementById('errorMessage').style.display = 'none';
+        
+        if (document.getElementById('errorMessage')) {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
         
         console.log('嘗試登入:', email);
         
-        // 检查App Check是否初始化
-        if (!window.APP_CHECK_INITIALIZED) {
-            throw new Error('App Check尚未初始化，無法登入');
+        // 檢查 App Check 是否初始化
+        if (!APP_CHECK_INITIALIZED && !window.APP_CHECK_INITIALIZED) {
+            console.warn('App Check 未初始化，嘗試初始化');
+            
+            try {
+                await checkAppCheckInitialization();
+            } catch (appCheckError) {
+                console.error('登入前初始化 App Check 失敗:', appCheckError);
+                throw new Error('安全驗證失敗，請刷新頁面重試或檢查瀏覽器設定');
+            }
         }
         
-        // 确保使用真实的App Check
+        // 確保使用真實的 App Check
         try {
-            const appCheck = firebase.appCheck();
-            const token = await appCheck.getToken();
-            console.log('登入前已獲取有效的App Check令牌');
-        } catch (appCheckError) {
-            console.error('登入前無法獲取App Check令牌:', appCheckError);
-            throw new Error('安全驗證失敗，請刷新頁面重試');
+            // 獲取令牌用於確認 App Check 正常
+            const appCheckToken = await getAppCheckToken();
+            if (!appCheckToken) {
+                console.warn('無法獲取有效的 App Check 令牌，但將繼續嘗試登入');
+            } else {
+                console.log('已獲取有效的 App Check 令牌');
+            }
+        } catch (tokenError) {
+            console.warn('獲取 App Check 令牌失敗:', tokenError);
+            // 繼續嘗試登入，但顯示警告
+            showError('警告: 安全驗證不完整，登入可能失敗');
         }
         
-        // 设置认证持久性
+        // 設置認證持久性
         try {
             await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
             console.log('成功設置認證持久性為 LOCAL');
         } catch (persistenceError) {
             console.error('設置認證持久性失敗:', persistenceError);
-            // 继续尝试登录，持久性错误不一定会阻止登录流程
+            // 繼續嘗試登入，持久性錯誤不一定會阻止登入流程
         }
         
-        // 尝试登录
+        // 嘗試登入
         console.log('開始執行登入...');
         
-        // 设置登录超时
+        // 設置登入超時
         const loginPromise = auth.signInWithEmailAndPassword(email, password);
         const loginTimeout = new Promise((_, reject) => {
             setTimeout(() => reject(new Error('登入請求超時')), 15000);
@@ -485,24 +653,24 @@ async function handleLogin() {
         const userCredential = await Promise.race([loginPromise, loginTimeout]);
         console.log('登入成功:', userCredential.user.email);
         
-        // 清除输入字段
+        // 清除輸入字段
         document.getElementById('emailInput').value = '';
         document.getElementById('passwordInput').value = '';
         
     } catch (error) {
         console.error('登入錯誤:', error);
         
-        // 显示错误消息
+        // 顯示錯誤訊息
         showError(getErrorMessage(error));
         
-        // 重置登录按钮
+        // 重置登入按鈕
         const loginButton = document.getElementById('loginButton');
         loginButton.textContent = '登入';
         loginButton.disabled = false;
     }
 }
 
-// 处理登出
+// 處理登出
 async function handleLogout() {
     try {
         const logoutButton = document.getElementById('logoutButton');
@@ -513,42 +681,42 @@ async function handleLogout() {
         await auth.signOut();
         console.log('登出成功');
         
-        // onAuthStateChanged 会处理其余的操作
+        // onAuthStateChanged 會處理其餘的操作
     } catch (error) {
         console.error('登出錯誤:', error);
         alert('登出時發生錯誤: ' + error.message);
         
-        // 重置登出按钮
+        // 重置登出按鈕
         const logoutButton = document.getElementById('logoutButton');
         logoutButton.textContent = '登出';
         logoutButton.disabled = false;
     }
 }
 
-// 登录成功
+// 登入成功
 function onLoginSuccess(user) {
     try {
         console.log('登入成功處理開始，用戶郵箱:', user.email);
         
-        // 更新用户界面
+        // 更新用戶界面
         document.getElementById('userStatus').textContent = `已登入: ${user.email}`;
         document.getElementById('loginSection').style.display = 'none';
         document.getElementById('logoutButton').style.display = 'block';
         document.getElementById('main-content').style.display = 'block';
         
-        // 检查用户是否为管理员
+        // 檢查用戶是否為管理員
         checkAdminStatus(user.uid);
         
-        // 初始化活动标签页
+        // 初始化活動標籤頁
         const activeTab = document.querySelector('.tab.active');
         if (activeTab) {
             const tabId = activeTab.getAttribute('data-tab');
             console.log(`初始化活動標籤頁: ${tabId}`);
             
-            // 使用 setTimeout 确保 UI 已更新
+            // 使用 setTimeout 確保 UI 已更新
             setTimeout(() => {
                 if (tabId === 'report') {
-                    console.log("延遲加載報告");
+                    console.log("延遲載入報告");
                     loadReports();
                 } else if (tabId === 'verification') {
                     loadVerificationRequests();
@@ -560,7 +728,7 @@ function onLoginSuccess(user) {
             }, 500);
         }
         
-        // 重置登录按钮
+        // 重置登入按鈕
         const loginButton = document.getElementById('loginButton');
         if (loginButton) {
             loginButton.textContent = '登入';
@@ -571,7 +739,7 @@ function onLoginSuccess(user) {
     } catch (error) {
         console.error('登入成功處理出錯:', error);
         
-        // 确保界面正确显示，即使出错
+        // 確保界面正確顯示，即使出錯
         document.getElementById('userStatus').textContent = `已登入: ${user.email}`;
         document.getElementById('loginSection').style.display = 'none';
         document.getElementById('logoutButton').style.display = 'block';
@@ -584,17 +752,17 @@ function onLoginSuccess(user) {
     }
 }
 
-// 添加检查管理员状态的函数
-async function checkAdminStatus(userId) {
+ // 添加檢查管理員狀態的函數
+ async function checkAdminStatus(userId) {
     try {
         const adminDoc = await db.collection('admins').doc(userId).get();
         
         if (adminDoc.exists) {
             console.log('用戶已是管理員');
-            // 更新用户状态显示
-            document.getElementById('userStatus').innerHTML = `${document.getElementById('userStatus').textContent} <span style="color: #4CAF50; font-weight: bold; margin-left: 5px;">[管理員]</span>`;
+            // 更新用戶狀態顯示
+            userStatus.innerHTML = `${userStatus.textContent} <span style="color: #4CAF50; font-weight: bold; margin-left: 5px;">[管理員]</span>`;
             
-            // 隐藏申请管理员按钮
+            // 隱藏申請管理員按鈕
             if (document.getElementById('adminButton')) {
                 document.getElementById('adminButton').style.display = 'none';
             }
@@ -609,17 +777,17 @@ async function checkAdminStatus(userId) {
     }
 }
 
-// 登出成功处理函数
+// 登出成功處理函數
 function onLogout() {
     console.log('執行登出後處理');
     
     // 更新界面
-    document.getElementById('userStatus').textContent = '';
-    document.getElementById('loginSection').style.display = 'block';
-    document.getElementById('logoutButton').style.display = 'none';
-    document.getElementById('main-content').style.display = 'none';
+    userStatus.textContent = '';
+    loginSection.style.display = 'block';
+    logoutButton.style.display = 'none';
+    mainContent.style.display = 'none';
     
-    // 隐藏所有可能开启的详情页面
+    // 隱藏所有可能開啟的詳情頁面
     if (document.getElementById('report-detail')) {
         document.getElementById('report-detail').style.display = 'none';
     }
@@ -632,43 +800,40 @@ function onLogout() {
         document.getElementById('business-approval-detail').style.display = 'none';
     }
     
-    // 重置登出按钮
-    const logoutButton = document.getElementById('logoutButton');
-    if (logoutButton) {
-        logoutButton.textContent = '登出';
-        logoutButton.disabled = false;
-    }
+    // 重置登出按鈕
+    logoutButton.textContent = '登出';
+    logoutButton.disabled = false;
     
     console.log('登出後處理完成');
 }
-
-// 显示错误信息
+        
+// 顯示錯誤信息
 function showError(message) {
-    // 先清除之前的错误消息
+    // 先清除之前的錯誤訊息
     clearErrorMessage();
     
-    // 创建错误提示
+    // 創建錯誤提示
     const errorAlert = document.createElement('div');
     errorAlert.className = 'alert alert-danger login-error-alert mt-3';
     errorAlert.role = 'alert';
     
-    // 插入到登录表单之前
+    // 插入到登入表單之前
     const loginForm = document.getElementById('businessLoginForm') || document.querySelector('form');
     if (loginForm) {
         loginForm.parentNode.insertBefore(errorAlert, loginForm);
     } else {
-        // 如果找不到表单，添加到其他地方
+        // 如果找不到表單，添加到其他地方
         const possibleParent = document.querySelector('.login-section') || 
                             document.querySelector('.container') || 
                             document.body;
         possibleParent.prepend(errorAlert);
     }
     
-    // 设置错误消息，支持HTML
+    // 設置錯誤訊息，支持HTML
     errorAlert.innerHTML = message;
 }
 
-// 清除错误消息
+// 清除錯誤訊息
 function clearErrorMessage() {
     const errorAlert = document.querySelector('.login-error-alert');
     if (errorAlert) {
@@ -676,7 +841,7 @@ function clearErrorMessage() {
     }
 }
 
-// 简化的检查错误消息并返回用户友好的消息
+// 簡化的檢查錯誤訊息並返回用戶友好的訊息
 function getErrorMessage(error) {
     switch(error.code) {
         case 'auth/invalid-email':
@@ -696,32 +861,896 @@ function getErrorMessage(error) {
     }
 }
 
-// 加载报告列表
+// 1. 載入店家審核請求 - 確保正確顯示店家列表
+async function loadBusinessApprovalRequests() {
+    const container = document.getElementById('business-approval-container');
+    const loadingElement = document.getElementById('business-approval-loading');
+    
+    if (!container || !loadingElement) {
+        console.error('店家審核容器元素未找到');
+        return;
+    }
+    
+    container.innerHTML = '';
+    loadingElement.style.display = 'flex';
+    
+    try {
+        console.log("開始載入店家審核請求列表...");
+        // 獲取所有待處理審核請求
+        const querySnapshot = await db.collection('businessApprovalRequests')
+            .where('status', '==', 'pending')
+            .orderBy('createdAt', 'desc')
+            .get();
+        
+        loadingElement.style.display = 'none';
+        
+        if (querySnapshot.empty) {
+            container.innerHTML = '<div style="text-align: center; padding: 30px;">沒有待處理的店家審核請求</div>';
+            return;
+        }
+        
+        console.log(`發現 ${querySnapshot.size} 個待處理店家審核請求`);
+        
+        // 顯示審核請求卡片
+        querySnapshot.forEach(doc => {
+            const data = doc.data();
+            const requestCard = document.createElement('div');
+            requestCard.className = 'report-card pending';
+            
+            // 格式化日期
+            const createdAt = data.createdAt ? new Date(data.createdAt.toDate()) : new Date();
+            const formattedDate = formatDate(createdAt);
+            
+            // 判斷是否為重新申請
+            const reapplyBadge = data.isReapply ? 
+                '<span class="status-badge badge-warning" style="margin-left: 5px;">重新申請</span>' : '';
+            
+            requestCard.innerHTML = `
+                <h3>
+                    <span class="status-badge badge-pending">待審核</span>
+                    <span style="margin-left: 5px;">${data.businessName || '未知店家'}</span>
+                    ${reapplyBadge}
+                </h3>
+                <p><strong>店家類型:</strong> ${getBusinessTypeText(data.businessType)}</p>
+                <p><strong>提交時間:</strong> ${formattedDate}</p>
+                <p><strong>聯絡人:</strong> ${data.contactName || '未知'}</p>
+            `;
+            
+            // 添加點擊事件
+            requestCard.addEventListener('click', () => {
+                console.log(`點擊店家卡片 - ID: ${doc.id}, 店家名稱: ${data.businessName || '未知'}`);
+                showBusinessApprovalDetail(doc.id);
+            });
+            
+            container.appendChild(requestCard);
+        });
+        
+    } catch (error) {
+        console.error('加載店家審核請求錯誤:', error);
+        loadingElement.style.display = 'none';
+        container.innerHTML = `<div style="text-align: center; padding: 30px;">加載審核請求時發生錯誤: ${error.message}</div>`;
+    }
+}
+    
+// 2. 顯示店家審核詳情 - 修復顯示詳情頁面問題
+async function showBusinessApprovalDetail(requestId) {
+    try {
+        console.log(`開始顯示店家審核詳情，請求ID: ${requestId}`);
+        
+        // 隱藏主內容
+        mainContent.style.display = 'none';
+        
+        // 使用準確的類名選擇器，避免ID衝突
+        const detailContainer = document.querySelector('.business-verification-detail');
+        if (!detailContainer) {
+            console.error('找不到店家審核詳情容器');
+            alert('頁面元素錯誤，請聯絡管理員');
+            backToBusinessApprovalList();
+            return;
+        }
+        
+        detailContainer.style.display = 'block';
+        
+        // 設置請求ID到隱藏字段
+        const requestIdField = document.getElementById('business-approval-requestid');
+        if (!requestIdField) {
+            console.error('找不到business-approval-requestid元素');
+            alert('頁面元素錯誤，請聯絡管理員');
+            backToBusinessApprovalList();
+            return;
+        }
+        
+        requestIdField.value = requestId;
+        
+        try {
+            // 獲取審核請求數據
+            console.log(`開始從Firebase獲取審核請求數據...`);
+            const requestDoc = await db.collection('businessApprovalRequests').doc(requestId).get();
+            
+            if (!requestDoc.exists) {
+                console.error('找不到審核請求數據');
+                alert('找不到審核請求');
+                backToBusinessApprovalList();
+                return;
+            }
+            
+            const requestData = requestDoc.data();
+            console.log(`成功獲取審核請求數據:`, requestData);
+            
+            // 填充詳情頁數據
+            document.getElementById('business-name').textContent = requestData.businessName || '未知店家';
+            document.getElementById('business-userid').textContent = requestData.userId || '未知';
+            document.getElementById('business-type').textContent = getBusinessTypeText(requestData.businessType);
+            document.getElementById('business-time').textContent = formatDate(
+                requestData.createdAt ? new Date(requestData.createdAt.toDate()) : new Date()
+            );
+            document.getElementById('business-address').textContent = requestData.address || '未知';
+            document.getElementById('business-phone').textContent = requestData.phoneNumber || '未知';
+            document.getElementById('business-contact-name').textContent = requestData.contactName || '未知';
+            document.getElementById('business-contact-phone').textContent = requestData.contactPhone || '未知';
+            
+            // 處理證照照片
+            const licensesContainer = document.getElementById('business-licenses');
+            if (!licensesContainer) {
+                console.error('找不到business-licenses容器');
+                return;
+            }
+            
+            licensesContainer.innerHTML = ''; // 清空容器
+            
+            const licenseUrls = requestData.licenseUrls || [];
+            console.log(`證照照片數量: ${licenseUrls.length}`);
+            
+            if (licenseUrls.length === 0) {
+                licensesContainer.innerHTML = '<p style="grid-column: 1 / -1; text-align: center;">沒有上傳證明文件</p>';
+            } else {
+                // 對每個文件URL進行處理
+                for (let index = 0; index < licenseUrls.length; index++) {
+                    const url = licenseUrls[index];
+                    
+                    try {
+                        // 創建照片項目元素
+                        const photoItem = document.createElement('div');
+                        photoItem.className = 'photo-item';
+                        
+                        // 判斷檔案類型
+                        const isImage = url.toLowerCase().match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i);
+                        const isPdf = url.toLowerCase().endsWith('.pdf');
+                        
+                        if (isImage) {
+                            // 圖片預覽 - 添加更好的錯誤處理
+                            photoItem.innerHTML = `
+                                <img src="${url}" alt="證明文件 ${index + 1}" 
+                                    onerror="this.src='https://placehold.co/300x300?text=載入失敗'; this.onerror=null;"
+                                    loading="lazy" style="object-fit: contain;">
+                                <span class="index">#${index + 1}</span>
+                            `;
+                            
+                            // 預加載圖片並檢查是否能正確載入
+                            const preloadImg = new Image();
+                            preloadImg.onload = function() {
+                                console.log(`圖片 #${index + 1} 預加載成功`);
+                            };
+                            preloadImg.onerror = function() {
+                                console.error(`圖片 #${index + 1} 載入失敗，URL: ${url}`);
+                                // 如果是Firebase Storage URL，嘗試使用其他方法獲取
+                                if (url.includes('firebasestorage.googleapis.com')) {
+                                    console.log(`嘗試使用Firebase Storage直接獲取圖片 #${index + 1}`);
+                                    // 這裡可以添加額外的Firebase Storage處理邏輯
+                                }
+                            };
+                            preloadImg.src = url;
+                        } else if (isPdf) {
+                            // PDF 預覽
+                            photoItem.innerHTML = `
+                                <div style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #f8f9fa;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#dc3545" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <path d="M9 15h6"></path>
+                                        <path d="M9 18h6"></path>
+                                        <path d="M9 12h2"></path>
+                                    </svg>
+                                    <span style="margin-top: 10px;">PDF 文件</span>
+                                </div>
+                                <span class="index">#${index + 1}</span>
+                            `;
+                        } else {
+                            // 嘗試檢測是否為圖片格式（沒有明確副檔名的情況）
+                            const testImage = new Image();
+                            testImage.onload = function() {
+                                // 如果成功載入，則確實是圖片
+                                photoItem.innerHTML = `
+                                    <img src="${url}" alt="證明文件 ${index + 1}" 
+                                        onerror="this.src='https://placehold.co/300x300?text=載入失敗'; this.onerror=null;"
+                                        loading="lazy" style="object-fit: contain;">
+                                    <span class="index">#${index + 1}</span>
+                                `;
+                            };
+                            testImage.onerror = function() {
+                                // 不是圖片，顯示為一般檔案
+                                photoItem.innerHTML = `
+                                    <div style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #f8f9fa;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#007bff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                                            <polyline points="13 2 13 9 20 9"></polyline>
+                                        </svg>
+                                        <span style="margin-top: 10px;">未知檔案</span>
+                                    </div>
+                                    <span class="index">#${index + 1}</span>
+                                `;
+                            };
+                            // 先顯示一個通用的文件圖標
+                            photoItem.innerHTML = `
+                                <div style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #f8f9fa;">
+                                    <div class="loading-spinner"></div>
+                                    <span style="margin-top: 10px;">檢測文件類型...</span>
+                                </div>
+                                <span class="index">#${index + 1}</span>
+                            `;
+                            testImage.src = url;
+                        }
+                        
+                        // 點擊放大查看
+                        photoItem.addEventListener('click', () => {
+                            if (isImage) {
+                                // 圖片用燈箱查看
+                                document.getElementById('lightboxImage').src = url;
+                                document.getElementById('lightboxImage').onerror = function() {
+                                    this.src = 'https://placehold.co/800x600?text=載入失敗';
+                                    this.onerror = null;
+                                };
+                                document.getElementById('imageLightbox').style.display = 'flex';
+                            } else if (isPdf) {
+                                // PDF 在新窗口打開
+                                window.open(url, '_blank');
+                            } else {
+                                // 其他檔案下載
+                                window.open(url, '_blank');
+                            }
+                        });
+                        
+                        licensesContainer.appendChild(photoItem);
+                    } catch (imageError) {
+                        console.error(`處理圖片 #${index + 1} 時發生錯誤:`, imageError);
+                        // 如果處理特定圖片時出錯，繼續處理其他圖片
+                        continue;
+                    }
+                }
+            }
+            
+            // 確保事件處理綁定只執行一次
+            const backBtn = document.getElementById('business-approval-back');
+            const approveBtn = document.getElementById('business-approve');
+            const rejectBtn = document.getElementById('business-reject');
+            
+            // 先移除舊的事件處理程序（如果有的話）
+            if (backBtn) {
+                const newBackBtn = backBtn.cloneNode(true);
+                backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+                newBackBtn.addEventListener('click', backToBusinessApprovalList);
+            }
+            
+            if (approveBtn) {
+                const newApproveBtn = approveBtn.cloneNode(true);
+                approveBtn.parentNode.replaceChild(newApproveBtn, approveBtn);
+                newApproveBtn.addEventListener('click', approveBusinessRequest);
+            }
+            
+            if (rejectBtn) {
+                const newRejectBtn = rejectBtn.cloneNode(true);
+                rejectBtn.parentNode.replaceChild(newRejectBtn, rejectBtn);
+                newRejectBtn.addEventListener('click', rejectBusinessRequest);
+            }
+            
+            console.log("店家審核詳情載入完成:", requestId);
+            
+        } catch (error) {
+            console.error('顯示店家審核詳情錯誤:', error);
+            alert(`載入審核詳情時發生錯誤: ${error.message}`);
+            backToBusinessApprovalList();
+        }
+    } catch (error) {
+        console.error('顯示店家審核詳情頁面錯誤:', error);
+        alert('頁面載入錯誤，請重試');
+        mainContent.style.display = 'block';
+    }
+}
+
+// 增強版的處理Firebase Storage URL函數
+function getOptimizedImageUrl(url) {
+    // 如果是Firebase Storage URL，嘗試優化URL
+    if (url && url.includes('firebasestorage.googleapis.com')) {
+        // 移除多餘的查詢參數，這些可能導致跨域問題
+        const cleanUrl = url.split('?')[0];
+        return cleanUrl;
+    }
+    return url;
+}
+
+// 用於處理圖片載入錯誤的通用函數
+function handleImageLoadError(img, fallbackText) {
+    img.onerror = function() {
+        // 創建一個替代的內容顯示
+        const container = img.parentElement;
+        const placeholder = document.createElement('div');
+        placeholder.style.width = '100%';
+        placeholder.style.height = '100%';
+        placeholder.style.display = 'flex';
+        placeholder.style.alignItems = 'center';
+        placeholder.style.justifyContent = 'center';
+        placeholder.style.backgroundColor = '#f8f9fa';
+        placeholder.style.color = '#999';
+        placeholder.textContent = fallbackText || '圖片無法載入';
+        
+        // 替換圖片元素
+        container.replaceChild(placeholder, img);
+    };
+}
+    
+// 3. 返回店家審核列表
+function backToBusinessApprovalList() {
+    console.log('返回店家審核列表');
+    
+    // 使用類名選擇器，避免ID衝突
+    const detailContainer = document.querySelector('.business-verification-detail');
+    if (detailContainer) {
+        detailContainer.style.display = 'none';
+    }
+    
+    mainContent.style.display = 'block';
+    
+    // 清空拒絕原因
+    if (document.getElementById('reject-reason')) {
+        document.getElementById('reject-reason').value = '';
+    }
+    
+    // 重新啟用按鈕（以防之前被禁用）
+    const approveBtn = document.getElementById('business-approve');
+    const rejectBtn = document.getElementById('business-reject');
+    
+    if (approveBtn) {
+        approveBtn.disabled = false;
+        approveBtn.textContent = '核准店家';
+    }
+    
+    if (rejectBtn) {
+        rejectBtn.disabled = false;
+        rejectBtn.textContent = '拒絕審核';
+    }
+}
+
+
+// 4. 核准店家審核
+async function approveBusinessRequest() {
+    const requestId = document.getElementById('business-approval-requestid').value;
+    
+    if (!requestId) {
+        alert('無效的請求ID');
+        return;
+    }
+    
+    try {
+        console.log(`開始核准店家審核，請求ID: ${requestId}`);
+        
+        const approveBtn = document.getElementById('business-approve');
+        approveBtn.disabled = true;
+        approveBtn.innerHTML = '<div class="loading-spinner"></div> 處理中...';
+        
+        // 獲取審核請求數據
+        const requestDoc = await db.collection('businessApprovalRequests').doc(requestId).get();
+        if (!requestDoc.exists) {
+            throw new Error('找不到審核請求');
+        }
+        
+        const requestData = requestDoc.data();
+        const userId = requestData.userId;
+        
+        console.log(`核准用戶ID: ${userId} 的店家申請`);
+        
+        // 1. 更新店家狀態為已核准
+        await db.collection('businesses').doc(userId).set({
+            status: 'approved',
+            approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            approvedBy: auth.currentUser ? auth.currentUser.uid : 'admin',
+            businessName: requestData.businessName,
+            businessType: requestData.businessType,
+            address: requestData.address,
+            phoneNumber: requestData.phoneNumber,
+            contactName: requestData.contactName,
+            contactPhone: requestData.contactPhone,
+            licenseUrls: requestData.licenseUrls || [],
+            createdAt: requestData.createdAt || firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        
+        // // 2. 更新用戶資料
+        // await db.collection('用戶資料').doc(userId).update({
+        //     isBusiness: true,
+        //     businessVerified: true,
+        //     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        // });
+        
+        // 3. 發送通知
+        await db.collection('notifications').add({
+            userId: userId,
+            type: 'business_approval',
+            message: '恭喜！您的店家帳號已通過審核，現在可以使用全部功能。',
+            isRead: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // 4. 刪除審核請求 (確保這一步不會失敗)
+        await db.collection('businessApprovalRequests').doc(requestId).delete();
+        
+        alert('已核准店家帳號');
+        backToBusinessApprovalList();
+        
+        // 重新加載審核列表
+        loadBusinessApprovalRequests();
+        
+    } catch (error) {
+        console.error('核准店家審核錯誤:', error);
+        alert(`核准店家時發生錯誤: ${error.message}`);
+        
+        const approveBtn = document.getElementById('business-approve');
+        approveBtn.disabled = false;
+        approveBtn.textContent = '核准店家';
+    }
+}
+
+
+// 5. 拒絕店家審核
+async function rejectBusinessRequest() {
+    const requestId = document.getElementById('business-approval-requestid').value;
+    const rejectReason = document.getElementById('reject-reason').value.trim();
+    
+    if (!requestId) {
+        alert('無效的請求ID');
+        return;
+    }
+    
+    if (!rejectReason) {
+        alert('請填寫拒絕原因');
+        return;
+    }
+    
+    try {
+        console.log(`開始拒絕店家審核，請求ID: ${requestId}`);
+        
+        const rejectBtn = document.getElementById('business-reject');
+        rejectBtn.disabled = true;
+        rejectBtn.innerHTML = '<div class="loading-spinner"></div> 處理中...';
+        
+        // 獲取審核請求數據
+        const requestDoc = await db.collection('businessApprovalRequests').doc(requestId).get();
+        if (!requestDoc.exists) {
+            throw new Error('找不到審核請求');
+        }
+        
+        const requestData = requestDoc.data();
+        const userId = requestData.userId;
+        
+        console.log(`拒絕用戶ID: ${userId} 的店家申請`);
+        
+        // 1. 更新店家狀態為已拒絕
+        await db.collection('businesses').doc(userId).set({
+            status: 'rejected',
+            rejectReason: rejectReason,
+            rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            rejectedBy: auth.currentUser ? auth.currentUser.uid : 'admin',
+            businessName: requestData.businessName,
+            businessType: requestData.businessType,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        
+        // // 2. 更新用戶資料
+        // await db.collection('用戶資料').doc(userId).update({
+        //     businessVerified: false,
+        //     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        // });
+        
+        // 3. 發送通知
+        await db.collection('notifications').add({
+            userId: userId,
+            type: 'business_rejection',
+            message: `很抱歉，您的店家帳號申請未通過審核。原因: ${rejectReason}`,
+            data: {
+                rejectReason: rejectReason
+            },
+            isRead: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // 4. 刪除審核請求 (確保這一步不會失敗)
+        await db.collection('businessApprovalRequests').doc(requestId).delete();
+        
+        alert('已拒絕店家審核申請');
+        backToBusinessApprovalList();
+        
+        // 重新加載審核列表
+        loadBusinessApprovalRequests();
+        
+    } catch (error) {
+        console.error('拒絕店家審核錯誤:', error);
+        alert(`拒絕店家時發生錯誤: ${error.message}`);
+        
+        const rejectBtn = document.getElementById('business-reject');
+        rejectBtn.disabled = false;
+        rejectBtn.textContent = '拒絕審核';
+    }
+}
+
+// 增強的燈箱功能，支持更好的圖片預覽
+
+// 當DOM加載完成後設置燈箱功能
+document.addEventListener('DOMContentLoaded', function() {
+    setupEnhancedLightbox();
+});
+
+// 設置增強的燈箱功能
+function setupEnhancedLightbox() {
+    const lightbox = document.getElementById('imageLightbox');
+    const lightboxImage = document.getElementById('lightboxImage');
+    const closeButton = lightbox.querySelector('.close');
+    
+    // 確保燈箱元素存在
+    if (!lightbox || !lightboxImage || !closeButton) {
+        console.error('燈箱元素未找到');
+        return;
+    }
+    
+    // 關閉燈箱的函數
+    function closeLightbox() {
+        lightbox.classList.remove('active');
+        setTimeout(() => {
+            lightbox.style.display = 'none';
+        }, 300); // 等待過渡效果完成
+    }
+    
+    // 綁定關閉按鈕事件
+    closeButton.addEventListener('click', closeLightbox);
+    
+    // 按ESC鍵關閉燈箱
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && lightbox.classList.contains('active')) {
+            closeLightbox();
+        }
+    });
+    
+    // 點擊燈箱背景關閉
+    lightbox.addEventListener('click', function(e) {
+        // 只有當點擊的是燈箱本身而不是其中的圖片時才關閉
+        if (e.target === lightbox) {
+            closeLightbox();
+        }
+    });
+    
+    // 為lightboxImage添加載入事件
+    lightboxImage.addEventListener('load', function() {
+        console.log('燈箱圖片載入成功');
+    });
+    
+    // 為lightboxImage添加錯誤處理
+    lightboxImage.addEventListener('error', function() {
+        this.src = 'https://placehold.co/800x600?text=圖片載入失敗';
+        console.error('燈箱圖片載入失敗');
+    });
+    
+    // 修改原有的燈箱打開方法
+    window.openLightbox = function(imageUrl) {
+        if (!imageUrl) {
+            console.error('嘗試打開燈箱但沒有提供圖片URL');
+            return;
+        }
+        
+        // 設置載入中的狀態
+        lightboxImage.src = 'https://placehold.co/50x50?text=載入中';
+        
+        // 顯示燈箱
+        lightbox.style.display = 'flex';
+        
+        // 使用setTimeout確保過渡效果生效
+        setTimeout(() => {
+            lightbox.classList.add('active');
+        }, 10);
+        
+        // 載入實際圖片
+        lightboxImage.src = imageUrl;
+    };
+}
+
+// 增強的照片處理函數 - 用於店家審核詳情頁面
+function setupBusinessPhotosView(containerId, photoUrls) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+        console.error(`找不到容器: #${containerId}`);
+        return;
+    }
+    
+    container.innerHTML = ''; // 清空容器
+    
+    if (!photoUrls || photoUrls.length === 0) {
+        container.innerHTML = '<p style="grid-column: 1 / -1; text-align: center;">沒有上傳證明文件</p>';
+        return;
+    }
+    
+    photoUrls.forEach((url, index) => {
+        const photoItem = createPhotoItem(url, index);
+        container.appendChild(photoItem);
+    });
+}
+
+// 創建照片項目元素
+function createPhotoItem(url, index) {
+    const photoItem = document.createElement('div');
+    photoItem.className = 'photo-item';
+    
+    // 顯示載入中的狀態
+    photoItem.innerHTML = `
+        <div class="image-loading">
+            <div class="loading-spinner"></div>
+        </div>
+        <span class="index">#${index + 1}</span>
+    `;
+    
+    // 判斷檔案類型
+    const fileExtension = url.split('.').pop().toLowerCase();
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(fileExtension);
+    const isPdf = fileExtension === 'pdf';
+    
+    if (isImage) {
+        // 圖片預覽
+        const img = document.createElement('img');
+        img.alt = `證明文件 ${index + 1}`;
+        img.loading = 'lazy';
+        
+        // 圖片載入成功
+        img.onload = function() {
+            // 移除載入指示器
+            const loadingElement = photoItem.querySelector('.image-loading');
+            if (loadingElement) {
+                photoItem.removeChild(loadingElement);
+            }
+            
+            // 添加文件類型標籤
+            const fileTypeTag = document.createElement('span');
+            fileTypeTag.className = 'file-type';
+            fileTypeTag.textContent = fileExtension.toUpperCase();
+            photoItem.appendChild(fileTypeTag);
+        };
+        
+        // 圖片載入失敗
+        img.onerror = function() {
+            // 替換為錯誤顯示
+            photoItem.innerHTML = `
+                <div class="error-placeholder">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                    <p>圖片無法載入</p>
+                </div>
+                <span class="index">#${index + 1}</span>
+            `;
+        };
+        
+        // 設置圖片來源
+        img.src = url;
+        photoItem.appendChild(img);
+        
+        // 點擊放大查看
+        photoItem.addEventListener('click', () => {
+            window.openLightbox(url);
+        });
+    } else if (isPdf) {
+        // PDF 預覽
+        photoItem.innerHTML = `
+            <div style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #f8f9fa;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#dc3545" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <path d="M9 15h6"></path>
+                    <path d="M9 18h6"></path>
+                    <path d="M9 12h2"></path>
+                </svg>
+                <span style="margin-top: 10px;">PDF 文件</span>
+            </div>
+            <span class="index">#${index + 1}</span>
+            <span class="file-type">PDF</span>
+        `;
+        
+        // 點擊在新窗口打開
+        photoItem.addEventListener('click', () => {
+            window.open(url, '_blank');
+        });
+    } else {
+        // 未知文件類型 - 嘗試判斷是否為圖片
+        const testImage = new Image();
+        
+        testImage.onload = function() {
+            // 是圖片，更新為圖片顯示
+            photoItem.innerHTML = `
+                <img src="${url}" alt="證明文件 ${index + 1}" 
+                    onerror="this.onerror=null; this.src='https://placehold.co/300x300?text=載入失敗';"
+                    loading="lazy">
+                <span class="index">#${index + 1}</span>
+                <span class="file-type">圖片</span>
+            `;
+            
+            // 點擊放大查看
+            photoItem.addEventListener('click', () => {
+                window.openLightbox(url);
+            });
+        };
+        
+        testImage.onerror = function() {
+            // 不是圖片，顯示通用文件圖標
+            photoItem.innerHTML = `
+                <div style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #f8f9fa;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#007bff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                        <polyline points="13 2 13 9 20 9"></polyline>
+                    </svg>
+                    <span style="margin-top: 10px;">未知檔案</span>
+                </div>
+                <span class="index">#${index + 1}</span>
+                <span class="file-type">檔案</span>
+            `;
+            
+            // 點擊下載文件
+            photoItem.addEventListener('click', () => {
+                window.open(url, '_blank');
+            });
+        };
+        
+        // 開始檢測
+        testImage.src = url;
+    }
+    
+    return photoItem;
+}
+
+// 修改店家審核詳情函數，使用增強的照片處理
+function enhancedShowBusinessApprovalDetail(requestId) {
+    // 保留原有函數的大部分邏輯
+    // 但在處理照片的部分改用新的方法
+    
+    try {
+        console.log(`開始顯示店家審核詳情，請求ID: ${requestId}`);
+        
+        // 隱藏主內容
+        mainContent.style.display = 'none';
+        
+        // 使用準確的類名選擇器，避免ID衝突
+        const detailContainer = document.querySelector('.business-verification-detail');
+        if (!detailContainer) {
+            console.error('找不到店家審核詳情容器');
+            alert('頁面元素錯誤，請聯絡管理員');
+            backToBusinessApprovalList();
+            return;
+        }
+        
+        detailContainer.style.display = 'block';
+        
+        // 設置請求ID到隱藏字段
+        const requestIdField = document.getElementById('business-approval-requestid');
+        if (!requestIdField) {
+            console.error('找不到business-approval-requestid元素');
+            alert('頁面元素錯誤，請聯絡管理員');
+            backToBusinessApprovalList();
+            return;
+        }
+        
+        requestIdField.value = requestId;
+        
+        // 獲取審核請求數據
+        db.collection('businessApprovalRequests').doc(requestId).get()
+            .then(requestDoc => {
+                if (!requestDoc.exists) {
+                    console.error('找不到審核請求數據');
+                    alert('找不到審核請求');
+                    backToBusinessApprovalList();
+                    return;
+                }
+                
+                const requestData = requestDoc.data();
+                console.log(`成功獲取審核請求數據:`, requestData);
+                
+                // 填充詳情頁數據
+                document.getElementById('business-name').textContent = requestData.businessName || '未知店家';
+                document.getElementById('business-userid').textContent = requestData.userId || '未知';
+                document.getElementById('business-type').textContent = getBusinessTypeText(requestData.businessType);
+                document.getElementById('business-time').textContent = formatDate(
+                    requestData.createdAt ? new Date(requestData.createdAt.toDate()) : new Date()
+                );
+                document.getElementById('business-address').textContent = requestData.address || '未知';
+                document.getElementById('business-phone').textContent = requestData.phoneNumber || '未知';
+                document.getElementById('business-contact-name').textContent = requestData.contactName || '未知';
+                document.getElementById('business-contact-phone').textContent = requestData.contactPhone || '未知';
+                
+                // 使用增強的照片顯示函數
+                setupBusinessPhotosView('business-licenses', requestData.licenseUrls || []);
+                
+                // 確保事件處理綁定只執行一次
+                const backBtn = document.getElementById('business-approval-back');
+                const approveBtn = document.getElementById('business-approve');
+                const rejectBtn = document.getElementById('business-reject');
+                
+                // 先移除舊的事件處理程序（如果有的話）
+                if (backBtn) {
+                    const newBackBtn = backBtn.cloneNode(true);
+                    backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+                    newBackBtn.addEventListener('click', backToBusinessApprovalList);
+                }
+                
+                if (approveBtn) {
+                    const newApproveBtn = approveBtn.cloneNode(true);
+                    approveBtn.parentNode.replaceChild(newApproveBtn, approveBtn);
+                    newApproveBtn.addEventListener('click', approveBusinessRequest);
+                }
+                
+                if (rejectBtn) {
+                    const newRejectBtn = rejectBtn.cloneNode(true);
+                    rejectBtn.parentNode.replaceChild(newRejectBtn, rejectBtn);
+                    newRejectBtn.addEventListener('click', rejectBusinessRequest);
+                }
+                
+                console.log("店家審核詳情載入完成:", requestId);
+                
+            })
+            .catch(error => {
+                console.error('顯示店家審核詳情錯誤:', error);
+                alert(`載入審核詳情時發生錯誤: ${error.message}`);
+                backToBusinessApprovalList();
+            });
+            
+    } catch (error) {
+        console.error('顯示店家審核詳情頁面錯誤:', error);
+        alert('頁面載入錯誤，請重試');
+        mainContent.style.display = 'block';
+    }
+}
+    
+// 獲取店家類型文字描述
+function getBusinessTypeText(type) {
+    switch (type) {
+        case 'cafe': return '咖啡廳';
+        case 'restaurant': return '餐廳';
+        case 'bar': return '酒吧';
+        case 'dessert': return '甜點店';
+        case 'tea': return '茶飲店';
+        case 'other': return '其他';
+        default: return type || '未知';
+    }
+}
+
+// 加載檢舉列表
 async function loadReports() {
     try {
-        // 显示加载中
-        const reportsContainer = document.getElementById('reports-container');
+        // 顯示載入中
         reportsContainer.innerHTML = '';
         document.getElementById('reports-loading').style.display = 'flex';
         
         console.log("開始載入報告數據...");
         
-        // 获取过滤条件
+        // 獲取過濾條件
         const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
         const statusFilter = document.getElementById('statusFilter').value;
         const typeFilter = document.getElementById('typeFilter').value;
         const sortBy = document.getElementById('sortBy').value;
         
-        // 构建查询
+        // 構建查詢
         let query = db.collection('reports');
         
-        // 尝试先获取文档计数，测试权限
+        // 嘗試先獲取文檔計數，測試權限
         try {
             const testDoc = await db.collection('reports').limit(1).get();
             console.log("成功獲取報告測試數據");
         } catch (permError) {
             console.error("報告集合權限測試失敗:", permError);
-            // 显示权限错误但不登出用户
+            // 顯示權限錯誤但不登出用戶
             document.getElementById('reports-loading').style.display = 'none';
             reportsContainer.innerHTML = `
                 <div style="grid-column: 1/-1; text-align: center; padding: 50px;">
@@ -732,17 +1761,17 @@ async function loadReports() {
             return;
         }
         
-        // 应用状态过滤
+        // 應用狀態過濾
         if (statusFilter !== 'all') {
             query = query.where('status', '==', statusFilter);
         }
         
-        // 应用类型过滤
+        // 應用類型過濾
         if (typeFilter !== 'all') {
             query = query.where('reasons', 'array-contains', typeFilter);
         }
         
-        // 应用排序
+        // 應用排序
         switch (sortBy) {
             case 'newest':
                 query = query.orderBy('createdAt', 'desc');
@@ -751,23 +1780,23 @@ async function loadReports() {
                 query = query.orderBy('createdAt', 'asc');
                 break;
             case 'severity':
-                // 假设有严重度字段
+                // 假設有嚴重度字段
                 query = query.orderBy('severity', 'desc');
                 break;
             case 'reporterCredit':
-                // 这个可能需要多段处理，先获取所有数据
+                // 這個可能需要多段處理，先獲取所有數據
                 break;
         }
         
-        // 分页查询
+        // 分頁查詢
         const querySnapshot = await query.get();
         totalReports = querySnapshot.size;
         
-        // 计算分页
+        // 計算分頁
         const totalPages = Math.ceil(totalReports / reportsPerPage);
         updatePagination(totalPages);
         
-        // 模拟分页 (实际应用中应该使用 startAfter)
+        // 模擬分頁 (實際應用中應該使用 startAfter)
         const reports = [];
         querySnapshot.forEach(doc => {
             const data = doc.data();
@@ -775,7 +1804,7 @@ async function loadReports() {
             reports.push(data);
         });
         
-        // 搜索过滤 (Firestore 不支持文本搜索，所以在客户端过滤)
+        // 搜尋過濾 (Firestore 不支持文本搜索，所以在客戶端過濾)
         let filteredReports = reports;
         if (searchTerm) {
             filteredReports = reports.filter(report => {
@@ -788,9 +1817,9 @@ async function loadReports() {
             });
         }
         
-        // 如果是按举报人信用排序，需要额外处理
+        // 如果是按檢舉人信用排序，需要額外處理
         if (sortBy === 'reporterCredit') {
-            // 获取所有举报人的信用分数
+            // 獲取所有檢舉人的信用分數
             const reporterIds = [...new Set(filteredReports.map(report => report.reporterId))];
             const credibilityPromises = reporterIds.map(id => 
                 db.collection('userReportCredibility').doc(id).get()
@@ -803,32 +1832,32 @@ async function loadReports() {
                 if (doc.exists) {
                     creditScores[doc.id] = doc.data().score || 100;
                 } else {
-                    creditScores[doc.id] = 100; // 预设分数
+                    creditScores[doc.id] = 100; // 預設分數
                 }
             });
             
-            // 根据举报人信用分数排序
+            // 根據檢舉人信用分數排序
             filteredReports.sort((a, b) => {
                 const scoreA = creditScores[a.reporterId] || 100;
                 const scoreB = creditScores[b.reporterId] || 100;
-                return scoreA - scoreB; // 从低到高排序
+                return scoreA - scoreB; // 從低到高排序
             });
         }
         
-        // 应用分页
+        // 應用分頁
         const start = (currentPage - 1) * reportsPerPage;
         const paginatedReports = filteredReports.slice(start, start + reportsPerPage);
         
-        // 隐藏加载中
+        // 隱藏載入中
         document.getElementById('reports-loading').style.display = 'none';
         
-        // 检查是否有结果
+        // 檢查是否有結果
         if (paginatedReports.length === 0) {
             reportsContainer.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 50px;">沒有符合條件的檢舉記錄</div>';
             return;
         }
         
-        // 渲染举报卡片
+        // 渲染檢舉卡片
         paginatedReports.forEach(report => {
             const card = createReportCard(report);
             reportsContainer.appendChild(card);
@@ -837,16 +1866,16 @@ async function loadReports() {
     } catch (error) {
         console.error('加載檢舉列表錯誤:', error);
         document.getElementById('reports-loading').style.display = 'none';
-        document.getElementById('reports-container').innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 50px;">加載檢舉列表時發生錯誤: ${error.message}</div>`;
+        reportsContainer.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 50px;">加載檢舉列表時發生錯誤: ${error.message}</div>`;
     }
 }
 
-// 创建举报卡片
+// 創建檢舉卡片
 function createReportCard(report) {
     const card = document.createElement('div');
     card.className = `report-card ${report.status}`;
     
-    // 检查是否为多次举报
+    // 檢查是否為多次檢舉
     if (report.reportCount && report.reportCount > 2) {
         card.classList.add('multiple-reports');
     }
@@ -855,7 +1884,7 @@ function createReportCard(report) {
     const createdAt = report.createdAt ? new Date(report.createdAt.toDate()) : new Date();
     const formattedDate = formatDate(createdAt);
     
-    // 构建状态标签
+    // 構建狀態標籤
     let statusBadge = '';
     switch (report.status) {
         case 'pending':
@@ -869,13 +1898,13 @@ function createReportCard(report) {
             break;
     }
     
-    // 举报原因
+    // 檢舉原因
     const reasons = report.reasons || [];
     const reasonsList = reasons.map(reason => {
         return `<span class="tag">${getReasonText(reason)}</span>`;
     }).join('');
     
-    // 举报人信用分数标记
+    // 檢舉人信用分數標記
     let creditBadge = '';
     if (report.reporterCredit) {
         let creditClass = '';
@@ -903,7 +1932,7 @@ function createReportCard(report) {
         </div>
     `;
     
-    // 添加点击事件
+    // 添加點擊事件
     card.addEventListener('click', () => {
         showReportDetail(report.id);
     });
@@ -911,7 +1940,7 @@ function createReportCard(report) {
     return card;
 }
 
-// 更新分页
+// 更新分頁
 function updatePagination(totalPages) {
     const paginationContainer = document.getElementById('reports-pagination');
     paginationContainer.innerHTML = '';
@@ -920,7 +1949,7 @@ function updatePagination(totalPages) {
         return;
     }
     
-    // 上一页按钮
+    // 上一頁按鈕
     const prevBtn = document.createElement('div');
     prevBtn.className = 'page-item';
     prevBtn.innerHTML = '<span class="material-icons">chevron_left</span>';
@@ -932,7 +1961,7 @@ function updatePagination(totalPages) {
     });
     paginationContainer.appendChild(prevBtn);
     
-    // 页码按钮
+    // 頁碼按鈕
     const maxVisiblePages = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
@@ -958,7 +1987,7 @@ function updatePagination(totalPages) {
         paginationContainer.appendChild(pageBtn);
     }
     
-    // 下一页按钮
+    // 下一頁按鈕
     const nextBtn = document.createElement('div');
     nextBtn.className = 'page-item';
     nextBtn.innerHTML = '<span class="material-icons">chevron_right</span>';
@@ -971,22 +2000,22 @@ function updatePagination(totalPages) {
     paginationContainer.appendChild(nextBtn);
 }
 
-// 显示举报详情
+// 顯示檢舉詳情
 async function showReportDetail(reportId) {
     currentReportId = reportId;
     
-    // 切换视图
-    document.getElementById('main-content').style.display = 'none';
-    document.getElementById('report-detail').style.display = 'block';
+    // 切換視圖
+    mainContent.style.display = 'none';
+    reportDetail.style.display = 'block';
     
     try {
-        // 获取举报数据
+        // 獲取檢舉數據
         const reportDoc = await db.collection('reports').doc(reportId).get();
         
         if (!reportDoc.exists) {
             alert('找不到該檢舉記錄');
-            document.getElementById('report-detail').style.display = 'none';
-            document.getElementById('main-content').style.display = 'block';
+            reportDetail.style.display = 'none';
+            mainContent.style.display = 'block';
             return;
         }
         
@@ -996,19 +2025,19 @@ async function showReportDetail(reportId) {
         document.getElementById('report-id').textContent = reportId;
         document.getElementById('report-time').textContent = formatDate(reportData.createdAt.toDate());
         
-        // 状态
+        // 狀態
         const statusElement = document.getElementById('report-status');
         statusElement.textContent = getStatusText(reportData.status);
         statusElement.className = 'status-badge badge-' + reportData.status;
         
-        // 处理人员
+        // 處理人員
         if (reportData.handledBy) {
             document.getElementById('report-handler').textContent = reportData.handlerName || reportData.handledBy;
         } else {
             document.getElementById('report-handler').textContent = '尚未處理';
         }
         
-        // 举报原因
+        // 檢舉原因
         const reasonsContainer = document.getElementById('report-reasons');
         reasonsContainer.innerHTML = '';
         
@@ -1022,10 +2051,10 @@ async function showReportDetail(reportId) {
             reasonsContainer.innerHTML = '<li>沒有指定原因</li>';
         }
         
-        // 详细描述
+        // 詳細描述
         document.getElementById('report-detail-text').textContent = reportData.detail || '無詳細描述';
         
-        // 证据图片
+        // 證據圖片
         const evidenceContainer = document.getElementById('evidence-container');
         evidenceContainer.innerHTML = '';
         
@@ -1038,7 +2067,7 @@ async function showReportDetail(reportId) {
                     <div class="view-full">查看原圖</div>
                 `;
                 
-                // 查看原图
+                // 查看原圖
                 evidenceItem.querySelector('.view-full').addEventListener('click', () => {
                     document.getElementById('lightboxImage').src = url;
                     document.getElementById('imageLightbox').style.display = 'flex';
@@ -1050,12 +2079,12 @@ async function showReportDetail(reportId) {
             evidenceContainer.innerHTML = '<p>沒有上傳證據圖片</p>';
         }
         
-        // 加载举报人资料
+        // 加載檢舉人資料
         if (reportData.reporterId) {
             loadUserProfile(reportData.reporterId, 'reporter');
         }
         
-        // 加载被举报人资料
+        // 加載被檢舉人資料
         if (reportData.reportedUserId) {
             loadUserProfile(reportData.reportedUserId, 'reported');
             loadPunishmentHistory(reportData.reportedUserId);
@@ -1064,12 +2093,12 @@ async function showReportDetail(reportId) {
     } catch (error) {
         console.error('顯示檢舉詳情錯誤:', error);
         alert('載入檢舉詳情時發生錯誤: ' + error.message);
-        document.getElementById('report-detail').style.display = 'none';
-        document.getElementById('main-content').style.display = 'block';
+        reportDetail.style.display = 'none';
+        mainContent.style.display = 'block';
     }
 }
 
-// 加载用户资料
+// 加載用戶資料
 async function loadUserProfile(userId, type) {
     try {
         const userDoc = await db.collection('userprofileData').doc(userId).get();
@@ -1082,11 +2111,11 @@ async function loadUserProfile(userId, type) {
         
         const userData = userDoc.data();
         
-        // 设置用户名称和ID
+        // 設置用戶名稱和ID
         document.getElementById(`${type}-name`).textContent = userData.name || '未設定名稱';
         document.getElementById(`${type}-id`).textContent = `ID: ${userId}`;
         
-        // 设置头像
+        // 設置頭像
         if (userData.photoUrls && userData.photoUrls.length > 0) {
             let photoUrl;
             if (userData.photoOrder && userData.photoOrder.length > 0) {
@@ -1100,12 +2129,12 @@ async function loadUserProfile(userId, type) {
             document.getElementById(`${type}-avatar`).src = 'https://via.placeholder.com/60?text=無照片';
         }
         
-        // 如果是举报人，加载举报信用分数
+        // 如果是檢舉人，加載檢舉信用分數
         if (type === 'reporter') {
             loadReporterCredibility(userId);
         }
         
-        // 加载举报历史
+        // 加載檢舉歷史
         await loadReportHistory(userId, type);
         
     } catch (error) {
@@ -1115,7 +2144,7 @@ async function loadUserProfile(userId, type) {
     }
 }
 
-// 加载举报人信用分数
+// 加載檢舉人信用分數
 async function loadReporterCredibility(userId) {
     try {
         const credibilityDoc = await db.collection('userReportCredibility').doc(userId).get();
@@ -1125,7 +2154,7 @@ async function loadReporterCredibility(userId) {
             const data = credibilityDoc.data();
             const score = data.score || 100;
             
-            // 设置信用分数的颜色
+            // 設置信用分數的顏色
             let creditClass = '';
             if (score >= 80) {
                 creditClass = 'credit-high';
@@ -1138,7 +2167,7 @@ async function loadReporterCredibility(userId) {
             creditElement.textContent = `信用分數: ${score}`;
             creditElement.className = `credit-score ${creditClass}`;
         } else {
-            // 没有记录时的预设值
+            // 沒有記錄時的預設值
             creditElement.textContent = '信用分數: 100';
             creditElement.className = 'credit-score credit-high';
         }
@@ -1148,7 +2177,7 @@ async function loadReporterCredibility(userId) {
     }
 }
 
-// 加载处罚历史
+// 加載處罰歷史
 async function loadPunishmentHistory(userId) {
     try {
         const historyContainer = document.getElementById('punishment-history');
@@ -1199,26 +2228,26 @@ async function loadPunishmentHistory(userId) {
     }
 }
 
-// 加载举报历史
+// 加載檢舉歷史
 async function loadReportHistory(userId, type) {
     try {
         let query;
         
-        // 依据类型选择查询方式
+        // 依據類型選擇查詢方式
         if (type === 'reporter') {
-            // 作为举报人的历史
+            // 作為檢舉人的歷史
             query = db.collection('reports')
                 .where('reporterId', '==', userId)
                 .where('status', 'in', ['resolved', 'rejected']);
         } else {
-            // 作为被举报人的历史
+            // 作為被檢舉人的歷史
             query = db.collection('reports')
                 .where('reportedUserId', '==', userId);
         }
         
         const snapshot = await query.get();
         
-        // 统计有效和无效举报
+        // 統計有效和無效檢舉
         let validCount = 0;
         let invalidCount = 0;
         let pendingCount = 0;
@@ -1234,7 +2263,7 @@ async function loadReportHistory(userId, type) {
             }
         });
         
-        // 显示统计结果
+        // 顯示統計結果
         const totalCount = validCount + invalidCount + pendingCount;
         const historyText = type === 'reporter'
             ? `${totalCount}次 (${validCount}次有效)`
@@ -1242,7 +2271,7 @@ async function loadReportHistory(userId, type) {
         
         document.getElementById(`${type}-history`).textContent = historyText;
         
-        // 检查用户状态
+        // 檢查用戶狀態
         const statusElement = document.getElementById(`${type}-status`);
         
         const userDoc = await db.collection('userStatus').doc(userId).get();
@@ -1271,11 +2300,11 @@ async function loadReportHistory(userId, type) {
     }
 }
 
-// 处理举报行动
+// 處理檢舉行動
 async function handleReportAction() {
     if (!currentReportId) return;
     
-    // 获取选择的行动
+    // 獲取選擇的行動
     const actionType = document.querySelector('input[name="action"]:checked').value;
     const actionNote = document.getElementById('actionNote').value.trim();
     
@@ -1289,7 +2318,7 @@ async function handleReportAction() {
         actionButton.innerHTML = '<div class="loading-spinner"></div> 處理中...';
         actionButton.disabled = true;
         
-        // 获取举报资料
+        // 獲取檢舉資料
         const reportDoc = await db.collection('reports').doc(currentReportId).get();
         
         if (!reportDoc.exists) {
@@ -1299,7 +2328,7 @@ async function handleReportAction() {
         const reportData = reportDoc.data();
         const reportedUserId = reportData.reportedUserId;
         
-        // 准备更新举报状态
+        // 準備更新檢舉狀態
         const updateData = {
             status: actionType === 'ignore' ? 'rejected' : 'resolved',
             handledBy: auth.currentUser.uid,
@@ -1309,7 +2338,7 @@ async function handleReportAction() {
             actionNote: actionNote || null
         };
         
-        // 如果选择惩罚，添加相关数据
+        // 如果選擇懲罰，添加相關數據
         if (actionType === 'restrict') {
             const restrictType = document.getElementById('restrictType').value;
             const restrictDays = parseInt(document.getElementById('restrictDays').value);
@@ -1321,7 +2350,7 @@ async function handleReportAction() {
                 expireAt: new Date(Date.now() + restrictDays * 24 * 60 * 60 * 1000)
             };
             
-            // 同时更新用户状态
+            // 同時更新用戶狀態
             await applyUserRestriction(reportedUserId, restrictType, restrictDays);
             
         } else if (actionType === 'suspend') {
@@ -1333,7 +2362,7 @@ async function handleReportAction() {
                 expireAt: new Date(Date.now() + suspendDays * 24 * 60 * 60 * 1000)
             };
             
-            // 同时更新用户状态
+            // 同時更新用戶狀態
             await suspendUser(reportedUserId, suspendDays);
             
         } else if (actionType === 'ban') {
@@ -1342,7 +2371,7 @@ async function handleReportAction() {
                 permanent: true
             };
             
-            // 同时更新用户状态
+            // 同時更新用戶狀態
             await banUser(reportedUserId);
             
         } else if (actionType === 'warning') {
@@ -1351,14 +2380,14 @@ async function handleReportAction() {
                 warningCount: firebase.firestore.FieldValue.increment(1)
             };
             
-            // 同时更新用户状态
+            // 同時更新用戶狀態
             await warnUser(reportedUserId, reportData.reasons);
         }
         
-        // 更新举报记录
+        // 更新檢舉記錄
         await db.collection('reports').doc(currentReportId).update(updateData);
         
-        // 更新举报人的举报信用分数
+        // 更新檢舉人的檢舉信用分數
         if (reportData.reporterId) {
             await updateReporterCredibility(
                 reportData.reporterId, 
@@ -1366,7 +2395,7 @@ async function handleReportAction() {
             );
         }
         
-        // 处理相同被举报者的其他举报
+        // 處理相同被檢舉者的其他檢舉
         if (actionType !== 'ignore' && reportData.reportedUserId) {
             await handleRelatedReports(reportData.reportedUserId);
         }
@@ -1377,11 +2406,11 @@ async function handleReportAction() {
         
         alert('檢舉處理完成');
         
-        // 返回列表并重新加载
-        document.getElementById('report-detail').style.display = 'none';
-        document.getElementById('main-content').style.display = 'block';
+        // 返回列表並重新加載
+        reportDetail.style.display = 'none';
+        mainContent.style.display = 'block';
         loadReports();
-        checkFrequentReports(); // 更新重复举报数据
+        checkFrequentReports(); // 更新重複檢舉數據
         
     } catch (error) {
         console.error('處理檢舉時發生錯誤:', error);
@@ -1390,6 +2419,155 @@ async function handleReportAction() {
         const actionButton = document.getElementById('submitAction');
         actionButton.textContent = '確認處理';
         actionButton.disabled = false;
+    }
+}
+
+// 處理相關檢舉 - 當用戶被處罰時，可以自動處理其他針對該用戶的檢舉
+async function handleRelatedReports(userId) {
+    try {
+        // 獲取該用戶的所有待處理檢舉
+        const relatedReportsSnapshot = await db.collection('reports')
+            .where('reportedUserId', '==', userId)
+            .where('status', '==', 'pending')
+            .get();
+        
+        if (relatedReportsSnapshot.empty) {
+            return; // 沒有其他待處理檢舉
+        }
+        
+        // 詢問管理員是否要一併處理
+        const confirmHandle = confirm(`發現該用戶有${relatedReportsSnapshot.size}個其他待處理檢舉，是否一併標記為已處理？`);
+        
+        if (!confirmHandle) {
+            return; // 管理員選擇不處理
+        }
+        
+        // 批量處理其他檢舉
+        const batch = db.batch();
+        
+        relatedReportsSnapshot.forEach(doc => {
+            batch.update(doc.ref, {
+                status: 'resolved',
+                handledBy: auth.currentUser.uid,
+                handlerName: auth.currentUser.email,
+                handledAt: firebase.firestore.FieldValue.serverTimestamp(),
+                actionType: 'auto_resolved',
+                actionNote: '用戶已因其他檢舉受到處罰，自動處理'
+            });
+        });
+        
+        await batch.commit();
+        
+        // 更新信用分數
+        const docData = relatedReportsSnapshot.docs.map(doc => doc.data());
+        const reporterIds = [...new Set(docData.map(data => data.reporterId))];
+        
+        for (const reporterId of reporterIds) {
+            if (reporterId) {
+                await updateReporterCredibility(reporterId, 5); // 給予較少的加分
+            }
+        }
+        
+    } catch (error) {
+        console.error('處理相關檢舉時發生錯誤:', error);
+        // 不拋出錯誤，以免影響主要流程
+    }
+}
+
+// 更新檢舉人的信用分數
+async function updateReporterCredibility(userId, points) {
+    try {
+        // 獲取用戶檢舉信用紀錄
+        const credibilityRef = db.collection('userReportCredibility').doc(userId);
+        const doc = await credibilityRef.get();
+        
+        if (doc.exists) {
+            // 現有記錄，更新分數
+            await credibilityRef.update({
+                score: firebase.firestore.FieldValue.increment(points),
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                [points > 0 ? 'validReports' : 'invalidReports']: firebase.firestore.FieldValue.increment(1),
+                reportCount: firebase.firestore.FieldValue.increment(1)
+            });
+        } else {
+            // 新紀錄，初始化
+            await credibilityRef.set({
+                userId: userId,
+                score: 100 + points, // 基礎分數 100
+                reportCount: 1,
+                validReports: points > 0 ? 1 : 0,
+                invalidReports: points < 0 ? 1 : 0,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        
+        // 檢查是否需要限制檢舉功能
+        if (points < 0) {
+            const updatedDoc = await credibilityRef.get();
+            const score = updatedDoc.data().score;
+            
+            // 獲取系統設置
+            const settingsDoc = await db.collection('systemSettings').doc('reportManagement').get();
+            const settings = settingsDoc.exists ? settingsDoc.data() : {};
+            const threshold = settings.automation?.creditThreshold || 40;
+            
+            // 如果分數低於閾值，限制檢舉功能
+            if (score < threshold) {
+                await applyReportRestriction(userId);
+            }
+        }
+    } catch (error) {
+        console.error('更新檢舉人信用分數錯誤:', error);
+        // 這裡的錯誤不應該影響主要流程，所以只記錄不拋出
+    }
+}
+
+// 限制檢舉功能
+async function applyReportRestriction(userId) {
+    try {
+        // 獲取系統設置
+        const settingsDoc = await db.collection('systemSettings').doc('reportManagement').get();
+        const settings = settingsDoc.exists ? settingsDoc.data() : {};
+        const penaltyType = settings.reportRules?.falseReportPenalty || 'limit';
+        const days = settings.reportRules?.defaultPunishDays || 7;
+        
+        if (penaltyType === 'none') {
+            return; // 不處罰
+        }
+        
+        // 更新用戶狀態
+        const userStatusRef = db.collection('userStatus').doc(userId);
+        const expireAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+        
+        await userStatusRef.set({
+            userId: userId,
+            restrictions: {
+                report: {
+                    active: true,
+                    expireAt: expireAt,
+                    reason: 'low_credit_score',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                }
+            },
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        
+        // 發送通知
+        await db.collection('notifications').add({
+            userId: userId,
+            type: 'report_restriction',
+            message: '由於多次提交無效檢舉，您的檢舉功能已被限制使用，請確保檢舉內容真實有效。',
+            data: {
+                expireAt: expireAt
+            },
+            isRead: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+    } catch (error) {
+        console.error('限制檢舉功能錯誤:', error);
+        // 不拋出錯誤
     }
 }
 
