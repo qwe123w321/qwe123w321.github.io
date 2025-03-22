@@ -174,5 +174,6 @@ export {
     doc, 
     getDoc, 
     collection,
-    signOut
+    signOut,
+    signInWithEmailAndPassword
 };
