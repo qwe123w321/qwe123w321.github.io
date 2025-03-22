@@ -24,11 +24,6 @@ let reportsPerPage = 12;
 let totalReports = 0;
 let isProcessingAuthChange = false;
 let APP_CHECK_INITIALIZED = false;
-const loginPromise = auth.signInWithEmailAndPassword(email, password);
-const loginTimeout = new Promise((_, reject) => {
-    // 將超時時間從 15 秒增加到 40 秒
-    setTimeout(() => reject(new Error('登入請求超時')), 40000);
-});
 
 // 初始化應用程序
 function initializeApplication() {
