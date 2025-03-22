@@ -390,35 +390,35 @@ function setupAuthStateListener() {
     });
 }
 
-// 設置增強版燈箱
-function setupEnhancedLightbox() {
-    const lightbox = document.getElementById('imageLightbox');
-    const lightboxImg = document.getElementById('lightboxImage');
-    const closeBtn = lightbox.querySelector('.close');
+// // 設置增強版燈箱
+// function setupEnhancedLightbox() {
+//     const lightbox = document.getElementById('imageLightbox');
+//     const lightboxImg = document.getElementById('lightboxImage');
+//     const closeBtn = lightbox.querySelector('.close');
     
-    // 關閉燈箱事件
-    if (closeBtn) {
-        closeBtn.addEventListener('click', function() {
-            lightbox.style.display = 'none';
-        });
-    }
+//     // 關閉燈箱事件
+//     if (closeBtn) {
+//         closeBtn.addEventListener('click', function() {
+//             lightbox.style.display = 'none';
+//         });
+//     }
     
-    // 點擊燈箱背景關閉
-    lightbox.addEventListener('click', function(e) {
-        if (e.target === lightbox) {
-            lightbox.style.display = 'none';
-        }
-    });
+//     // 點擊燈箱背景關閉
+//     lightbox.addEventListener('click', function(e) {
+//         if (e.target === lightbox) {
+//             lightbox.style.display = 'none';
+//         }
+//     });
     
-    // 鍵盤事件 - ESC 關閉燈箱
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && lightbox.style.display === 'flex') {
-            lightbox.style.display = 'none';
-        }
-    });
+//     // 鍵盤事件 - ESC 關閉燈箱
+//     document.addEventListener('keydown', function(e) {
+//         if (e.key === 'Escape' && lightbox.style.display === 'flex') {
+//             lightbox.style.display = 'none';
+//         }
+//     });
     
-    console.log('增強型燈箱設置完成');
-}
+//     console.log('增強型燈箱設置完成');
+// }
 
 // 初始化管理員申請按鈕
 function initAdminButtons() {
