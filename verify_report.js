@@ -7,7 +7,17 @@ import {
     getDoc, 
     collection,
     signOut,
-    signInWithEmailAndPassword
+    signInWithEmailAndPassword,
+    query,
+    where,
+    orderBy,
+    limit,
+    getDocs,
+    updateDoc,
+    setDoc,
+    addDoc,
+    deleteDoc,
+    serverTimestamp
 } from './firebase-config.js';
 
 // 從統一的 App Check 模組匯入需要的函數
@@ -833,12 +843,19 @@ function onLoginSuccess(user) {
  // 添加檢查管理員狀態的函數
  async function checkAdminStatus(userId) {
     try {
-        const adminDoc = await db.collection('admins').doc(userId).get();
+        // 使用 v9 API 獲取管理員文檔
+        const adminDocRef = doc(db, 'admins', userId);
+        const adminDoc = await getDoc(adminDocRef);
         
-        if (adminDoc.exists) {
+        // 獲取用戶狀態元素
+        const userStatus = document.getElementById('userStatus');
+        
+        if (adminDoc.exists()) {
             console.log('用戶已是管理員');
             // 更新用戶狀態顯示
-            userStatus.innerHTML = `${userStatus.textContent} <span style="color: #4CAF50; font-weight: bold; margin-left: 5px;">[管理員]</span>`;
+            if (userStatus) {
+                userStatus.innerHTML = `${userStatus.textContent} <span style="color: #4CAF50; font-weight: bold; margin-left: 5px;">[管理員]</span>`;
+            }
             
             // 隱藏申請管理員按鈕
             if (document.getElementById('adminButton')) {
@@ -1011,10 +1028,15 @@ async function loadBusinessApprovalRequests() {
     try {
         console.log("開始載入店家審核請求列表...");
         // 獲取所有待處理審核請求
-        const querySnapshot = await db.collection('businessApprovalRequests')
-            .where('status', '==', 'pending')
-            .orderBy('createdAt', 'desc')
-            .get();
+        // 適配 Firebase v9 API
+        const businessApprovalRef = collection(db, 'businessApprovalRequests');
+        const approvalQuery = query(
+            businessApprovalRef,
+            where('status', '==', 'pending'),
+            orderBy('createdAt', 'desc')
+        );
+        
+        const querySnapshot = await getDocs(approvalQuery);
         
         loadingElement.style.display = 'none';
         
@@ -1863,6 +1885,13 @@ function getBusinessTypeText(type) {
 // 加載檢舉列表
 async function loadReports() {
     try {
+        // 獲取 reports 容器元素
+        const reportsContainer = document.getElementById('reports-container');
+        if (!reportsContainer) {
+            console.error('無法找到 reports-container 元素');
+            return;
+        }
+        
         // 顯示載入中
         reportsContainer.innerHTML = '';
         document.getElementById('reports-loading').style.display = 'flex';
@@ -1875,12 +1904,15 @@ async function loadReports() {
         const typeFilter = document.getElementById('typeFilter').value;
         const sortBy = document.getElementById('sortBy').value;
         
-        // 構建查詢
-        let query = db.collection('reports');
+        // 構建查詢 - 適配 Firebase v9 API
+        // 使用 collection 函數而不是 db.collection
+        let reportsRef = collection(db, 'reports');
         
         // 嘗試先獲取文檔計數，測試權限
         try {
-            const testDoc = await db.collection('reports').limit(1).get();
+            // 使用 v9 API 獲取數據
+            const testQuery = query(reportsRef, limit(1));
+            const testSnapshot = await getDocs(testQuery);
             console.log("成功獲取報告測試數據");
         } catch (permError) {
             console.error("報告集合權限測試失敗:", permError);
@@ -1895,42 +1927,55 @@ async function loadReports() {
             return;
         }
         
+        // 構建查詢條件 - 根據 Firebase v9 方式組合
+        let constraints = [];
+        
         // 應用狀態過濾
         if (statusFilter !== 'all') {
-            query = query.where('status', '==', statusFilter);
+            constraints.push(where('status', '==', statusFilter));
         }
         
         // 應用類型過濾
         if (typeFilter !== 'all') {
-            query = query.where('reasons', 'array-contains', typeFilter);
+            constraints.push(where('reasons', 'array-contains', typeFilter));
         }
         
         // 應用排序
         switch (sortBy) {
             case 'newest':
-                query = query.orderBy('createdAt', 'desc');
+                constraints.push(orderBy('createdAt', 'desc'));
                 break;
             case 'oldest':
-                query = query.orderBy('createdAt', 'asc');
+                constraints.push(orderBy('createdAt', 'asc'));
                 break;
             case 'severity':
                 // 假設有嚴重度字段
-                query = query.orderBy('severity', 'desc');
+                constraints.push(orderBy('severity', 'desc'));
                 break;
             case 'reporterCredit':
                 // 這個可能需要多段處理，先獲取所有數據
                 break;
         }
         
-        // 分頁查詢
-        const querySnapshot = await query.get();
+        // 創建查詢 - 使用 v9 API
+        let reportsQuery;
+        if (constraints.length > 0) {
+            reportsQuery = query(reportsRef, ...constraints);
+        } else {
+            reportsQuery = reportsRef;
+        }
+        
+        // 獲取數據
+        const querySnapshot = await getDocs(reportsQuery);
+        
+        // 計算總數
         totalReports = querySnapshot.size;
         
         // 計算分頁
         const totalPages = Math.ceil(totalReports / reportsPerPage);
         updatePagination(totalPages);
         
-        // 模擬分頁 (實際應用中應該使用 startAfter)
+        // 將查詢結果轉換為數組
         const reports = [];
         querySnapshot.forEach(doc => {
             const data = doc.data();
@@ -1955,15 +2000,19 @@ async function loadReports() {
         if (sortBy === 'reporterCredit') {
             // 獲取所有檢舉人的信用分數
             const reporterIds = [...new Set(filteredReports.map(report => report.reporterId))];
-            const credibilityPromises = reporterIds.map(id => 
-                db.collection('userReportCredibility').doc(id).get()
+            
+            // 修改為 v9 API 風格獲取信用分數
+            const credibilityDocs = await Promise.all(
+                reporterIds.map(async (id) => {
+                    const docRef = doc(db, 'userReportCredibility', id);
+                    return await getDoc(docRef);
+                })
             );
             
-            const credibilityDocs = await Promise.all(credibilityPromises);
             const creditScores = {};
             
             credibilityDocs.forEach(doc => {
-                if (doc.exists) {
+                if (doc.exists()) {
                     creditScores[doc.id] = doc.data().score || 100;
                 } else {
                     creditScores[doc.id] = 100; // 預設分數
@@ -1999,8 +2048,13 @@ async function loadReports() {
         
     } catch (error) {
         console.error('加載檢舉列表錯誤:', error);
-        document.getElementById('reports-loading').style.display = 'none';
-        reportsContainer.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 50px;">加載檢舉列表時發生錯誤: ${error.message}</div>`;
+        
+        // 確保 reports-container 定義
+        const reportsContainer = document.getElementById('reports-container');
+        if (reportsContainer) {
+            document.getElementById('reports-loading').style.display = 'none';
+            reportsContainer.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 50px;">加載檢舉列表時發生錯誤: ${error.message}</div>`;
+        }
     }
 }
 
@@ -3315,9 +3369,11 @@ async function batchHandleReports(userId, reports) {
 async function loadStatistics() {
     try {
         // 獲取所有檢舉記錄
-        const reportsSnapshot = await db.collection('reports').get();
-        const reports = [];
+        // 適配 Firebase v9 API
+        const reportsRef = collection(db, 'reports');
+        const reportsSnapshot = await getDocs(reportsRef);
         
+        const reports = [];
         reportsSnapshot.forEach(doc => {
             const data = doc.data();
             data.id = doc.id;
@@ -3325,11 +3381,18 @@ async function loadStatistics() {
         });
         
         // 添加照片驗證統計
-        const verificationsSnapshot = await db.collection('PhotoVerificationRequest').get();
+        const verificationsRef = collection(db, 'PhotoVerificationRequest');
+        const verificationsSnapshot = await getDocs(verificationsRef);
+        
+        const verificationDocs = [];
+        verificationsSnapshot.forEach(doc => {
+            verificationDocs.push(doc.data());
+        });
+        
         const totalVerifications = verificationsSnapshot.size;
-        const pendingVerifications = verificationsSnapshot.docs.filter(doc => doc.data().status === 'pending').length;
-        const approvedVerifications = verificationsSnapshot.docs.filter(doc => doc.data().status === 'approved').length;
-        const rejectedVerifications = verificationsSnapshot.docs.filter(doc => doc.data().status === 'rejected').length;
+        const pendingVerifications = verificationDocs.filter(doc => doc.status === 'pending').length;
+        const approvedVerifications = verificationDocs.filter(doc => doc.status === 'approved').length;
+        const rejectedVerifications = verificationDocs.filter(doc => doc.status === 'rejected').length;
 
         document.getElementById('total-verifications').textContent = totalVerifications;
         document.getElementById('pending-verifications').textContent = pendingVerifications;
@@ -4249,10 +4312,15 @@ async function loadVerificationRequests() {
     
     try {
         // 獲取所有待處理驗證請求
-        const querySnapshot = await db.collection('PhotoVerificationRequest')
-            .where('status', '==', 'pending')
-            .orderBy('createdAt', 'desc')
-            .get();
+        // 適配 Firebase v9 API
+        const verificationRef = collection(db, 'PhotoVerificationRequest');
+        const verificationQuery = query(
+            verificationRef,
+            where('status', '==', 'pending'),
+            orderBy('createdAt', 'desc')
+        );
+        
+        const querySnapshot = await getDocs(verificationQuery);
         
         loadingElement.style.display = 'none';
         
@@ -4294,6 +4362,7 @@ async function loadVerificationRequests() {
         container.innerHTML = `<div style="text-align: center; padding: 30px;">加載驗證請求時發生錯誤: ${error.message}</div>`;
     }
 }
+
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('管理員按鈕診斷開始...');
