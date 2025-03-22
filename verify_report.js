@@ -24,6 +24,11 @@ let reportsPerPage = 12;
 let totalReports = 0;
 let isProcessingAuthChange = false;
 let APP_CHECK_INITIALIZED = false;
+const loginPromise = auth.signInWithEmailAndPassword(email, password);
+const loginTimeout = new Promise((_, reject) => {
+    // 將超時時間從 15 秒增加到 40 秒
+    setTimeout(() => reject(new Error('登入請求超時')), 40000);
+});
 
 // 初始化應用程序
 function initializeApplication() {
@@ -605,49 +610,30 @@ async function handleLogin() {
         
         console.log('嘗試登入:', email);
         
-        // 檢查 App Check 是否初始化
+        // 確保 App Check 已初始化並預先獲取令牌
         if (!APP_CHECK_INITIALIZED && !window.APP_CHECK_INITIALIZED) {
             console.warn('App Check 未初始化，嘗試初始化');
             
             try {
                 await checkAppCheckInitialization();
+                // 初始化後，提前請求一次令牌
+                const preToken = await getAppCheckToken();
+                console.log('成功預取 App Check 令牌');
             } catch (appCheckError) {
                 console.error('登入前初始化 App Check 失敗:', appCheckError);
-                throw new Error('安全驗證失敗，請刷新頁面重試或檢查瀏覽器設定');
+                
+                // 顯示警告但繼續嘗試登入
+                loginButton.innerHTML = '登入';
+                showError('警告: 安全驗證初始化失敗，但將嘗試登入');
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                loginButton.innerHTML = '<div class="loading-spinner"></div> 嘗試登入...';
             }
         }
         
-        // 確保使用真實的 App Check
-        try {
-            // 獲取令牌用於確認 App Check 正常
-            const appCheckToken = await getAppCheckToken();
-            if (!appCheckToken) {
-                console.warn('無法獲取有效的 App Check 令牌，但將繼續嘗試登入');
-            } else {
-                console.log('已獲取有效的 App Check 令牌');
-            }
-        } catch (tokenError) {
-            console.warn('獲取 App Check 令牌失敗:', tokenError);
-            // 繼續嘗試登入，但顯示警告
-            showError('警告: 安全驗證不完整，登入可能失敗');
-        }
-        
-        // 設置認證持久性
-        try {
-            await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-            console.log('成功設置認證持久性為 LOCAL');
-        } catch (persistenceError) {
-            console.error('設置認證持久性失敗:', persistenceError);
-            // 繼續嘗試登入，持久性錯誤不一定會阻止登入流程
-        }
-        
-        // 嘗試登入
-        console.log('開始執行登入...');
-        
-        // 設置登入超時
+        // 嘗試登入，增加超時時間
         const loginPromise = auth.signInWithEmailAndPassword(email, password);
         const loginTimeout = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('登入請求超時')), 15000);
+            setTimeout(() => reject(new Error('登入請求超時')), 40000);
         });
         
         const userCredential = await Promise.race([loginPromise, loginTimeout]);
