@@ -30,6 +30,15 @@ let APP_CHECK_INITIALIZED = false;
 function initializeApplication() {
     console.log('開始初始化應用程序...');
     
+    // 確保頁面元素已加載
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeAfterDOMLoaded);
+    } else {
+        initializeAfterDOMLoaded();
+    }
+}
+
+function initializeAfterDOMLoaded() {
     // 優先檢查 App Check 狀態
     checkAppCheckInitialization()
         .then(() => {
@@ -42,6 +51,10 @@ function initializeApplication() {
             console.error('App Check 初始化失敗:', error);
             // 顯示友好的錯誤訊息
             showAppCheckError();
+            
+            // 仍然初始化頁面，允許用戶嘗試使用
+            initializePage();
+            setupAuthStateListener();
         });
 }
 
@@ -73,10 +86,12 @@ async function checkAppCheckInitialization() {
             // 不拋出錯誤，嘗試繼續流程
         }
         
-        // 檢查 firebase 是否可用
-        if (typeof firebase === 'undefined') {
-            console.error('Firebase 尚未載入');
-            throw new Error('Firebase 尚未載入，App Check 無法初始化');
+        // 修正檢查 Firebase 是否可用的方式
+        // 由於我們導入的是模組化的 Firebase，不會有全局的 firebase 對象
+        // 改為檢查 auth 對象是否有效
+        if (!auth) {
+            console.error('Firebase Auth 尚未初始化');
+            throw new Error('Firebase Auth 尚未初始化，App Check 無法初始化');
         }
         
         console.log('開始 App Check 驗證...');
@@ -675,7 +690,9 @@ async function handleLogin() {
 
         try {
             // 使用 Promise.race 但延長超時時間
-            const loginPromise = auth.signInWithEmailAndPassword(auth, email, password);
+            // 修正這裡：正確使用 Firebase v9 函數簽名
+            // 從 auth.signInWithEmailAndPassword(auth, email, password) 改為 signInWithEmailAndPassword(auth, email, password)
+            const loginPromise = signInWithEmailAndPassword(auth, email, password);
             const loginTimeout = new Promise((_, reject) => {
                 setTimeout(() => reject(new Error('登入請求超時')), 30000); // 延長至 30 秒
             });
@@ -696,7 +713,8 @@ async function handleLogin() {
                 try {
                     showError('正在重試登入...');
                     // 直接嘗試登入，不等待 App Check
-                    const userCredential = await auth.signInWithEmailAndPassword(auth, email, password);
+                    // 同樣修正這裡的函數調用方式
+                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
                     console.log('繞過 App Check 登入成功:', userCredential.user.email);
                     
                     // 清除錯誤提示
@@ -728,6 +746,7 @@ async function handleLogin() {
         loginButton.disabled = false;
     }
 }
+
 
 // 處理登出
 async function handleLogout() {
