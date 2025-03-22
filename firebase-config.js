@@ -4,8 +4,24 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
 import { getAuth, setPersistence, browserSessionPersistence, onAuthStateChanged, signOut, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
 import { getFirestore, doc, getDoc, collection } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
-import { getStorage } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
+import { 
+    getFirestore, 
+    doc, 
+    getDoc, 
+    collection,
+    query,
+    where,
+    orderBy, 
+    limit,
+    getDocs,
+    updateDoc,
+    setDoc,
+    addDoc,
+    deleteDoc,
+    serverTimestamp
+} from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-check.js';
+import { getStorage } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
 
 // Firebase 配置
 const firebaseConfig = {
@@ -169,11 +185,23 @@ export {
     auth, 
     db, 
     storage, 
-    appCheck,  // 確保導出 appCheck
+    appCheck,
+    // Auth 相關
     onAuthStateChanged, 
+    signOut,
+    signInWithEmailAndPassword,
+    // Firestore 相關
     doc, 
     getDoc, 
     collection,
-    signOut,
-    signInWithEmailAndPassword
+    query,
+    where,
+    orderBy,
+    limit,
+    getDocs,
+    updateDoc,
+    setDoc,
+    addDoc,
+    deleteDoc,
+    serverTimestamp
 };
