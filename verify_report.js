@@ -1489,10 +1489,10 @@ async function rejectBusinessRequest() {
 
 // 增強的燈箱功能，支持更好的圖片預覽
 
-// 當DOM加載完成後設置燈箱功能
-document.addEventListener('DOMContentLoaded', function() {
-    setupEnhancedLightbox();
-});
+// // 當DOM加載完成後設置燈箱功能
+// document.addEventListener('DOMContentLoaded', function() {
+//     setupEnhancedLightbox();
+// });
 
 // 設置增強的燈箱功能
 function setupEnhancedLightbox() {
