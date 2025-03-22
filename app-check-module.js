@@ -208,6 +208,12 @@ async function getAppCheckToken() {
     }
 }
 
+const tokenPromise = getToken(appCheck);
+const timeoutPromise = new Promise((_, reject) => {
+    // 將超時時間從 15 秒增加到 30 秒
+    setTimeout(() => reject(new Error('獲取 App Check 令牌超時 (30秒)')), 30000);
+});
+
 // 添加 reCAPTCHA 狀態檢查函數
 function checkRecaptchaStatus() {
     console.log('【AppCheckModule】檢查 reCAPTCHA 狀態');
