@@ -675,7 +675,7 @@ async function handleLogin() {
 
         try {
             // 使用 Promise.race 但延長超時時間
-            const loginPromise = auth.signInWithEmailAndPassword(email, password);
+            const loginPromise = auth.signInWithEmailAndPassword(auth, email, password);
             const loginTimeout = new Promise((_, reject) => {
                 setTimeout(() => reject(new Error('登入請求超時')), 30000); // 延長至 30 秒
             });
@@ -696,7 +696,7 @@ async function handleLogin() {
                 try {
                     showError('正在重試登入...');
                     // 直接嘗試登入，不等待 App Check
-                    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                    const userCredential = await auth.signInWithEmailAndPassword(auth, email, password);
                     console.log('繞過 App Check 登入成功:', userCredential.user.email);
                     
                     // 清除錯誤提示
