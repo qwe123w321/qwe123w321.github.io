@@ -839,11 +839,17 @@ function onLoginSuccess(user) {
 function onLogout() {
     console.log('執行登出後處理');
     
-    // 更新界面
-    userStatus.textContent = '';
-    loginSection.style.display = 'block';
-    logoutButton.style.display = 'none';
-    mainContent.style.display = 'none';
+    // 獲取元素引用
+    const userStatus = document.getElementById('userStatus');
+    const loginSection = document.getElementById('loginSection');
+    const logoutButton = document.getElementById('logoutButton');
+    const mainContent = document.getElementById('main-content');
+    
+    // 檢查元素是否存在再操作
+    if (userStatus) userStatus.textContent = '';
+    if (loginSection) loginSection.style.display = 'block';
+    if (logoutButton) logoutButton.style.display = 'none';
+    if (mainContent) mainContent.style.display = 'none';
     
     // 隱藏所有可能開啟的詳情頁面
     if (document.getElementById('report-detail')) {
@@ -859,8 +865,10 @@ function onLogout() {
     }
     
     // 重置登出按鈕
-    logoutButton.textContent = '登出';
-    logoutButton.disabled = false;
+    if (logoutButton) {
+        logoutButton.textContent = '登出';
+        logoutButton.disabled = false;
+    }
     
     console.log('登出後處理完成');
 }
