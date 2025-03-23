@@ -1051,7 +1051,6 @@ async function loadBusinessApprovalRequests() {
     try {
         console.log("開始載入店家審核請求列表...");
         // 獲取所有待處理審核請求
-        // 適配 Firebase v9 API
         const businessApprovalRef = collection(db, 'businessApprovalRequests');
         const approvalQuery = query(
             businessApprovalRef,
@@ -1070,31 +1069,44 @@ async function loadBusinessApprovalRequests() {
         
         console.log(`發現 ${querySnapshot.size} 個待處理店家審核請求`);
 
-        // 使用 Map 基於 userId 去重
+        // 使用 Map 基於店家名稱進行去重
         const uniqueBusinessRequests = new Map();
         
-        // 先遍歷收集所有請求，按 userId 進行去重
+        // 安全的日期轉換函數
+        function getDateTimestamp(dateField) {
+            try {
+                if (!dateField) return 0;
+                if (typeof dateField.toDate === 'function') {
+                    return dateField.toDate().getTime();
+                }
+                return new Date(dateField).getTime();
+            } catch (error) {
+                console.error('日期轉換錯誤:', error);
+                return 0;
+            }
+        }
+        
+        // 遍歷所有請求
         querySnapshot.forEach(doc => {
             const data = doc.data();
-            const userId = data.userId;
+            // 使用店家名稱作為主要去重依據
+            const businessName = data.businessName || '未知店家-' + doc.id;
             
-            if (!userId) {
-                console.warn(`審核請求 ${doc.id} 缺少 userId 字段`);
-                return;
-            }
+            // 如果這個店家名稱還沒有記錄，或者當前記錄比已存在的更新
+            const newDateTimestamp = getDateTimestamp(data.createdAt);
+            const existingData = uniqueBusinessRequests.get(businessName);
             
-            // 如果這個用戶ID還沒有記錄，或者當前記錄比已存在的更新
-            if (!uniqueBusinessRequests.has(userId) || 
-                (data.createdAt && uniqueBusinessRequests.get(userId).createdAt && 
-                data.createdAt.toDate() > uniqueBusinessRequests.get(userId).createdAt.toDate())) {
+            if (!existingData || newDateTimestamp > getDateTimestamp(existingData.createdAt)) {
                 // 保存文檔數據和ID
                 data.docId = doc.id;
-                uniqueBusinessRequests.set(userId, data);
+                uniqueBusinessRequests.set(businessName, data);
             }
         });
         
+        console.log(`去重後剩餘 ${uniqueBusinessRequests.size} 個店家審核請求`);
+        
         // 顯示去重後的請求
-        uniqueBusinessRequests.forEach((data, userId) => {
+        uniqueBusinessRequests.forEach((data) => {
             const requestCard = document.createElement('div');
             requestCard.className = 'report-card pending';
         
@@ -1115,6 +1127,7 @@ async function loadBusinessApprovalRequests() {
                 <p><strong>店家類型:</strong> ${getBusinessTypeText(data.businessType)}</p>
                 <p><strong>提交時間:</strong> ${formattedDate}</p>
                 <p><strong>聯絡人:</strong> ${data.contactName || '未知'}</p>
+                <p><strong>用戶ID:</strong> ${data.userId || '未知'}</p>
             `;
             
             // 添加點擊事件 - 使用保存的文檔ID
