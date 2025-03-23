@@ -206,5 +206,6 @@ export {
     deleteDoc,
     serverTimestamp,
     writeBatch,
-    increment
+    increment,
+    getFirestore
 };
