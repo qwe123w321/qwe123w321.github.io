@@ -30,6 +30,19 @@ import {
     runFullDiagnostics
 } from './app-check-module.js';
 
+// DOM 元素
+const loginSection = document.getElementById('loginSection');
+const emailInput = document.getElementById('emailInput');
+const passwordInput = document.getElementById('passwordInput');
+const loginButton = document.getElementById('loginButton');
+const logoutButton = document.getElementById('logoutButton');
+const userStatus = document.getElementById('userStatus');
+const errorMessage = document.getElementById('errorMessage');
+const mainContent = document.getElementById('main-content');
+const reportsContainer = document.getElementById('reports-container');
+const reportDetail = document.getElementById('report-detail');
+const backToListBtn = document.getElementById('backToList');
+
 // 全域變數
 let currentReportId = null;
 let currentPage = 1;
