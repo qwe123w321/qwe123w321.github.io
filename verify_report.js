@@ -1068,13 +1068,35 @@ async function loadBusinessApprovalRequests() {
         }
         
         console.log(`發現 ${querySnapshot.size} 個待處理店家審核請求`);
+
+        // 使用 Map 基於 userId 去重
+        const uniqueBusinessRequests = new Map();
         
-        // 顯示審核請求卡片
+        // 先遍歷收集所有請求，按 userId 進行去重
         querySnapshot.forEach(doc => {
             const data = doc.data();
+            const userId = data.userId;
+            
+            if (!userId) {
+                console.warn(`審核請求 ${doc.id} 缺少 userId 字段`);
+                return;
+            }
+            
+            // 如果這個用戶ID還沒有記錄，或者當前記錄比已存在的更新
+            if (!uniqueBusinessRequests.has(userId) || 
+                (data.createdAt && uniqueBusinessRequests.get(userId).createdAt && 
+                data.createdAt.toDate() > uniqueBusinessRequests.get(userId).createdAt.toDate())) {
+                // 保存文檔數據和ID
+                data.docId = doc.id;
+                uniqueBusinessRequests.set(userId, data);
+            }
+        });
+        
+        // 顯示去重後的請求
+        uniqueBusinessRequests.forEach((data, userId) => {
             const requestCard = document.createElement('div');
             requestCard.className = 'report-card pending';
-            
+        
             // 格式化日期
             const createdAt = data.createdAt ? new Date(data.createdAt.toDate()) : new Date();
             const formattedDate = formatDate(createdAt);
@@ -1094,10 +1116,10 @@ async function loadBusinessApprovalRequests() {
                 <p><strong>聯絡人:</strong> ${data.contactName || '未知'}</p>
             `;
             
-            // 添加點擊事件
+            // 添加點擊事件 - 使用保存的文檔ID
             requestCard.addEventListener('click', () => {
-                console.log(`點擊店家卡片 - ID: ${doc.id}, 店家名稱: ${data.businessName || '未知'}`);
-                showBusinessApprovalDetail(doc.id);
+                console.log(`點擊店家卡片 - ID: ${data.docId}, 店家名稱: ${data.businessName || '未知'}`);
+                showBusinessApprovalDetail(data.docId);
             });
             
             container.appendChild(requestCard);
