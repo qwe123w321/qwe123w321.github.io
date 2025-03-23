@@ -1045,6 +1045,7 @@ async function loadBusinessApprovalRequests() {
         return;
     }
     
+    // 重要: 確保完全清空容器
     container.innerHTML = '';
     loadingElement.style.display = 'flex';
     
@@ -1086,7 +1087,7 @@ async function loadBusinessApprovalRequests() {
             }
         }
         
-        // 遍歷所有請求
+        // 遍歷收集所有請求，按店家名稱進行去重
         querySnapshot.forEach(doc => {
             const data = doc.data();
             // 使用店家名稱作為主要去重依據
@@ -1105,11 +1106,21 @@ async function loadBusinessApprovalRequests() {
         
         console.log(`去重後剩餘 ${uniqueBusinessRequests.size} 個店家審核請求`);
         
-        // 顯示去重後的請求
+        // 重要: 防止重複渲染，創建一個已渲染ID集合
+        const renderedIds = new Set();
+        
+        // 僅使用去重後的 Map 進行渲染
         uniqueBusinessRequests.forEach((data) => {
+            // 檢查重複渲染
+            if (renderedIds.has(data.docId)) {
+                console.warn(`跳過重複渲染的卡片: ${data.businessName}, ID: ${data.docId}`);
+                return;
+            }
+            
             const requestCard = document.createElement('div');
             requestCard.className = 'report-card pending';
-        
+            requestCard.dataset.id = data.docId; // 添加數據屬性以便調試
+            
             // 格式化日期
             const createdAt = data.createdAt ? new Date(data.createdAt.toDate()) : new Date();
             const formattedDate = formatDate(createdAt);
@@ -1127,7 +1138,6 @@ async function loadBusinessApprovalRequests() {
                 <p><strong>店家類型:</strong> ${getBusinessTypeText(data.businessType)}</p>
                 <p><strong>提交時間:</strong> ${formattedDate}</p>
                 <p><strong>聯絡人:</strong> ${data.contactName || '未知'}</p>
-                <p><strong>用戶ID:</strong> ${data.userId || '未知'}</p>
             `;
             
             // 添加點擊事件 - 使用保存的文檔ID
@@ -1137,6 +1147,12 @@ async function loadBusinessApprovalRequests() {
             });
             
             container.appendChild(requestCard);
+            
+            // 記錄已渲染ID
+            renderedIds.add(data.docId);
+            
+            // 調試日誌
+            console.log(`已渲染店家卡片: ${data.businessName}, ID: ${data.docId}`);
         });
         
     } catch (error) {
