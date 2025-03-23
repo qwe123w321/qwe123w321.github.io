@@ -962,50 +962,6 @@
             display: block;
         }
     </style>
-<script type="module">
-    // 先导入 Firebase 配置
-    import './firebase-config.js';
-    
-    // 导入统一的 App Check 模块
-    import { addDiagnosticsPanel } from './app-check-module.js';
-    
-    // 添加诊断按钮
-    document.addEventListener('DOMContentLoaded', () => {
-        // 创建诊断按钮
-        const diagnosticsBtn = document.createElement('button');
-        diagnosticsBtn.id = 'appCheckDiagnosticsBtn';
-        diagnosticsBtn.innerHTML = '🔍';
-        diagnosticsBtn.title = 'App Check 診斷';
-        diagnosticsBtn.style.position = 'fixed';
-        diagnosticsBtn.style.bottom = '20px';
-        diagnosticsBtn.style.right = '20px';
-        diagnosticsBtn.style.width = '50px';
-        diagnosticsBtn.style.height = '50px';
-        diagnosticsBtn.style.borderRadius = '50%';
-        diagnosticsBtn.style.backgroundColor = '#007bff';
-        diagnosticsBtn.style.color = 'white';
-        diagnosticsBtn.style.border = 'none';
-        diagnosticsBtn.style.fontSize = '20px';
-        diagnosticsBtn.style.display = 'flex';
-        diagnosticsBtn.style.alignItems = 'center';
-        diagnosticsBtn.style.justifyContent = 'center';
-        diagnosticsBtn.style.cursor = 'pointer';
-        diagnosticsBtn.style.zIndex = '9999';
-        diagnosticsBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-        
-        // 添加点击事件
-        diagnosticsBtn.addEventListener('click', () => {
-            addDiagnosticsPanel();
-            diagnosticsBtn.style.display = 'none';
-        });
-        
-        // 添加到页面
-        document.body.appendChild(diagnosticsBtn);
-    });
-    
-    // 导入主要逻辑模块
-    import './verify_report.js';
-</script>
 
 </head>
 <body>
@@ -1555,7 +1511,7 @@
     </script>
 
     <!-- 添加诊断功能 -->
-    <script type="module">
+    <!-- <script type="module">
         import { runFullDiagnostics, checkRecaptchaStatus } from './app-check-module.js';
         
         // 添加诊断按钮
@@ -1586,7 +1542,7 @@
             console.log('頁面加載 5 秒後自動檢查 reCAPTCHA 狀態');
             checkRecaptchaStatus();
         }, 5000);
-    </script>
+    </script> -->
     
 </body>
 </html>
