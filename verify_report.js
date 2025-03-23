@@ -17,7 +17,9 @@ import {
     setDoc,
     addDoc,
     deleteDoc,
-    serverTimestamp
+    serverTimestamp,
+    writeBatch,
+    increment
 } from './firebase-config.js';
 
 // 從統一的 App Check 模組匯入需要的函數
@@ -35,7 +37,6 @@ let reportsPerPage = 12;
 let totalReports = 0;
 let isProcessingAuthChange = false;
 let APP_CHECK_INITIALIZED = false;
-import { writeBatch, increment } from 'firebase/firestore';
 
 // 初始化應用程序
 function initializeApplication() {
