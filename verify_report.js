@@ -4572,8 +4572,8 @@ function setupSessionTimeoutHandler() {
     modal.className = 'modal-overlay';
     modal.innerHTML = `
       <div class="modal-content">
-        <h2>會話已過期</h2>
-        <p>由於長時間未操作，您的會話已過期。</p>
+        <h2>登入已過期</h2>
+        <p>由於長時間未操作，您的登入已過期。</p>
         <p>請重新登入以繼續使用系統。</p>
         <div class="modal-buttons">
           <button id="session-relogin" class="btn-primary">重新登入</button>
