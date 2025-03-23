@@ -583,13 +583,15 @@ async function applyForAdmin() {
         console.log('嘗試申請管理員權限');
         
         // 檢查用戶是否已有管理員權限
-        const adminDoc = await db.collection('admins').doc(auth.currentUser.uid).get();
+        const adminDocRef = doc(db, 'admin', auth.currentUser.uid);
+        const adminDoc = await getDoc(adminDocRef);
         if (adminDoc.exists) {
             throw new Error('您已具有管理員權限');
         }
         
         // 創建管理員請求
-        await db.collection('adminRequests').add({
+        const adminRequestsRef = collection(db, 'adminRequests');
+        await addDoc('adminRequests', {
             userId: auth.currentUser.uid,
             email: auth.currentUser.email,
             status: 'pending',
@@ -1798,105 +1800,109 @@ function createPhotoItem(url, index) {
 }
 
 // 修改店家審核詳情函數，使用增強的照片處理
-function enhancedShowBusinessApprovalDetail(requestId) {
-    // 保留原有函數的大部分邏輯
-    // 但在處理照片的部分改用新的方法
+// async function enhancedShowBusinessApprovalDetail(requestId) {
+//     // 保留原有函數的大部分邏輯
+//     // 但在處理照片的部分改用新的方法
     
-    try {
-        console.log(`開始顯示店家審核詳情，請求ID: ${requestId}`);
+//     try {
+//         console.log(`開始顯示店家審核詳情，請求ID: ${requestId}`);
         
-        // 隱藏主內容
-        mainContent.style.display = 'none';
+//         // 隱藏主內容
+//         mainContent.style.display = 'none';
         
-        // 使用準確的類名選擇器，避免ID衝突
-        const detailContainer = document.querySelector('.business-verification-detail');
-        if (!detailContainer) {
-            console.error('找不到店家審核詳情容器');
-            alert('頁面元素錯誤，請聯絡管理員');
-            backToBusinessApprovalList();
-            return;
-        }
+//         // 使用準確的類名選擇器，避免ID衝突
+//         const detailContainer = document.querySelector('.business-verification-detail');
+//         if (!detailContainer) {
+//             console.error('找不到店家審核詳情容器');
+//             alert('頁面元素錯誤，請聯絡管理員');
+//             backToBusinessApprovalList();
+//             return;
+//         }
         
-        detailContainer.style.display = 'block';
+//         detailContainer.style.display = 'block';
         
-        // 設置請求ID到隱藏字段
-        const requestIdField = document.getElementById('business-approval-requestid');
-        if (!requestIdField) {
-            console.error('找不到business-approval-requestid元素');
-            alert('頁面元素錯誤，請聯絡管理員');
-            backToBusinessApprovalList();
-            return;
-        }
+//         // 設置請求ID到隱藏字段
+//         const requestIdField = document.getElementById('business-approval-requestid');
+//         if (!requestIdField) {
+//             console.error('找不到business-approval-requestid元素');
+//             alert('頁面元素錯誤，請聯絡管理員');
+//             backToBusinessApprovalList();
+//             return;
+//         }
         
-        requestIdField.value = requestId;
+//         requestIdField.value = requestId;
         
-        // 獲取審核請求數據
-        db.collection('businessApprovalRequests').doc(requestId).get()
-            .then(requestDoc => {
-                if (!requestDoc.exists) {
-                    console.error('找不到審核請求數據');
-                    alert('找不到審核請求');
-                    backToBusinessApprovalList();
-                    return;
-                }
-                
-                const requestData = requestDoc.data();
-                console.log(`成功獲取審核請求數據:`, requestData);
-                
-                // 填充詳情頁數據
-                document.getElementById('business-name').textContent = requestData.businessName || '未知店家';
-                document.getElementById('business-userid').textContent = requestData.userId || '未知';
-                document.getElementById('business-type').textContent = getBusinessTypeText(requestData.businessType);
-                document.getElementById('business-time').textContent = formatDate(
-                    requestData.createdAt ? new Date(requestData.createdAt.toDate()) : new Date()
-                );
-                document.getElementById('business-address').textContent = requestData.address || '未知';
-                document.getElementById('business-phone').textContent = requestData.phoneNumber || '未知';
-                document.getElementById('business-contact-name').textContent = requestData.contactName || '未知';
-                document.getElementById('business-contact-phone').textContent = requestData.contactPhone || '未知';
-                
-                // 使用增強的照片顯示函數
-                setupBusinessPhotosView('business-licenses', requestData.licenseUrls || []);
-                
-                // 確保事件處理綁定只執行一次
-                const backBtn = document.getElementById('business-approval-back');
-                const approveBtn = document.getElementById('business-approve');
-                const rejectBtn = document.getElementById('business-reject');
-                
-                // 先移除舊的事件處理程序（如果有的話）
-                if (backBtn) {
-                    const newBackBtn = backBtn.cloneNode(true);
-                    backBtn.parentNode.replaceChild(newBackBtn, backBtn);
-                    newBackBtn.addEventListener('click', backToBusinessApprovalList);
-                }
-                
-                if (approveBtn) {
-                    const newApproveBtn = approveBtn.cloneNode(true);
-                    approveBtn.parentNode.replaceChild(newApproveBtn, approveBtn);
-                    newApproveBtn.addEventListener('click', approveBusinessRequest);
-                }
-                
-                if (rejectBtn) {
-                    const newRejectBtn = rejectBtn.cloneNode(true);
-                    rejectBtn.parentNode.replaceChild(newRejectBtn, rejectBtn);
-                    newRejectBtn.addEventListener('click', rejectBusinessRequest);
-                }
-                
-                console.log("店家審核詳情載入完成:", requestId);
-                
-            })
-            .catch(error => {
-                console.error('顯示店家審核詳情錯誤:', error);
-                alert(`載入審核詳情時發生錯誤: ${error.message}`);
-                backToBusinessApprovalList();
-            });
+//         // 獲取審核請求數據
+//         try {
+//             // 創建對文檔的引用
+//             const requestDocRef = doc(db, 'businessApprovalRequests', requestId);
             
-    } catch (error) {
-        console.error('顯示店家審核詳情頁面錯誤:', error);
-        alert('頁面載入錯誤，請重試');
-        mainContent.style.display = 'block';
-    }
-}
+//             // 獲取文檔
+//             const requestDoc = await getDoc(requestDocRef);
+            
+//             if (!requestDoc.exists()) {  // 注意: V9 中 exists 是一個方法，不是屬性
+//                 console.error('找不到審核請求數據');
+//                 alert('找不到審核請求');
+//                 backToBusinessApprovalList();
+//                 return;
+//             }
+            
+//             const requestData = requestDoc.data();
+//             console.log(`成功獲取審核請求數據:`, requestData);
+            
+//             // 填充詳情頁數據
+//             document.getElementById('business-name').textContent = requestData.businessName || '未知店家';
+//             document.getElementById('business-userid').textContent = requestData.userId || '未知';
+//             document.getElementById('business-type').textContent = getBusinessTypeText(requestData.businessType);
+//             document.getElementById('business-time').textContent = formatDate(
+//                 requestData.createdAt ? new Date(requestData.createdAt.toDate()) : new Date()
+//             );
+//             document.getElementById('business-address').textContent = requestData.address || '未知';
+//             document.getElementById('business-phone').textContent = requestData.phoneNumber || '未知';
+//             document.getElementById('business-contact-name').textContent = requestData.contactName || '未知';
+//             document.getElementById('business-contact-phone').textContent = requestData.contactPhone || '未知';
+            
+//             // 使用增強的照片顯示函數
+//             setupBusinessPhotosView('business-licenses', requestData.licenseUrls || []);
+            
+//             // 確保事件處理綁定只執行一次
+//             const backBtn = document.getElementById('business-approval-back');
+//             const approveBtn = document.getElementById('business-approve');
+//             const rejectBtn = document.getElementById('business-reject');
+            
+//             // 先移除舊的事件處理程序（如果有的話）
+//             if (backBtn) {
+//                 const newBackBtn = backBtn.cloneNode(true);
+//                 backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+//                 newBackBtn.addEventListener('click', backToBusinessApprovalList);
+//             }
+            
+//             if (approveBtn) {
+//                 const newApproveBtn = approveBtn.cloneNode(true);
+//                 approveBtn.parentNode.replaceChild(newApproveBtn, approveBtn);
+//                 newApproveBtn.addEventListener('click', approveBusinessRequest);
+//             }
+            
+//             if (rejectBtn) {
+//                 const newRejectBtn = rejectBtn.cloneNode(true);
+//                 rejectBtn.parentNode.replaceChild(newRejectBtn, rejectBtn);
+//                 newRejectBtn.addEventListener('click', rejectBusinessRequest);
+//             }
+            
+//             console.log("店家審核詳情載入完成:", requestId);
+            
+//         } catch (error) {
+//             console.error('顯示店家審核詳情錯誤:', error);
+//             alert(`載入審核詳情時發生錯誤: ${error.message}`);
+//             backToBusinessApprovalList();
+//         }
+            
+//     } catch (error) {
+//         console.error('顯示店家審核詳情頁面錯誤:', error);
+//         alert('頁面載入錯誤，請重試');
+//         mainContent.style.display = 'block';
+//     }
+// }
     
 // 獲取店家類型文字描述
 function getBusinessTypeText(type) {
@@ -2366,7 +2372,8 @@ async function loadUserProfile(userId, type) {
 // 加載檢舉人信用分數
 async function loadReporterCredibility(userId) {
     try {
-        const credibilityDoc = await db.collection('userReportCredibility').doc(userId).get();
+        const credibilityDocRef = doc(db, 'userReportCredibility', userId);
+        const credibilityDoc = await getDoc(credibilityDocRef);
         const creditElement = document.getElementById('reporter-credit');
         
         if (credibilityDoc.exists) {
@@ -2401,13 +2408,16 @@ async function loadPunishmentHistory(userId) {
     try {
         const historyContainer = document.getElementById('punishment-history');
         historyContainer.innerHTML = '';
-        
-        const reportsSnapshot = await db.collection('reports')
-            .where('reportedUserId', '==', userId)
-            .where('status', '==', 'resolved')
-            .orderBy('handledAt', 'desc')
-            .limit(5)
-            .get();
+
+        const reportsRef = collection(db, 'reports');
+        const reportsQuery = query(
+            reportsRef, 
+            where('reportedUserId', '==', userId),
+            where('status', '==', 'resolved'),
+            orderBy('handledAt', 'desc'),
+            limit(5)
+        );
+        const reportsSnapshot = await getDocs(reportsQuery);
         
         if (reportsSnapshot.empty) {
             historyContainer.innerHTML = '<li>無處罰記錄</li>';
@@ -2450,21 +2460,28 @@ async function loadPunishmentHistory(userId) {
 // 加載檢舉歷史
 async function loadReportHistory(userId, type) {
     try {
-        let query;
-        
-        // 依據類型選擇查詢方式
+        // 建立基本的集合引用
+        const reportsRef = collection(db, 'reports');
+
+        // 依據類型選擇查詢條件
+        let reportsQuery;
         if (type === 'reporter') {
             // 作為檢舉人的歷史
-            query = db.collection('reports')
-                .where('reporterId', '==', userId)
-                .where('status', 'in', ['resolved', 'rejected']);
+            reportsQuery = query(
+                reportsRef,
+                where('reporterId', '==', userId),
+                where('status', 'in', ['resolved', 'rejected'])
+            );
         } else {
             // 作為被檢舉人的歷史
-            query = db.collection('reports')
-                .where('reportedUserId', '==', userId);
+            reportsQuery = query(
+                reportsRef,
+                where('reportedUserId', '==', userId)
+            );
         }
-        
-        const snapshot = await query.get();
+
+        // 執行查詢
+        const snapshot = await getDocs(reportsQuery);
         
         // 統計有效和無效檢舉
         let validCount = 0;
@@ -2493,7 +2510,8 @@ async function loadReportHistory(userId, type) {
         // 檢查用戶狀態
         const statusElement = document.getElementById(`${type}-status`);
         
-        const userDoc = await db.collection('userStatus').doc(userId).get();
+        const userDocRef = doc(db, 'userStatus',userId);
+        const userDoc = await getDoc(userDocRef);
         if (userDoc.exists) {
             const statusData = userDoc.data();
             
@@ -2538,7 +2556,8 @@ async function handleReportAction() {
         actionButton.disabled = true;
         
         // 獲取檢舉資料
-        const reportDoc = await db.collection('reports').doc(currentReportId).get();
+        const reportDocRef = doc(db,'reports',currentReportId);
+        const reportDoc = await getDoc(reportDocRef);
         
         if (!reportDoc.exists) {
             throw new Error('找不到檢舉記錄');
@@ -2604,7 +2623,7 @@ async function handleReportAction() {
         }
         
         // 更新檢舉記錄
-        await db.collection('reports').doc(currentReportId).update(updateData);
+        await updateDoc(reportDocRef, updateData);
         
         // 更新檢舉人的檢舉信用分數
         if (reportData.reporterId) {
@@ -2645,18 +2664,21 @@ async function handleReportAction() {
 async function handleRelatedReports(userId) {
     try {
         // 獲取該用戶的所有待處理檢舉
-        const relatedReportsSnapshot = await db.collection('reports')
-            .where('reportedUserId', '==', userId)
-            .where('status', '==', 'pending')
-            .get();
-        
+        const reportsRef = collection(db, 'reports');
+        const reportsQuery = query(
+            reportsRef,
+            where('reportedUserId', '==', userId),
+            where('status', '==', 'pending')
+        );
+        const relatedReportsSnapshot = await getDocs(reportsQuery);
+
         if (relatedReportsSnapshot.empty) {
             return; // 沒有其他待處理檢舉
         }
-        
+
         // 詢問管理員是否要一併處理
         const confirmHandle = confirm(`發現該用戶有${relatedReportsSnapshot.size}個其他待處理檢舉，是否一併標記為已處理？`);
-        
+
         if (!confirmHandle) {
             return; // 管理員選擇不處理
         }
@@ -2697,20 +2719,20 @@ async function handleRelatedReports(userId) {
 async function updateReporterCredibility(userId, points) {
     try {
         // 獲取用戶檢舉信用紀錄
-        const credibilityRef = db.collection('userReportCredibility').doc(userId);
-        const doc = await credibilityRef.get();
+        const credibilityDocRef = doc(db, 'userReportCredibility', userId);
+        const docSnap = await getDoc(credibilityDocRef);
         
-        if (doc.exists) {
+        if (docSnap.exists()) {
             // 現有記錄，更新分數
-            await credibilityRef.update({
-                score: firebase.firestore.FieldValue.increment(points),
+            await updateDoc(credibilityDocRef, {
+                score: increment(points),
                 lastUpdated: serverTimestamp(),
                 [points > 0 ? 'validReports' : 'invalidReports']: increment(1),
                 reportCount: increment(1)
             });
         } else {
             // 新紀錄，初始化
-            await credibilityRef.set({
+            await setDoc(credibilityDocRef, {
                 userId: userId,
                 score: 100 + points, // 基礎分數 100
                 reportCount: 1,
@@ -2723,12 +2745,14 @@ async function updateReporterCredibility(userId, points) {
         
         // 檢查是否需要限制檢舉功能
         if (points < 0) {
-            const updatedDoc = await credibilityRef.get();
-            const score = updatedDoc.data().score;
-            
+            const updatedDocRef = doc(db, 'userReportCredibility', userId);
+            const updatedDocSnap = await getDoc(updatedDocRef);
+            const score = updatedDocSnap.data().score;
+
             // 獲取系統設置
-            const settingsDoc = await db.collection('systemSettings').doc('reportManagement').get();
-            const settings = settingsDoc.exists ? settingsDoc.data() : {};
+            const settingsDocRef = doc(db, 'systemSettings', 'reportManagement');
+            const settingsDocSnap = await getDoc(settingsDocRef);
+            const settings = settingsDocSnap.exists() ? settingsDocSnap.data() : {};
             const threshold = settings.automation?.creditThreshold || 40;
             
             // 如果分數低於閾值，限制檢舉功能
@@ -2743,11 +2767,13 @@ async function updateReporterCredibility(userId, points) {
 }
 
 // 限制檢舉功能
+// 限制檢舉功能
 async function applyReportRestriction(userId) {
     try {
         // 獲取系統設置
-        const settingsDoc = await db.collection('systemSettings').doc('reportManagement').get();
-        const settings = settingsDoc.exists ? settingsDoc.data() : {};
+        const settingsRef = doc(db, 'systemSettings', 'reportManagement');
+        const settingsSnap = await getDoc(settingsRef);
+        const settings = settingsSnap.exists() ? settingsSnap.data() : {};
         const penaltyType = settings.reportRules?.falseReportPenalty || 'limit';
         const days = settings.reportRules?.defaultPunishDays || 7;
         
@@ -2756,10 +2782,10 @@ async function applyReportRestriction(userId) {
         }
         
         // 更新用戶狀態
-        const userStatusRef = db.collection('userStatus').doc(userId);
+        const userStatusRef = doc(db, 'userStatus', userId);
         const expireAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
         
-        await userStatusRef.set({
+        await setDoc(userStatusRef, {
             userId: userId,
             restrictions: {
                 report: {
@@ -2797,12 +2823,12 @@ async function applyUserRestriction(userId, restrictType, days) {
         const expireAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
         
         // 更新用戶狀態
-        const userStatusRef = db.collection('userStatus').doc(userId);
-        const doc = await userStatusRef.get();
+        const userStatusRef = doc(db, 'userStatus', userId);
+        const docSnap = await getDoc(userStatusRef);
         
-        if (doc.exists) {
+        if (docSnap.exists()) {
             // 更新現有記錄
-            await userStatusRef.update({
+            await updateDoc(userStatusRef, {
                 [`restrictions.${restrictType}`]: {
                     active: true,
                     expireAt: expireAt,
@@ -2812,7 +2838,7 @@ async function applyUserRestriction(userId, restrictType, days) {
             });
         } else {
             // 創建新記錄
-            await userStatusRef.set({
+            await setDoc(userStatusRef, {
                 userId: userId,
                 isBanned: false,
                 restrictions: {
@@ -2845,8 +2871,8 @@ async function suspendUser(userId, days) {
         const expireAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
         
         // 更新用戶狀態
-        const userStatusRef = db.collection('userStatus').doc(userId);
-        await userStatusRef.set({
+        const userStatusRef = doc(db, 'userStatus', userId);
+        await setDoc(userStatusRef, {
             userId: userId,
             isSuspended: true,
             suspendExpireAt: expireAt,
@@ -2870,8 +2896,8 @@ async function suspendUser(userId, days) {
 async function banUser(userId) {
     try {
         // 更新用戶狀態
-        const userStatusRef = db.collection('userStatus').doc(userId);
-        await userStatusRef.set({
+        const userStatusRef = doc(db, 'userStatus', userId);
+        await setDoc(userStatusRef, {
             userId: userId,
             isBanned: true,
             bannedAt: serverTimestamp(),
@@ -2892,17 +2918,17 @@ async function banUser(userId) {
 async function warnUser(userId, reasons) {
     try {
         // 更新用戶警告計數
-        const userStatusRef = db.collection('userStatus').doc(userId);
-        const doc = await userStatusRef.get();
+        const userStatusRef = doc(db, 'userStatus', userId);
+        const docSnap = await getDoc(userStatusRef);
         
-        if (doc.exists) {
-            await userStatusRef.update({
+        if (docSnap.exists()) {
+            await updateDoc(userStatusRef, {
                 warningCount: increment(1),
                 lastWarningAt: serverTimestamp(),
                 lastUpdated: serverTimestamp()
             });
         } else {
-            await userStatusRef.set({
+            await setDoc(userStatusRef, {
                 userId: userId,
                 warningCount: 1,
                 lastWarningAt: serverTimestamp(),
@@ -2966,9 +2992,9 @@ async function sendUserNotification(userId, type, data) {
 async function checkFrequentReports() {
     try {
         // 獲取所有待處理檢舉
-        const pendingReportsSnapshot = await db.collection('reports')
-            .where('status', '==', 'pending')
-            .get();
+        const reportsRef = collection(db, 'reports');
+        const pendingReportsQuery = query(reportsRef, where('status', '==', 'pending'));
+        const pendingReportsSnapshot = await getDocs(pendingReportsQuery);
         
         if (pendingReportsSnapshot.empty) {
             document.querySelector('.tab[data-tab="frequentReports"]').setAttribute('data-count', '0');
@@ -3016,9 +3042,9 @@ async function loadFrequentReports() {
     
     try {
         // 獲取所有待處理檢舉
-        const pendingReportsSnapshot = await db.collection('reports')
-            .where('status', '==', 'pending')
-            .get();
+        const reportsRef = collection(db, 'reports');
+        const pendingReportsQuery = query(reportsRef, where('status', '==', 'pending'));
+        const pendingReportsSnapshot = await getDocs(pendingReportsQuery);
         
         if (pendingReportsSnapshot.empty) {
             loadingElement.style.display = 'none';
@@ -3030,9 +3056,9 @@ async function loadFrequentReports() {
         const reportCounts = {};
         const userReports = {};
         
-        pendingReportsSnapshot.forEach(doc => {
-            const data = doc.data();
-            data.id = doc.id;
+        pendingReportsSnapshot.forEach(document => {
+            const data = document.data();
+            data.id = document.id;
             
             if (data.reportedUserId) {
                 reportCounts[data.reportedUserId] = (reportCounts[data.reportedUserId] || 0) + 1;
@@ -3062,8 +3088,9 @@ async function loadFrequentReports() {
             const reportCount = reportCounts[userId];
             
             // 獲取用戶信息
-            const userDoc = await db.collection('userStatus').doc(userId).get();
-            const userData = userDoc.exists ? userDoc.data() : null;
+            const userDocRef = doc(db, 'userStatus', userId);
+            const userDoc = await getDoc(userDocRef);
+            const userData = userDoc.exists() ? userDoc.data() : null;
             const userName = userData ? (userData.name || '未知用戶') : '未知用戶';
             
             // 創建用戶卡片
@@ -3552,113 +3579,116 @@ async function loadStatistics() {
 
 // 加載檢舉信用統計
 async function loadCredibilityStatistics() {
-try {
-    // 獲取所有檢舉信用記錄
-    const credibilitySnapshot = await db.collection('userReportCredibility').get();
-    const credibilityData = [];
-    
-    credibilitySnapshot.forEach(doc => {
-    const data = doc.data();
-    data.id = doc.id;
-    credibilityData.push(data);
-    });
-    
-    // 檢舉信用分數分布
-    let highCreditCount = 0;
-    let mediumCreditCount = 0;
-    let lowCreditCount = 0;
-    
-    credibilityData.forEach(data => {
-    const score = data.score || 100;
-    if (score >= 80) {
-        highCreditCount++;
-    } else if (score >= 50) {
-        mediumCreditCount++;
-    } else {
-        lowCreditCount++;
-    }
-    });
-    
-    // 更新UI前檢查元素是否存在
-    const highCreditElement = document.getElementById('high-credit-count');
-    const mediumCreditElement = document.getElementById('medium-credit-count');
-    const lowCreditElement = document.getElementById('low-credit-count');
-    
-    if (highCreditElement) highCreditElement.textContent = highCreditCount;
-    if (mediumCreditElement) mediumCreditElement.textContent = mediumCreditCount;
-    if (lowCreditElement) lowCreditElement.textContent = lowCreditCount;
-    
-    // 最活躍檢舉人
-    const mostActiveReporters = credibilityData
-    .sort((a, b) => (b.reportCount || 0) - (a.reportCount || 0))
-    .slice(0, 5);
-    
-    const mostActiveReportersContainer = document.getElementById('most-active-reporters');
-    if (mostActiveReportersContainer) {
-    mostActiveReportersContainer.innerHTML = '';
-    
-    if (mostActiveReporters.length === 0) {
-        mostActiveReportersContainer.innerHTML = '<li>沒有足夠數據</li>';
-    } else {
-        for (const data of mostActiveReporters) {
-        try {
-            const userDoc = await db.collection('userprofileData').doc(data.userId).get();
-            const userName = userDoc.exists ? (userDoc.data().name || '未知用戶') : '未知用戶';
-            
-            const validRate = ((data.validReports || 0) / (data.reportCount || 1) * 100).toFixed(0);
-            
-            const li = document.createElement('li');
-            li.innerHTML = `
-            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                <span>${userName}</span>
-                <span>${data.reportCount || 0}次 (${validRate}%有效)</span>
-            </div>
-            `;
-            
-            mostActiveReportersContainer.appendChild(li);
-        } catch (error) {
-            console.error('獲取用戶名錯誤:', error);
+    try {
+      // 獲取所有檢舉信用記錄
+      const credibilityRef = collection(db, 'userReportCredibility');
+      const credibilitySnapshot = await getDocs(credibilityRef);
+      const credibilityData = [];
+      
+      credibilitySnapshot.forEach(document => {
+        const data = document.data();
+        data.id = document.id;
+        credibilityData.push(data);
+      });
+      
+      // 檢舉信用分數分布
+      let highCreditCount = 0;
+      let mediumCreditCount = 0;
+      let lowCreditCount = 0;
+      
+      credibilityData.forEach(data => {
+        const score = data.score || 100;
+        if (score >= 80) {
+          highCreditCount++;
+        } else if (score >= 50) {
+          mediumCreditCount++;
+        } else {
+          lowCreditCount++;
         }
+      });
+      
+      // 更新UI前檢查元素是否存在
+      const highCreditElement = document.getElementById('high-credit-count');
+      const mediumCreditElement = document.getElementById('medium-credit-count');
+      const lowCreditElement = document.getElementById('low-credit-count');
+      
+      if (highCreditElement) highCreditElement.textContent = highCreditCount;
+      if (mediumCreditElement) mediumCreditElement.textContent = mediumCreditCount;
+      if (lowCreditElement) lowCreditElement.textContent = lowCreditCount;
+      
+      // 最活躍檢舉人
+      const mostActiveReporters = credibilityData
+        .sort((a, b) => (b.reportCount || 0) - (a.reportCount || 0))
+        .slice(0, 5);
+      
+      const mostActiveReportersContainer = document.getElementById('most-active-reporters');
+      if (mostActiveReportersContainer) {
+        mostActiveReportersContainer.innerHTML = '';
+      
+        if (mostActiveReporters.length === 0) {
+          mostActiveReportersContainer.innerHTML = '<li>沒有足夠數據</li>';
+        } else {
+          for (const data of mostActiveReporters) {
+            try {
+              const userDocRef = doc(db, 'userprofileData', data.userId);
+              const userDoc = await getDoc(userDocRef);
+              const userName = userDoc.exists() ? (userDoc.data().name || '未知用戶') : '未知用戶';
+              
+              const validRate = ((data.validReports || 0) / (data.reportCount || 1) * 100).toFixed(0);
+              
+              const li = document.createElement('li');
+              li.innerHTML = `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                  <span>${userName}</span>
+                  <span>${data.reportCount || 0}次 (${validRate}%有效)</span>
+                </div>
+              `;
+              
+              mostActiveReportersContainer.appendChild(li);
+            } catch (error) {
+              console.error('獲取用戶名錯誤:', error);
+            }
+          }
         }
-    }
-    }
-    
-    // 最低信用分數用戶
-    const lowestCreditUsers = credibilityData
-    .sort((a, b) => (a.score || 100) - (b.score || 100))
-    .slice(0, 5);
-    
-    const lowestCreditUsersContainer = document.getElementById('lowest-credit-users');
-    if (lowestCreditUsersContainer) {
-    lowestCreditUsersContainer.innerHTML = '';
-    
-    if (lowestCreditUsers.length === 0) {
-        lowestCreditUsersContainer.innerHTML = '<li>沒有足夠數據</li>';
-    } else {
-        for (const data of lowestCreditUsers) {
-        try {
-            const userDoc = await db.collection('userprofileData').doc(data.userId).get();
-            const userName = userDoc.exists ? (userDoc.data().name || '未知用戶') : '未知用戶';
-            
-            const li = document.createElement('li');
-            li.innerHTML = `
-            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                <span>${userName}</span>
-                <span>信用分數: ${data.score || 100}</span>
-            </div>
-            `;
-            
-            lowestCreditUsersContainer.appendChild(li);
-        } catch (error) {
-            console.error('獲取用戶名錯誤:', error);
+      }
+      
+      // 最低信用分數用戶
+      const lowestCreditUsers = credibilityData
+        .sort((a, b) => (a.score || 100) - (b.score || 100))
+        .slice(0, 5);
+      
+      const lowestCreditUsersContainer = document.getElementById('lowest-credit-users');
+      if (lowestCreditUsersContainer) {
+        lowestCreditUsersContainer.innerHTML = '';
+      
+        if (lowestCreditUsers.length === 0) {
+          lowestCreditUsersContainer.innerHTML = '<li>沒有足夠數據</li>';
+        } else {
+          for (const data of lowestCreditUsers) {
+            try {
+              const userDocRef = doc(db, 'userprofileData', data.userId);
+              const userDoc = await getDoc(userDocRef);
+              const userName = userDoc.exists() ? (userDoc.data().name || '未知用戶') : '未知用戶';
+              
+              const li = document.createElement('li');
+              li.innerHTML = `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                  <span>${userName}</span>
+                  <span>信用分數: ${data.score || 100}</span>
+                </div>
+              `;
+              
+              lowestCreditUsersContainer.appendChild(li);
+            } catch (error) {
+              console.error('獲取用戶名錯誤:', error);
+            }
+          }
         }
-        }
-    }
-    }
-    
-} catch (error) {
-    console.error('加載檢舉信用統計錯誤:', error);
-        // 不影響主要流程
+      }
+      
+    } catch (error) {
+      console.error('加載檢舉信用統計錯誤:', error);
+      // 不影響主要流程
     }
 }
 
@@ -3678,21 +3708,28 @@ async function loadHistory() {
         const endDate = document.getElementById('endDate').value;
         
         // 構建查詢
-        let query = db.collection('reports')
-            .where('status', '!=', 'pending')
-            .orderBy('status')
-            .orderBy('handledAt', 'desc')
-            .limit(50);
+        const reportsRef = collection(db, 'reports');
+        let reportQuery;
         
         // 應用狀態過濾
         if (statusFilter !== 'all') {
-            query = db.collection('reports')
-                .where('status', '==', statusFilter)
-                .orderBy('handledAt', 'desc')
-                .limit(50);
+            reportQuery = query(
+                reportsRef,
+                where('status', '==', statusFilter),
+                orderBy('handledAt', 'desc'),
+                limit(50)
+            );
+        } else {
+            reportQuery = query(
+                reportsRef,
+                where('status', '!=', 'pending'),
+                orderBy('status'),
+                orderBy('handledAt', 'desc'),
+                limit(50)
+            );
         }
         
-        const querySnapshot = await query.get();
+        const querySnapshot = await getDocs(reportQuery);
         
         loadingIndicator.style.display = 'none';
         
@@ -3702,9 +3739,9 @@ async function loadHistory() {
         }
         
         let records = [];
-        querySnapshot.forEach(doc => {
-            const data = doc.data();
-            data.id = doc.id;
+        querySnapshot.forEach(document => {
+            const data = document.data();
+            data.id = document.id;
             records.push(data);
         });
         
@@ -3820,7 +3857,8 @@ async function loadHistory() {
 // 加載設置
 async function loadSettings() {
     try {
-        const settingsDoc = await db.collection('systemSettings').doc('reportManagement').get();
+        const settingsDocRef = doc(db, 'systemSettings', 'reportManagement');
+        const settingsDoc = await getDoc(settingsDocRef);
         
         if (settingsDoc.exists) {
             const settings = settingsDoc.data();
@@ -3868,11 +3906,11 @@ async function loadSettings() {
 // 保存設置
 async function saveSettings(section) {
     try {
-        const settingsRef = db.collection('systemSettings').doc('reportManagement');
+        const settingsRef = doc(db, 'systemSettings', 'reportManagement');
         
         switch (section) {
             case 'reportRules':
-                await settingsRef.set({
+                await setDoc(settingsRef, {
                     reportRules: {
                         multipleReportThreshold: parseInt(document.getElementById('multipleReportThreshold').value),
                         falseReportPenalty: document.getElementById('falseReportPenalty').value,
@@ -3897,7 +3935,7 @@ async function saveSettings(section) {
                     automation.creditThreshold = parseInt(document.getElementById('creditThreshold').value);
                 }
                 
-                await settingsRef.set({
+                await setDoc(settingsRef, {
                     automation: automation
                 }, { merge: true });
                 break;
@@ -3913,7 +3951,7 @@ async function saveSettings(section) {
                     templates.falseReport = document.getElementById('falseReportTemplate').value;
                 }
                 
-                await settingsRef.set({
+                await setDoc(settingsRef, {
                     messageTemplates: templates
                 }, { merge: true });
                 break;
@@ -3991,7 +4029,8 @@ async function showVerificationDetail(requestId, userId) {
     
     try {
         // 獲取驗證請求數據
-        const requestDoc = await db.collection('PhotoVerificationRequest').doc(requestId).get();
+        const requestDocRef = doc(db, 'PhotoVerificationRequest', requestId);
+        const requestDoc = await getDoc(requestDocRef);
         if (!requestDoc.exists) {
             alert('找不到驗證請求');
             backToVerificationList();
@@ -4196,15 +4235,19 @@ async function approveVerification() {
         approveBtn.disabled = true;
         approveBtn.innerHTML = '<div class="loading-spinner"></div> 處理中...';
         
+        // 獲取 Auth 實例
+        const auth = getAuth();
+        
         // 1. 獲取當前驗證請求數據
-        const requestDoc = await db.collection('PhotoVerificationRequest').doc(requestId).get();
-        if (!requestDoc.exists) {
+        const requestDocRef = doc(db, 'PhotoVerificationRequest', requestId);
+        const requestDoc = await getDoc(requestDocRef);
+        if (!requestDoc.exists()) {
             throw new Error('找不到驗證請求');
         }
         const requestData = requestDoc.data();
         
         // 2. 更新驗證請求狀態
-        await db.collection('PhotoVerificationRequest').doc(requestId).update({
+        await updateDoc(requestDocRef, {
             status: 'approved',
             verifiedPhotoIndices: verifiedIndices,
             verifiedAt: serverTimestamp(),
@@ -4215,7 +4258,7 @@ async function approveVerification() {
         // 3. 更新用戶資料中的驗證狀態
         const userDocRef = doc(db, 'userprofileData', userId);
         const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists) {
+        if (userDoc.exists()) {
             const userData = userDoc.data();
             
             // 3.1 獲取或初始化 verifiedPhotos 物件
@@ -4239,15 +4282,15 @@ async function approveVerification() {
             });
             
             // 3.5 更新用戶文檔中的 verifiedPhotos 字段
-            await db.collection('userprofileData').doc(userId).update({
+            await updateDoc(userDocRef, {
                 verifiedPhotos: verifiedPhotos
             });
             
             console.log('已更新用戶已驗證照片:', verifiedPhotos);
         }
         
-        // 4. 刪除驗證請求記錄 (改為使用 delete 而不是更新)
-        await db.collection('PhotoVerificationRequest').doc(requestId).delete();
+        // 4. 刪除驗證請求記錄
+        await deleteDoc(requestDocRef);
         console.log('已刪除驗證請求:', requestId);
         
         // 5. 發送通知給用戶
@@ -4281,7 +4324,6 @@ async function approveVerification() {
     }
 }
 
-
 // 拒絕驗證
 async function rejectVerification() {
     const requestId = document.getElementById('verification-requestid').value;
@@ -4301,14 +4343,15 @@ async function rejectVerification() {
         rejectBtn.innerHTML = '<div class="loading-spinner"></div> 處理中...';
         
         // 先獲取驗證請求數據，用於之後發送通知
-        const requestDoc = await db.collection('PhotoVerificationRequest').doc(requestId).get();
+        const requestDocRef = doc(db, 'PhotoVerificationRequest', requestId);
+        const requestDoc = get(requestDocRef);
         if (!requestDoc.exists) {
             throw new Error('找不到驗證請求');
         }
         const requestData = requestDoc.data();
         
         // 直接刪除驗證請求記錄，而不是更新它的狀態
-        await db.collection('PhotoVerificationRequest').doc(requestId).delete();
+        await deleteDoc(requestDocRef);
         console.log('已刪除驗證請求:', requestId);
         
         // 發送拒絕通知給用戶
@@ -4401,7 +4444,6 @@ async function loadVerificationRequests() {
     }
 }
 
-
 document.addEventListener('DOMContentLoaded', function() {
     console.log('管理員按鈕診斷開始...');
     
@@ -4413,15 +4455,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     console.log('找到adminButton元素:', adminButton);
     
-    // 檢查Firebase是否初始化
-    if (typeof firebase === 'undefined' || !firebase.apps.length) {
-        console.error('Firebase尚未初始化');
+    // 檢查Firebase是否初始化 - 在V9中的檢查方式
+    try {
+        // 假設您的應用已經通過某個函數或模組來初始化Firebase
+        // 這裡直接獲取auth和firestore實例
+        const auth = getAuth();
+        const db = getFirestore();
+        console.log('Firebase已初始化');
+    } catch (error) {
+        console.error('Firebase尚未初始化:', error);
         return;
     }
-    console.log('Firebase已初始化');
     
-    // 檢查用戶認證狀態
-    const auth = firebase.auth();
+    // 獲取認證實例
+    const auth = getAuth();
     console.log('檢查用戶認證狀態...');
     
     // 直接顯示按鈕，無論用戶是否登入（用於測試）
@@ -4429,18 +4476,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // console.log('已強制顯示管理員按鈕（測試用）');
     
     // 監聽認證狀態變化
-    auth.onAuthStateChanged(async (user) => {
+    onAuthStateChanged(auth, async (user) => {
         console.log('認證狀態變更:', user ? '已登入: ' + user.email : '未登入');
         
         if (user) {
             try {
                 // 檢查用戶是否在管理員集合中
-                const db = firebase.firestore();
                 console.log('嘗試查詢管理員文檔:', user.uid);
                 
-                const adminDoc = await db.collection('admins').doc(user.uid).get();
+                const adminDocRef = doc(db, 'admins', user.uid);
+                const adminDoc = await getDoc(adminDocRef);
                 
-                if (!adminDoc.exists) {
+                if (!adminDoc.exists()) {
                     console.log('用戶不是管理員，顯示申請按鈕');
                     adminButton.style.display = 'inline-block';
                     
@@ -4497,12 +4544,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 document.addEventListener('DOMContentLoaded', function() {
     // 先執行Firebase初始化
-
     initializeApplication();
     console.log('initializeApplication');
-    // 其餘的DOMContentLoaded事件處理可以保留
-    // setupEnhancedLightbox();
-    // 這裡原有的診斷代碼可以移至initializeApplication完成後執行
 });
 
 javascriptCopy// 添加閒置檢測和會話過期處理
