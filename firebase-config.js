@@ -17,10 +17,11 @@ import {
     setDoc,
     addDoc,
     deleteDoc,
-    serverTimestamp
+    serverTimestamp, 
+    writeBatch, increment 
 } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app-check.js';
-import { getStorage, writeBatch, increment } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
+import { getStorage} from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
 
 // Firebase 配置
 const firebaseConfig = {
