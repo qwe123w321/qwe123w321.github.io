@@ -20,7 +20,8 @@ import {
     deleteDoc,
     serverTimestamp,
     writeBatch,
-    increment
+    increment,
+    getFirestore
 } from './firebase-config.js';
 
 // 從統一的 App Check 模組匯入需要的函數
@@ -4571,7 +4572,6 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('initializeApplication');
 });
 
-javascriptCopy// 添加閒置檢測和會話過期處理
 function setupSessionTimeoutHandler() {
   let inactivityTimer;
   const SESSION_TIMEOUT = 60 * 60 * 1000; // 30分鐘閒置時間
