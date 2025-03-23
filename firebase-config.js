@@ -192,7 +192,8 @@ export {
     signInWithEmailAndPassword,
     // Firestore 相關
     doc, 
-    getDoc, 
+    getDoc,
+    getAuth, 
     collection,
     query,
     where,
