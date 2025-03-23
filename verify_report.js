@@ -35,6 +35,7 @@ let reportsPerPage = 12;
 let totalReports = 0;
 let isProcessingAuthChange = false;
 let APP_CHECK_INITIALIZED = false;
+import { writeBatch, increment } from 'firebase/firestore';
 
 // 初始化應用程序
 function initializeApplication() {
@@ -575,7 +576,7 @@ async function applyForAdmin() {
             email: auth.currentUser.email,
             status: 'pending',
             ipAddress: '自動檢測', // 實際應用中可使用函數獲取
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            timestamp: serverTimestamp()
         });
         
         // 顯示成功提示
@@ -1121,7 +1122,9 @@ async function showBusinessApprovalDetail(requestId) {
         try {
             // 獲取審核請求數據
             console.log(`開始從Firebase獲取審核請求數據...`);
-            const requestDoc = await db.collection('businessApprovalRequests').doc(requestId).get();
+            // 新 V9 寫法
+            const requestDocRef = doc(db, 'businessApprovalRequests', requestId);
+            const requestDoc = await getDoc(requestDocRef);
             
             if (!requestDoc.exists) {
                 console.error('找不到審核請求數據');
@@ -1394,7 +1397,9 @@ async function approveBusinessRequest() {
         approveBtn.innerHTML = '<div class="loading-spinner"></div> 處理中...';
         
         // 獲取審核請求數據
-        const requestDoc = await db.collection('businessApprovalRequests').doc(requestId).get();
+        // 新 V9 寫法
+        const requestDocRef = doc(db, 'businessApprovalRequests', requestId);
+        const requestDoc = await getDoc(requestDocRef);
         if (!requestDoc.exists) {
             throw new Error('找不到審核請求');
         }
@@ -1405,9 +1410,10 @@ async function approveBusinessRequest() {
         console.log(`核准用戶ID: ${userId} 的店家申請`);
         
         // 1. 更新店家狀態為已核准
-        await db.collection('businesses').doc(userId).set({
+        const businessDocRef = doc(db, 'businesses', userId);
+        await setDoc(businessDocRef, {
             status: 'approved',
-            approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            approvedAt: serverTimestamp(),
             approvedBy: auth.currentUser ? auth.currentUser.uid : 'admin',
             businessName: requestData.businessName,
             businessType: requestData.businessType,
@@ -1416,28 +1422,29 @@ async function approveBusinessRequest() {
             contactName: requestData.contactName,
             contactPhone: requestData.contactPhone,
             licenseUrls: requestData.licenseUrls || [],
-            createdAt: requestData.createdAt || firebase.firestore.FieldValue.serverTimestamp(),
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: requestData.createdAt || serverTimestamp(),
+            updatedAt: serverTimestamp()
         }, { merge: true });
         
         // // 2. 更新用戶資料
         // await db.collection('用戶資料').doc(userId).update({
         //     isBusiness: true,
         //     businessVerified: true,
-        //     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        //     updatedAt: serverTimestamp()
         // });
         
         // 3. 發送通知
-        await db.collection('notifications').add({
+        const notificationsRef = collection(db, 'notifications');
+        await addDoc(notificationsRef, {
             userId: userId,
             type: 'business_approval',
             message: '恭喜！您的店家帳號已通過審核，現在可以使用全部功能。',
             isRead: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: serverTimestamp()
         });
         
         // 4. 刪除審核請求 (確保這一步不會失敗)
-        await db.collection('businessApprovalRequests').doc(requestId).delete();
+        await deleteDoc(doc(db, 'businessApprovalRequests', requestId));
         
         alert('已核准店家帳號');
         backToBusinessApprovalList();
@@ -1479,7 +1486,9 @@ async function rejectBusinessRequest() {
         rejectBtn.innerHTML = '<div class="loading-spinner"></div> 處理中...';
         
         // 獲取審核請求數據
-        const requestDoc = await db.collection('businessApprovalRequests').doc(requestId).get();
+        // 新 V9 寫法
+        const requestDocRef = doc(db, 'businessApprovalRequests', requestId);
+        const requestDoc = await getDoc(requestDocRef);
         if (!requestDoc.exists) {
             throw new Error('找不到審核請求');
         }
@@ -1490,24 +1499,26 @@ async function rejectBusinessRequest() {
         console.log(`拒絕用戶ID: ${userId} 的店家申請`);
         
         // 1. 更新店家狀態為已拒絕
-        await db.collection('businesses').doc(userId).set({
+        const businessDocRef = doc(db, 'businesses', userId);
+        await setDoc(businessDocRef, {
             status: 'rejected',
             rejectReason: rejectReason,
-            rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            rejectedAt: serverTimestamp(),
             rejectedBy: auth.currentUser ? auth.currentUser.uid : 'admin',
             businessName: requestData.businessName,
             businessType: requestData.businessType,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            updatedAt: serverTimestamp()
         }, { merge: true });
         
         // // 2. 更新用戶資料
         // await db.collection('用戶資料').doc(userId).update({
         //     businessVerified: false,
-        //     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        //     updatedAt: serverTimestamp()
         // });
         
         // 3. 發送通知
-        await db.collection('notifications').add({
+        const notificationsRef = collection(db, 'notifications');
+        await addDoc(notificationsRef, {
             userId: userId,
             type: 'business_rejection',
             message: `很抱歉，您的店家帳號申請未通過審核。原因: ${rejectReason}`,
@@ -1515,11 +1526,11 @@ async function rejectBusinessRequest() {
                 rejectReason: rejectReason
             },
             isRead: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: serverTimestamp()
         });
         
         // 4. 刪除審核請求 (確保這一步不會失敗)
-        await db.collection('businessApprovalRequests').doc(requestId).delete();
+        await deleteDoc(doc(db, 'businessApprovalRequests', requestId));
         
         alert('已拒絕店家審核申請');
         backToBusinessApprovalList();
@@ -2198,7 +2209,8 @@ async function showReportDetail(reportId) {
     
     try {
         // 獲取檢舉數據
-        const reportDoc = await db.collection('reports').doc(reportId).get();
+        const reportDocRef = doc(db, 'reports', reportId);
+        const reportDoc = await getDoc(reportDocRef);
         
         if (!reportDoc.exists) {
             alert('找不到該檢舉記錄');
@@ -2289,7 +2301,8 @@ async function showReportDetail(reportId) {
 // 加載用戶資料
 async function loadUserProfile(userId, type) {
     try {
-        const userDoc = await db.collection('userprofileData').doc(userId).get();
+        const userDocRef = doc(db, 'userprofileData', userId);
+        const userDoc = await getDoc(userDocRef);
         
         if (!userDoc.exists) {
             document.getElementById(`${type}-name`).textContent = '找不到用戶資料';
@@ -2521,7 +2534,7 @@ async function handleReportAction() {
             status: actionType === 'ignore' ? 'rejected' : 'resolved',
             handledBy: auth.currentUser.uid,
             handlerName: auth.currentUser.email,
-            handledAt: firebase.firestore.FieldValue.serverTimestamp(),
+            handledAt: serverTimestamp(),
             actionType: actionType,
             actionNote: actionNote || null
         };
@@ -2565,7 +2578,7 @@ async function handleReportAction() {
         } else if (actionType === 'warning') {
             updateData.punishment = {
                 type: 'warning',
-                warningCount: firebase.firestore.FieldValue.increment(1)
+                warningCount: increment(1)
             };
             
             // 同時更新用戶狀態
@@ -2631,14 +2644,14 @@ async function handleRelatedReports(userId) {
         }
         
         // 批量處理其他檢舉
-        const batch = db.batch();
+        const batch = writeBatch(db);
         
         relatedReportsSnapshot.forEach(doc => {
             batch.update(doc.ref, {
                 status: 'resolved',
                 handledBy: auth.currentUser.uid,
                 handlerName: auth.currentUser.email,
-                handledAt: firebase.firestore.FieldValue.serverTimestamp(),
+                handledAt: serverTimestamp(),
                 actionType: 'auto_resolved',
                 actionNote: '用戶已因其他檢舉受到處罰，自動處理'
             });
@@ -2673,9 +2686,9 @@ async function updateReporterCredibility(userId, points) {
             // 現有記錄，更新分數
             await credibilityRef.update({
                 score: firebase.firestore.FieldValue.increment(points),
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-                [points > 0 ? 'validReports' : 'invalidReports']: firebase.firestore.FieldValue.increment(1),
-                reportCount: firebase.firestore.FieldValue.increment(1)
+                lastUpdated: serverTimestamp(),
+                [points > 0 ? 'validReports' : 'invalidReports']: increment(1),
+                reportCount: increment(1)
             });
         } else {
             // 新紀錄，初始化
@@ -2685,8 +2698,8 @@ async function updateReporterCredibility(userId, points) {
                 reportCount: 1,
                 validReports: points > 0 ? 1 : 0,
                 invalidReports: points < 0 ? 1 : 0,
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                lastUpdated: serverTimestamp(),
+                createdAt: serverTimestamp()
             });
         }
         
@@ -2735,14 +2748,15 @@ async function applyReportRestriction(userId) {
                     active: true,
                     expireAt: expireAt,
                     reason: 'low_credit_score',
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    createdAt: serverTimestamp()
                 }
             },
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            lastUpdated: serverTimestamp()
         }, { merge: true });
         
         // 發送通知
-        await db.collection('notifications').add({
+        const notificationsRef = collection(db, 'notifications');
+        await addDoc(notificationsRef, {
             userId: userId,
             type: 'report_restriction',
             message: '由於多次提交無效檢舉，您的檢舉功能已被限制使用，請確保檢舉內容真實有效。',
@@ -2750,7 +2764,7 @@ async function applyReportRestriction(userId) {
                 expireAt: expireAt
             },
             isRead: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: serverTimestamp()
         });
         
     } catch (error) {
@@ -2774,9 +2788,9 @@ async function applyUserRestriction(userId, restrictType, days) {
                 [`restrictions.${restrictType}`]: {
                     active: true,
                     expireAt: expireAt,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    createdAt: serverTimestamp()
                 },
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                lastUpdated: serverTimestamp()
             });
         } else {
             // 創建新記錄
@@ -2787,11 +2801,11 @@ async function applyUserRestriction(userId, restrictType, days) {
                     [restrictType]: {
                         active: true,
                         expireAt: expireAt,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        createdAt: serverTimestamp()
                     }
                 },
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                createdAt: serverTimestamp(),
+                lastUpdated: serverTimestamp()
             });
         }
         
@@ -2818,9 +2832,9 @@ async function suspendUser(userId, days) {
             userId: userId,
             isSuspended: true,
             suspendExpireAt: expireAt,
-            suspendedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            suspendedAt: serverTimestamp(),
             suspendReason: 'violation',
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            lastUpdated: serverTimestamp()
         }, { merge: true });
         
         // 發送通知給用戶
@@ -2842,9 +2856,9 @@ async function banUser(userId) {
         await userStatusRef.set({
             userId: userId,
             isBanned: true,
-            bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            bannedAt: serverTimestamp(),
             banReason: 'severe_violation',
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            lastUpdated: serverTimestamp()
         }, { merge: true });
         
         // 發送通知給用戶
@@ -2865,17 +2879,17 @@ async function warnUser(userId, reasons) {
         
         if (doc.exists) {
             await userStatusRef.update({
-                warningCount: firebase.firestore.FieldValue.increment(1),
-                lastWarningAt: firebase.firestore.FieldValue.serverTimestamp(),
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                warningCount: increment(1),
+                lastWarningAt: serverTimestamp(),
+                lastUpdated: serverTimestamp()
             });
         } else {
             await userStatusRef.set({
                 userId: userId,
                 warningCount: 1,
-                lastWarningAt: firebase.firestore.FieldValue.serverTimestamp(),
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                lastWarningAt: serverTimestamp(),
+                createdAt: serverTimestamp(),
+                lastUpdated: serverTimestamp()
             });
         }
         
@@ -2914,13 +2928,14 @@ async function sendUserNotification(userId, type, data) {
         }
         
         // 創建通知
-        await db.collection('notifications').add({
+        const notificationsRef = collection(db, 'notifications');
+        await addDoc(notificationsRef, {
             userId: userId,
             type: type,
             message: message,
             data: data,
             isRead: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: serverTimestamp()
         });
         
     } catch (error) {
@@ -3305,7 +3320,7 @@ async function batchHandleReports(userId, reports) {
             } else if (actionType === 'warning') {
                 punishment = {
                     type: 'warning',
-                    warningCount: firebase.firestore.FieldValue.increment(1)
+                    warningCount: increment(1)
                 };
                 
                 // 更新用戶狀態
@@ -3320,16 +3335,16 @@ async function batchHandleReports(userId, reports) {
             }
             
             // 批量更新檢舉記錄
-            const batch = db.batch();
+            const batch = writeBatch(db);
             
             reports.forEach(report => {
-                const reportRef = db.collection('reports').doc(report.id);
+                const reportRef = db.doc(db, 'reports', document.id);
                 
                 batch.update(reportRef, {
                     status: 'resolved',
                     handledBy: auth.currentUser.uid,
                     handlerName: auth.currentUser.email,
-                    handledAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    handledAt: serverTimestamp(),
                     actionType: actionType,
                     actionNote: actionNote || '批量處理',
                     punishment: punishment
@@ -3486,7 +3501,8 @@ async function loadStatistics() {
         // 獲取用戶名
         for (const [userId, count] of mostReportedUsers) {
             try {
-                const userDoc = await db.collection('userprofileData').doc(userId).get();
+                const userDocRef = doc(db, 'userprofileData', userId);
+                const userDoc = await getDoc(userDocRef);
                 const userName = userDoc.exists ? (userDoc.data().name || '未知用戶') : '未知用戶';
                 
                 const validReports = reports.filter(report => 
@@ -3967,7 +3983,8 @@ async function showVerificationDetail(requestId, userId) {
         const requestData = requestDoc.data();
         
         // 獲取用戶數據
-        const userDoc = await db.collection('userprofileData').doc(userId).get();
+        const userDocRef = doc(db, 'userprofileData', userId);
+        const userDoc = await getDoc(userDocRef);
         if (!userDoc.exists) {
             alert('找不到用戶資料');
             backToVerificationList();
@@ -4172,13 +4189,14 @@ async function approveVerification() {
         await db.collection('PhotoVerificationRequest').doc(requestId).update({
             status: 'approved',
             verifiedPhotoIndices: verifiedIndices,
-            verifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            verifiedAt: serverTimestamp(),
             verifiedBy: auth.currentUser ? auth.currentUser.uid : 'admin',
             synced: false
         });
         
         // 3. 更新用戶資料中的驗證狀態
-        const userDoc = await db.collection('userprofileData').doc(userId).get();
+        const userDocRef = doc(db, 'userprofileData', userId);
+        const userDoc = await getDoc(userDocRef);
         if (userDoc.exists) {
             const userData = userDoc.data();
             
@@ -4215,7 +4233,8 @@ async function approveVerification() {
         console.log('已刪除驗證請求:', requestId);
         
         // 5. 發送通知給用戶
-        await db.collection('notifications').add({
+        const notificationsRef = collection(db, 'notifications');
+        await addDoc(notificationsRef, {
             userId: userId,
             type: 'verification_approved',
             message: '您的照片驗證請求已通過審核',
@@ -4223,7 +4242,7 @@ async function approveVerification() {
                 verifiedIndices: verifiedIndices
             },
             isRead: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: serverTimestamp()
         });
         
         alert('已核准選定的照片並刪除驗證請求');
@@ -4275,12 +4294,13 @@ async function rejectVerification() {
         console.log('已刪除驗證請求:', requestId);
         
         // 發送拒絕通知給用戶
-        await db.collection('notifications').add({
+        const notificationsRef = collection(db, 'notifications');
+        await addDoc(notificationsRef, {
             userId: userId,
             type: 'verification_rejected',
             message: '您的照片驗證請求未通過審核，請確保照片清晰顯示您本人，並按照指示的動作拍攝。',
             isRead: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            createdAt: serverTimestamp()
         });
         
         alert('已拒絕驗證請求並刪除記錄');
