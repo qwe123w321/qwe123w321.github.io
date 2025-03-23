@@ -44,9 +44,13 @@ function initializeApplication() {
     
     // 確保頁面元素已加載
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeAfterDOMLoaded);
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeAfterDOMLoaded();
+            setupSessionTimeoutHandler(); // 添加會話超時處理
+        });
     } else {
         initializeAfterDOMLoaded();
+        setupSessionTimeoutHandler(); // 添加會話超時處理
     }
 }
 
@@ -4624,20 +4628,4 @@ function setupSessionTimeoutHandler() {
   
   // 初始化計時器
   resetInactivityTimer();
-}
-
-// 在應用程序初始化時調用
-function initializeApplication() {
-  console.log('開始初始化應用程序...');
-  
-  // 確保頁面元素已加載
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      initializeAfterDOMLoaded();
-      setupSessionTimeoutHandler(); // 添加會話超時處理
-    });
-  } else {
-    initializeAfterDOMLoaded();
-    setupSessionTimeoutHandler(); // 添加會話超時處理
-  }
 }
