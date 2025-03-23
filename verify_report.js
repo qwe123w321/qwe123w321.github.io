@@ -1,5 +1,6 @@
 import { 
-    auth, 
+    auth,
+    getAuth, 
     db, 
     storage, 
     onAuthStateChanged, 
