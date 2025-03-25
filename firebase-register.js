@@ -649,6 +649,7 @@ async function nextStep(currentStep) {
         // 如果是最後一步，顯示提交按鈕
         if (nextStep === 3) {
             document.querySelector('.btn-submit').style.display = 'block';
+            updateSummaryInfo();
         }
         
         // 滾動到頂部
@@ -815,7 +816,12 @@ function enhancedUploadPreview() {
     uploadPreview.innerHTML = '';
     
     if (uploadedFiles.length === 0) {
-        uploadPreview.innerHTML = '<p class="text-muted">尚未上傳任何檔案</p>';
+        uploadPreview.innerHTML = `
+            <div class="empty-preview-message">
+                <i class="fas fa-images mb-2" style="font-size: 2rem; color: #ced4da;"></i>
+                <p>尚未上傳任何檔案</p>
+            </div>
+        `;
         return;
     }
     
@@ -825,70 +831,108 @@ function enhancedUploadPreview() {
     
     // 為每個上傳檔案創建預覽
     uploadedFiles.forEach((uploadedFile, index) => {
-        const isPDF = uploadedFile.fileType === 'application/pdf';
+        const isPDF = uploadedFile.file.type === 'application/pdf';
         const colDiv = document.createElement('div');
-        colDiv.className = 'col-lg-4 col-md-6 col-sm-6';
+        colDiv.className = 'col-md-6 col-lg-4';
         
+        // 創建更簡潔的預覽卡片
         const previewCard = document.createElement('div');
-        previewCard.className = 'card h-100 shadow-sm border-light';
-        previewCard.style.borderRadius = '10px';
+        previewCard.className = 'position-relative file-preview-item';
+        previewCard.style.borderRadius = '8px';
         previewCard.style.overflow = 'hidden';
-        
-        let previewContent;
+        previewCard.style.boxShadow = '0 3px 8px rgba(0,0,0,0.1)';
+        previewCard.style.marginBottom = '15px';
         
         if (isPDF) {
             // PDF 檔案顯示
-            previewContent = `
-                <div class="card-body text-center p-3">
-                    <div class="mb-3" style="height: 100px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-file-pdf text-danger" style="font-size: 4rem;"></i>
-                    </div>
-                    <h6 class="card-title small mb-1 text-truncate">${uploadedFile.fileName}</h6>
-                    <p class="card-text small text-muted">${formatFileSize(uploadedFile.file.size)}</p>
+            previewCard.innerHTML = `
+                <div style="height: 120px; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa;">
+                    <i class="fas fa-file-pdf text-danger" style="font-size: 3rem;"></i>
+                </div>
+                <div style="padding: 10px; background-color: white;">
+                    <div class="file-name" title="${uploadedFile.file.name}">${uploadedFile.file.name}</div>
+                    <div class="file-size">${formatFileSize(uploadedFile.file.size)}</div>
                 </div>
             `;
         } else {
             // 圖片檔案顯示
-            previewContent = `
-                <div class="position-relative">
-                    <img src="${uploadedFile.preview}" alt="預覽" class="card-img-top" style="height: 160px; object-fit: cover;">
-                </div>
-                <div class="card-body p-3">
-                    <h6 class="card-title small mb-1 text-truncate">${uploadedFile.fileName}</h6>
-                    <p class="card-text small text-muted">${formatFileSize(uploadedFile.file.size)}</p>
+            previewCard.innerHTML = `
+                <img src="${uploadedFile.preview}" alt="預覽" style="width: 100%; height: 160px; object-fit: cover;">
+                <div style="padding: 10px; background-color: white;">
+                    <div class="file-name" title="${uploadedFile.file.name}">${uploadedFile.file.name}</div>
+                    <div class="file-size">${formatFileSize(uploadedFile.file.size)}</div>
                 </div>
             `;
         }
         
-        // 添加刪除按鈕
-        const deleteButton = `
-            <div class="position-absolute top-0 end-0 m-2">
-                <button type="button" class="btn btn-danger btn-sm rounded-circle delete-file-btn" data-index="${index}">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        `;
+        // 添加刪除按鈕 - 使用直接綁定事件而非onclick
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'position-absolute btn btn-sm btn-danger rounded-circle delete-file-btn';
+        deleteButton.style.top = '8px';
+        deleteButton.style.right = '8px';
+        deleteButton.style.width = '28px';
+        deleteButton.style.height = '28px';
+        deleteButton.style.padding = '0';
+        deleteButton.style.display = 'flex';
+        deleteButton.style.alignItems = 'center';
+        deleteButton.style.justifyContent = 'center';
+        deleteButton.style.fontSize = '12px';
+        deleteButton.innerHTML = '<i class="fas fa-times"></i>';
+        deleteButton.setAttribute('data-index', index);
+        deleteButton.addEventListener('click', function() {
+            removeUploadedFile(index);
+        });
         
-        // 組合卡片內容
-        previewCard.innerHTML = `
-            <div class="position-relative">
-                ${previewContent}
-                ${deleteButton}
-            </div>
-        `;
-        
+        previewCard.appendChild(deleteButton);
         colDiv.appendChild(previewCard);
         previewGrid.appendChild(colDiv);
     });
     
     uploadPreview.appendChild(previewGrid);
+}
+
+// 3. 添加第四步摘要信息功能
+function updateSummaryInfo() {
+    const summaryContainer = document.querySelector('.summary-info .row');
+    if (!summaryContainer) return;
     
-    // 為刪除按鈕添加事件監聽
-    document.querySelectorAll('.delete-file-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const index = parseInt(this.getAttribute('data-index'));
-            removeUploadedFile(index);
-        });
+    // 清空原有內容
+    summaryContainer.innerHTML = '';
+    
+    // 獲取各步驟的輸入值
+    const email = document.getElementById('email').value;
+    const businessName = document.getElementById('businessName').value;
+    const businessType = document.getElementById('businessType');
+    const businessTypeName = businessType.options[businessType.selectedIndex]?.text || '';
+    const businessAddress = document.getElementById('businessAddress').value;
+    const businessPhone = document.getElementById('businessPhone').value;
+    const contactName = document.getElementById('contactName').value;
+    const contactPhone = document.getElementById('contactPhone').value;
+    const uploadedFilesCount = uploadedFiles.length;
+    
+    // 創建摘要項目
+    const summaryItems = [
+        { label: '電子郵件', value: email },
+        { label: '店家名稱', value: businessName },
+        { label: '店家類型', value: businessTypeName },
+        { label: '店家地址', value: businessAddress },
+        { label: '店家電話', value: businessPhone },
+        { label: '聯絡人姓名', value: contactName },
+        { label: '聯絡人電話', value: contactPhone },
+        { label: '上傳證明文件', value: `${uploadedFilesCount}個檔案` }
+    ];
+    
+    // 顯示摘要信息
+    summaryItems.forEach(item => {
+        const col = document.createElement('div');
+        col.className = 'col-md-6 mb-2';
+        col.innerHTML = `
+            <div class="d-flex">
+                <div class="fw-bold me-2">${item.label}:</div>
+                <div>${item.value}</div>
+            </div>
+        `;
+        summaryContainer.appendChild(col);
     });
 }
 
@@ -1326,7 +1370,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 獲取註冊表單
     const registerForm = document.getElementById('businessRegisterForm');
-    
+        
     if (registerForm) {
         // 註冊表單提交事件
         registerForm.addEventListener('submit', handleRegisterSubmit);
@@ -1351,17 +1395,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
         
-        // 文件上傳按鈕點擊事件
-        const uploadBtn = document.getElementById('uploadBtn');
-        if (uploadBtn) {
-            uploadBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                document.getElementById('businessLicense').click();
-            });
-        }
-        
-        // 文件選擇變更事件
-        const fileInput = document.getElementById('businessLicense');
+        // 文件選擇變更事件 - 使用正確的處理函數
+        const fileInput = document.getElementById('businessLicenseFile');
         if (fileInput) {
             fileInput.addEventListener('change', handleFileUpload);
         }
@@ -1381,9 +1416,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         
-        // 初始化上傳預覽區域
+        // 初始化上傳預覽區域 - 使用增強版
         if (document.getElementById('photoPreviewContainer')) {
-            updateUploadPreview();
+            enhancedUploadPreview();
         } else {
             console.warn('初始化時找不到 photoPreviewContainer 元素');
         }
