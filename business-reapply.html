@@ -26,7 +26,7 @@
     <!-- 2. 添加初始化App Check的模組 -->
     <script type="module">
     // 先導入Firebase配置
-    // import './firebase-config.js';
+    import './firebase-config.js';
 
     // 導入App Check模組功能
     import { checkAppCheckStatus, addDiagnosticsPanel } from './app-check-module.js';
@@ -706,6 +706,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
     <!-- 照片上傳功能處理腳本 -->
-    <script src="firebase-reapply.js"></script>
+    <script type="module" src="firebase-reapply.js"></script>
 </body>
 </html>
