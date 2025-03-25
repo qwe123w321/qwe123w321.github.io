@@ -1125,7 +1125,7 @@ async function submitReapplication(e) {
                 for (const uploadedFile of newFiles) {
                     const file = uploadedFile.file;
                     // 修正：使用 business_licenses 路徑
-                    const storageReference = ref(storage, `business_licenses/${user.uid}/${uploadedFile.fileName}`);
+                    const storageReference = ref(storage, `licenses/${user.uid}/${uploadedFile.fileName}`);
                     
                     // 上傳檔案
                     await uploadBytes(storageReference, file);
