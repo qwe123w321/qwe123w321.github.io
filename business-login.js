@@ -20,6 +20,8 @@ import {
     installXHRInterceptor
 } from './app-check-module.js';
 
+import { setupSessionManager } from './session-manager.js';
+
 // 全局變數用於追蹤狀態
 let statusMessageShown = false;
 
@@ -164,6 +166,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    // 初始化會話管理器
+    const sessionManager = setupSessionManager();
 });
 
 // 顯示提示信息
