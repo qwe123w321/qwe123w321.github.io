@@ -6,6 +6,8 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gsta
 // 導入App Check模組功能
 import { checkAppCheckStatus, installXHRInterceptor } from './app-check-module.js';
 
+import { setupSessionManager } from './session-manager.js';
+
 // 全局變數用於存儲上傳文件
 window.uploadedFiles = window.uploadedFiles || [];
 
@@ -114,6 +116,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // 初始化會話管理器
+    const sessionManager = setupSessionManager();
     
     // 表單提交事件
     const reapplyForm = document.getElementById('businessReapplyForm');
