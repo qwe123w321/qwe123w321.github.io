@@ -1421,6 +1421,13 @@ document.addEventListener('DOMContentLoaded', function() {
     document.body.appendChild(diagnosticsBtn);
 });
 
+// 處理文件上傳按鈕的點擊事件
+function uploadBusinessLicense(e) {
+    // 直接使用新的處理函數
+    handleFileUpload(e);
+}
+
+
 // ===== 導出公共函數到全局作用域 =====
 
 // 驗證函數
@@ -1440,7 +1447,7 @@ window.prevStep = prevStep;
 window.uploadBusinessLicense = uploadBusinessLicense;
 window.removeUploadedFile = removeUploadedFile;
 window.getUploadedBusinessLicenseFiles = getUploadedBusinessLicenseFiles;
-window.updateUploadPreview = updateUploadPreview;
+window.updateUploadPreview = enhancedUploadPreview;
 window.formatFileSize = formatFileSize;
 
 // 密碼顯示/隱藏
