@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showAlert('加載錯誤，請重新整理頁面', 'danger');
         }
     });
+    setupSessionTimeoutHandler();
 });
 
 // 處理認證狀態變更
@@ -3361,6 +3362,143 @@ function generateGeohash(lat, lng, precision = 8) {
     // 用這些數字組合成一個字符串
     // 這不是真正的 geohash，僅供演示
     return `${latInt}_${latDecimal}_${lngInt}_${lngDecimal}`;
+}
+
+function setupSessionTimeoutHandler() {
+  let inactivityTimer;
+  const SESSION_TIMEOUT = 60 * 60 * 1000; // 30分鐘閒置時間
+  
+  // 重置計時器的函數
+  function resetInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(handleSessionTimeout, SESSION_TIMEOUT);
+  }
+  
+  // 處理會話超時的函數
+  function handleSessionTimeout() {
+    // 檢查是否已經顯示了對話框
+    if (document.getElementById('session-timeout-modal')) {
+      return;
+    }
+    
+    // 創建會話超時對話框
+    const modal = document.createElement('div');
+    modal.id = 'session-timeout-modal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <h2>登入已過期</h2>
+        <p>由於長時間未操作，您的登入已過期。</p>
+        <p>請重新登入以繼續使用系統。</p>
+        <div class="modal-buttons">
+          <button id="session-relogin" class="btn-primary">重新登入</button>
+        </div>
+      </div>
+    `;
+    
+    // 添加樣式
+    const style = document.createElement('style');
+    style.textContent = `
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+      }
+      .modal-content {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        max-width: 450px;
+        width: 85%;
+        text-align: center;
+      }
+      .modal-buttons {
+        margin-top: 20px;
+      }
+      .btn-primary {
+        background: #9D7F86;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      .btn-primary:hover {
+        background: #8A6E75;
+      }
+    `;
+    
+    // 添加到頁面
+    document.head.appendChild(style);
+    document.body.appendChild(modal);
+    
+    // 添加事件監聽器
+    document.getElementById('session-relogin').addEventListener('click', () => {
+      // 登出當前用戶
+      signOut(auth).then(() => {
+        // 刷新頁面
+        window.location.reload();
+      }).catch(error => {
+        console.error('登出錯誤:', error);
+        window.location.reload();
+      });
+    });
+    
+    // 如果用戶仍然登入，則強制登出
+    if (auth.currentUser) {
+      // 停止所有後台操作和監聽器
+      // 這裡您可能需要清理項目中特定的監聽器
+    }
+  }
+  
+  // 添加用戶活動監聽器
+  const userActivityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+  userActivityEvents.forEach(eventType => {
+    document.addEventListener(eventType, resetInactivityTimer, { passive: true });
+  });
+  
+  // 監聽 App Check 錯誤
+  window.addEventListener('error', event => {
+    // 檢查是否是 App Check 403 錯誤
+    if (event.message && (
+        event.message.includes('appCheck/fetch-status-error') || 
+        (event.error && event.error.code === 'appCheck/fetch-status-error')
+    )) {
+      handleSessionTimeout();
+    }
+  });
+  
+  // 擴展 XHR 以捕獲 403 錯誤
+  const originalXHROpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function() {
+    const xhr = this;
+    const originalOnReadyStateChange = xhr.onreadystatechange;
+    
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4 && xhr.status === 403) {
+        if (xhr.responseText && xhr.responseText.includes('appCheck/fetch-status-error')) {
+          handleSessionTimeout();
+        }
+      }
+      if (originalOnReadyStateChange) {
+        originalOnReadyStateChange.apply(this, arguments);
+      }
+    };
+    
+    originalXHROpen.apply(this, arguments);
+  };
+  
+  // 初始化計時器
+  resetInactivityTimer();
 }
 
 // 添加全局函數，以便在HTML中直接調用
