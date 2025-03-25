@@ -392,12 +392,12 @@ function initializePage() {
     
     // 添加店家審核標籤頁點擊處理
     const businessApprovalTab = document.querySelector('.tab[data-tab="businessApproval"]');
-    if (businessApprovalTab) {
-        businessApprovalTab.addEventListener('click', function() {
-            loadBusinessApprovalRequests();
-        });
-        console.log('已設置店家審核標籤頁點擊事件');
-    }
+    // if (businessApprovalTab) {
+    //     businessApprovalTab.addEventListener('click', function() {
+    //         loadBusinessApprovalRequests();
+    //     });
+    //     console.log('已設置店家審核標籤頁點擊事件');
+    // }
     
     // 初始化管理員申請按鈕
     initAdminButtons();
