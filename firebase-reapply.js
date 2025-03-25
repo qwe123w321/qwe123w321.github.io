@@ -1,9 +1,13 @@
+// firebase-reapply.js
 import { auth, db, storage, doc, collection, onAuthStateChanged } from './firebase-config.js';
 import { setDoc, getDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
 
 // 導入App Check模組功能
 import { checkAppCheckStatus, installXHRInterceptor } from './app-check-module.js';
+
+// 全局變數用於存儲上傳文件
+window.uploadedFiles = window.uploadedFiles || [];
 
 // 等待 DOM 加載完成
 document.addEventListener('DOMContentLoaded', function() {
@@ -116,6 +120,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (reapplyForm) {
         reapplyForm.addEventListener('submit', submitReapplication);
     }
+    
+    // 文件上傳功能初始化
+    initializeFileUpload();
 });
 
 // 顯示加載訊息
@@ -143,9 +150,6 @@ function showLoadingMessage(message) {
     
     // 更新訊息內容
     loadingElement.innerHTML = `
-        <div class="spinner-border text-light" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
         <div class="mt-2">${message}</div>
     `;
 }
@@ -153,6 +157,9 @@ function showLoadingMessage(message) {
 // 初始化重新申請頁面
 async function initReapplyPage(user) {
     try {
+        console.log('開始初始化重新申請頁面...');
+        showLoadingMessage('正在載入店家資料...');
+        
         // 從 URL 中獲取店家 ID
         const urlParams = new URLSearchParams(window.location.search);
         const businessId = urlParams.get('id') || user.uid;
@@ -174,52 +181,108 @@ async function initReapplyPage(user) {
         localStorage.setItem('business_reapply_session', user.uid);
         
         // 獲取店家信息
+        console.log('正在從Firestore獲取店家數據...');
         const businessDoc = await getDoc(doc(db, 'businesses', businessId));
         
         if (!businessDoc.exists()) {
+            console.error('找不到店家信息');
             alert('找不到店家信息');
             window.location.href = 'business-login.html';
             return;
         }
         
         const businessData = businessDoc.data();
+        console.log('成功獲取店家數據:', businessData);
         
         // 檢查狀態是否為 rejected
         if (businessData.status !== 'rejected') {
+            console.warn('店家狀態不是rejected:', businessData.status);
             alert('只有被拒絕的商家才能重新申請');
             window.location.href = 'business-login.html';
             return;
         }
         
         // 填充表單字段
-        document.getElementById('businessName').value = businessData.businessName || '';
+        console.log('開始填充表單欄位...');
+        const businessNameField = document.getElementById('businessName');
+        if (businessNameField) {
+            businessNameField.value = businessData.businessName || '';
+            console.log('設置店家名稱:', businessData.businessName);
+        } else {
+            console.warn('找不到businessName欄位');
+        }
         
         const businessTypeSelect = document.getElementById('businessType');
         if (businessTypeSelect) {
+            console.log('設置店家類型:', businessData.businessType);
+            // 確保選擇正確的選項
+            let optionFound = false;
             for (let i = 0; i < businessTypeSelect.options.length; i++) {
                 if (businessTypeSelect.options[i].value === businessData.businessType) {
                     businessTypeSelect.selectedIndex = i;
+                    optionFound = true;
                     break;
                 }
             }
+            if (!optionFound) {
+                console.warn('找不到匹配的店家類型選項:', businessData.businessType);
+            }
+        } else {
+            console.warn('找不到businessType欄位');
         }
         
-        document.getElementById('businessAddress').value = businessData.address || '';
-        document.getElementById('businessPhone').value = businessData.phoneNumber || '';
-        document.getElementById('contactName').value = businessData.contactName || '';
-        document.getElementById('contactPhone').value = businessData.contactPhone || '';
+        const businessAddressField = document.getElementById('businessAddress');
+        if (businessAddressField) {
+            businessAddressField.value = businessData.address || '';
+            console.log('設置店家地址:', businessData.address);
+        } else {
+            console.warn('找不到businessAddress欄位');
+        }
+        
+        const businessPhoneField = document.getElementById('businessPhone');
+        if (businessPhoneField) {
+            businessPhoneField.value = businessData.phoneNumber || '';
+            console.log('設置店家電話:', businessData.phoneNumber);
+        } else {
+            console.warn('找不到businessPhone欄位');
+        }
+        
+        const contactNameField = document.getElementById('contactName');
+        if (contactNameField) {
+            contactNameField.value = businessData.contactName || '';
+            console.log('設置聯絡人姓名:', businessData.contactName);
+        } else {
+            console.warn('找不到contactName欄位');
+        }
+        
+        const contactPhoneField = document.getElementById('contactPhone');
+        if (contactPhoneField) {
+            contactPhoneField.value = businessData.contactPhone || '';
+            console.log('設置聯絡人電話:', businessData.contactPhone);
+        } else {
+            console.warn('找不到contactPhone欄位');
+        }
         
         // 顯示拒絕原因
         const rejectReasonEl = document.getElementById('rejectReason');
         if (rejectReasonEl && businessData.rejectReason) {
             rejectReasonEl.textContent = businessData.rejectReason;
+            console.log('設置拒絕原因:', businessData.rejectReason);
+        } else {
+            console.warn('找不到rejectReason元素或拒絕原因為空');
         }
         
         // 加載已有的證照照片
         const licenseUrls = businessData.licenseUrls || [];
+        console.log(`找到${licenseUrls.length}個證照照片URL:`, licenseUrls);
         
-        if (licenseUrls.length > 0 && window.loadExistingLicenses) {
-            window.loadExistingLicenses(licenseUrls);
+        if (licenseUrls.length > 0) {
+            // 使用改進的照片載入函數
+            await loadExistingLicenses(licenseUrls);
+        } else {
+            console.log('沒有找到證照照片');
+            // 更新空上傳預覽區域
+            updateUploadPreview();
         }
         
         // 移除加載訊息
@@ -233,8 +296,449 @@ async function initReapplyPage(user) {
     } catch (error) {
         console.error('初始化重新申請頁面時發生錯誤:', error);
         alert('加載頁面時發生錯誤: ' + error.message);
+        
+        // 移除加載訊息
+        const loadingElement = document.getElementById('loadingMessage');
+        if (loadingElement) {
+            loadingElement.remove();
+        }
     }
 }
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' Bytes';
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
+    else return (bytes / 1048576).toFixed(2) + ' MB';
+}
+
+// 加載已有的證照照片
+async function loadExistingLicenses(licenseUrls) {
+    try {
+        console.log('開始載入已有證照照片...');
+        
+        // 確保全局上傳文件數組已初始化
+        if (!window.uploadedFiles) {
+            window.uploadedFiles = [];
+        } else {
+            // 清空現有文件數組
+            window.uploadedFiles = [];
+        }
+        
+        // 更新上傳計數顯示
+        const uploadCountElement = document.getElementById('uploadCount');
+        if (uploadCountElement) {
+            uploadCountElement.textContent = licenseUrls.length;
+        }
+        
+        // 更新最大上傳數量顯示
+        const maxUploadCountElement = document.getElementById('maxUploadCount');
+        const MAX_UPLOAD_COUNT = maxUploadCountElement ? parseInt(maxUploadCountElement.textContent) : 5;
+        
+        // 如果已達最大上傳數量，隱藏上傳按鈕
+        const uploadLabel = document.getElementById('uploadLabel');
+        if (uploadLabel && licenseUrls.length >= MAX_UPLOAD_COUNT) {
+            uploadLabel.style.display = 'none';
+        }
+        
+        // 清空預覽容器
+        const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+        if (!photoPreviewContainer) {
+            console.error('找不到照片預覽容器');
+            return;
+        }
+        photoPreviewContainer.innerHTML = '';
+        
+        // 為每個URL創建文件對象
+        for (let i = 0; i < licenseUrls.length; i++) {
+            const url = licenseUrls[i];
+            const fileId = `existing-file-${Date.now()}-${i}`;
+            
+            try {
+                // 提取文件名
+                const fileName = getFileNameFromUrl(url);
+                const fileExt = getFileExtension(fileName);
+                const isPDF = fileExt.toLowerCase() === 'pdf';
+                
+                // 添加到上傳文件數組
+                window.uploadedFiles.push({
+                    id: fileId,
+                    fileName: fileName,
+                    preview: url,
+                    existingUrl: url, // 標記為已存在的URL
+                    isPDF: isPDF
+                });
+                
+                console.log(`成功載入證照照片 ${i+1}/${licenseUrls.length}: ${fileName}`);
+            } catch (error) {
+                console.error(`載入證照照片 ${i+1}/${licenseUrls.length} 時發生錯誤:`, error);
+            }
+        }
+        
+        // 更新預覽區域
+        updateUploadPreview();
+        console.log('已成功載入所有證照照片');
+        
+    } catch (error) {
+        console.error('載入證照照片時發生錯誤:', error);
+        throw error;
+    }
+}
+
+// 從URL中提取文件名
+function getFileNameFromUrl(url) {
+    try {
+        // 嘗試解析URL
+        const urlObj = new URL(url);
+        const pathname = urlObj.pathname;
+        
+        // 如果是Firebase Storage URL (含有/o/路徑)
+        if (pathname.includes('/o/')) {
+            // 提取編碼的文件路徑
+            const encodedPath = pathname.split('/o/')[1];
+            // 解碼路徑
+            const decodedPath = decodeURIComponent(encodedPath);
+            // 去除查詢參數
+            const pathWithoutQuery = decodedPath.split('?')[0];
+            // 獲取文件名(路徑最後部分)
+            return pathWithoutQuery.split('/').pop();
+        }
+        
+        // 一般URL處理
+        return url.split('/').pop().split('?')[0] || "未命名文件";
+    } catch (error) {
+        console.warn('解析URL時出錯:', error);
+        return "未命名文件";
+    }
+}
+
+// 獲取文件擴展名
+function getFileExtension(fileName) {
+    return fileName.split('.').pop().toLowerCase();
+}
+
+// 初始化文件上傳功能
+function initializeFileUpload() {
+    console.log('初始化文件上傳功能...');
+    
+    const businessLicenseFile = document.getElementById('businessLicenseFile');
+    const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+    const uploadProgress = document.getElementById('uploadProgress');
+    
+    if (!businessLicenseFile) {
+        console.warn('找不到上傳文件輸入元素');
+        return;
+    }
+    
+    if (!photoPreviewContainer) {
+        console.warn('找不到照片預覽容器');
+    }
+    
+    // 處理文件上傳
+    businessLicenseFile.addEventListener('change', handleFileUpload);
+    
+    // 設置拖放上傳
+    const uploadArea = document.querySelector('.custom-file-upload');
+    if (uploadArea) {
+        console.log('設置拖放上傳功能...');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        uploadArea.addEventListener('drop', handleDrop, false);
+    } else {
+        console.warn('找不到上傳區域元素');
+    }
+    
+    console.log('文件上傳功能初始化完成');
+}
+
+// 防止拖放默認事件
+function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+// 拖放區域高亮
+function highlight() {
+    document.querySelector('.custom-file-upload').classList.add('highlight');
+}
+
+// 拖放區域取消高亮
+function unhighlight() {
+    document.querySelector('.custom-file-upload').classList.remove('highlight');
+}
+
+// 處理拖放
+function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    
+    if (files && files.length > 0) {
+        // 創建一個類似事件物件
+        const event = { 
+            target: { files: files },
+            preventDefault: () => {}
+        };
+        handleFileUpload(event);
+    }
+}
+
+// 處理文件上傳
+async function handleFileUpload(e) {
+    e.preventDefault();
+    
+    console.log('處理文件上傳...');
+    const files = Array.from(e.target.files || []);
+    
+    // 獲取最大上傳數量
+    const maxUploadCountElement = document.getElementById('maxUploadCount');
+    const MAX_UPLOAD_COUNT = maxUploadCountElement ? parseInt(maxUploadCountElement.textContent) : 5;
+    const MAX_FILE_SIZE_MB = 5; // 每個文件最大5MB
+    
+    // 確保不超過最大上傳數量
+    if (window.uploadedFiles.length + files.length > MAX_UPLOAD_COUNT) {
+        alert(`最多只能上傳 ${MAX_UPLOAD_COUNT} 張照片`);
+        return;
+    }
+    
+    console.log(`處理 ${files.length} 個文件...`);
+    
+    // 顯示上傳進度
+    const uploadProgress = document.getElementById('uploadProgress');
+    if (uploadProgress) {
+        uploadProgress.style.display = 'block';
+    }
+    
+    // 逐個處理文件
+    for (const file of files) {
+        // 檢查文件大小
+        if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+            alert(`文件 ${file.name} 超過大小限制（${MAX_FILE_SIZE_MB}MB）`);
+            continue;
+        }
+        
+        try {
+            // 處理文件
+            console.log(`正在處理文件: ${file.name}`);
+            
+            // 檢查文件類型是否允許
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+            if (!allowedTypes.includes(file.type)) {
+                alert(`不支援的文件類型: ${file.name}\n僅支援JPEG、PNG和PDF格式`);
+                continue;
+            }
+            
+            // 壓縮圖片（如果是圖片類型）
+            let processedFile = file;
+            if (file.type.startsWith('image/')) {
+                processedFile = await compressImage(file);
+                console.log(`已壓縮圖片: ${file.name}`);
+            }
+            
+            // 創建文件ID和預覽URL
+            const fileId = `file-${Date.now()}-${window.uploadedFiles.length}`;
+            const preview = URL.createObjectURL(processedFile);
+            const isPDF = file.type === 'application/pdf';
+            
+            // 添加到上傳文件列表
+            window.uploadedFiles.push({
+                id: fileId,
+                file: processedFile,
+                fileName: file.name,
+                preview: preview,
+                isPDF: isPDF
+            });
+            
+            console.log(`文件已添加到上傳列表: ${file.name}`);
+        } catch (error) {
+            console.error(`處理文件 ${file.name} 時發生錯誤:`, error);
+            alert(`處理文件 ${file.name} 時發生錯誤`);
+        }
+    }
+    
+    // 隱藏上傳進度
+    if (uploadProgress) {
+        uploadProgress.style.display = 'none';
+    }
+    
+    // 更新上傳計數和預覽
+    updateUploadCount();
+    updateUploadPreview();
+    
+    // 重置文件輸入，以便可以重新選擇相同的文件
+    if (e.target && e.target.value !== undefined) {
+        e.target.value = '';
+    }
+    
+    console.log('文件上傳處理完成');
+}
+
+// 壓縮圖片
+async function compressImage(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = function(event) {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // 計算新的尺寸，保持寬高比
+                let width = img.width;
+                let height = img.height;
+                const maxDimension = 1024; // 最大寬度/高度
+                
+                if (width > height && width > maxDimension) {
+                    height = Math.round((height * maxDimension) / width);
+                    width = maxDimension;
+                } else if (height > maxDimension) {
+                    width = Math.round((width * maxDimension) / height);
+                    height = maxDimension;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // 轉換為 Blob
+                canvas.toBlob(
+                    (blob) => {
+                        // 創建新文件對象
+                        const compressedFile = new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        resolve(compressedFile);
+                    },
+                    'image/jpeg',
+                    0.7 // 設置壓縮質量 (0.7 = 70% 質量)
+                );
+            };
+            img.onerror = function(error) {
+                reject(error);
+            };
+        };
+        reader.onerror = function(error) {
+            reject(error);
+        };
+    });
+}
+
+// 更新上傳計數
+function updateUploadCount() {
+    const uploadCountElement = document.getElementById('uploadCount');
+    const uploadLabel = document.getElementById('uploadLabel');
+    const maxUploadCountElement = document.getElementById('maxUploadCount');
+    const MAX_UPLOAD_COUNT = maxUploadCountElement ? parseInt(maxUploadCountElement.textContent) : 5;
+    
+    if (uploadCountElement) {
+        uploadCountElement.textContent = window.uploadedFiles.length;
+    }
+    
+    if (uploadLabel) {
+        if (window.uploadedFiles.length >= MAX_UPLOAD_COUNT) {
+            uploadLabel.style.display = 'none';
+        } else {
+            uploadLabel.style.display = 'block';
+        }
+    }
+}
+
+// 更新上傳預覽區域
+function updateUploadPreview() {
+    const uploadPreview = document.getElementById('photoPreviewContainer');
+    
+    // 檢查元素是否存在
+    if (!uploadPreview) {
+        console.warn('找不到上傳預覽容器元素 (photoPreviewContainer)');
+        return; // 提前返回，避免錯誤
+    }
+    
+    // 清空預覽容器
+    uploadPreview.innerHTML = '';
+    
+    // 如果沒有上傳文件，顯示空訊息
+    if (!window.uploadedFiles || window.uploadedFiles.length === 0) {
+        uploadPreview.innerHTML = `
+            <div class="empty-preview-message">
+                <i class="fas fa-images mb-2" style="font-size: 2rem; color: #ced4da;"></i>
+                <p>尚未上傳任何檔案</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // 創建預覽網格
+    const previewGrid = document.createElement('div');
+    previewGrid.className = 'row g-3';
+    
+    // 為每個文件創建預覽
+    window.uploadedFiles.forEach((file, index) => {
+        const isPDF = file.isPDF || (file.fileName && file.fileName.toLowerCase().endsWith('.pdf'));
+        
+        // 創建預覽卡片
+        const colDiv = document.createElement('div');
+        colDiv.className = 'col-md-6 col-lg-4 mb-3';
+        
+        // 卡片內容
+        colDiv.innerHTML = `
+            <div class="card h-100 file-preview-card">
+                ${isPDF ? 
+                    `<div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 160px;">
+                        <i class="fas fa-file-pdf text-danger" style="font-size: 3rem;"></i>
+                    </div>` : 
+                    `<div class="card-img-top" style="height: 160px; background-image: url('${file.preview}'); background-size: cover; background-position: center;"></div>`
+                }
+                <div class="card-body p-3">
+                    <h6 class="card-title text-truncate mb-1" title="${file.fileName}">${file.fileName}</h6>
+                    <p class="card-text text-muted small mb-0">${file.file ? formatFileSize(file.file.size) : '已存在的檔案'}</p>
+                </div>
+                <button class="position-absolute btn btn-sm btn-danger rounded-circle" style="top: 8px; right: 8px; width: 28px; height: 28px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; z-index: 10;" 
+                        onclick="removeUploadedFile(${index})">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        previewGrid.appendChild(colDiv);
+    });
+    
+    uploadPreview.appendChild(previewGrid);
+}
+
+// 移除已上傳文件
+window.removeUploadedFile = function(index) {
+    if (index >= 0 && index < window.uploadedFiles.length) {
+        // 如果有預覽URL，釋放
+        if (window.uploadedFiles[index].preview && !window.uploadedFiles[index].existingUrl) {
+            URL.revokeObjectURL(window.uploadedFiles[index].preview);
+        }
+        
+        // 從數組中移除
+        window.uploadedFiles.splice(index, 1);
+        
+        // 更新UI
+        updateUploadCount();
+        updateUploadPreview();
+    }
+};
+
+// 獲取上傳的文件列表
+window.getUploadedBusinessLicenseFiles = function() {
+    return window.uploadedFiles || [];
+};
 
 // 提交重新申請
 async function submitReapplication(e) {
@@ -417,7 +921,7 @@ async function submitReapplication(e) {
     }
 }
 
-// 輔助函數: 從Firebase Storage URL中獲取路徑
+// 從Firebase Storage URL中獲取路徑
 function getPathFromFirebaseStorageUrl(url) {
     try {
         // 創建URL對象
@@ -445,7 +949,7 @@ function getPathFromFirebaseStorageUrl(url) {
     }
 }
 
-// 輔助函數: 驗證表單 (保留原函數，但移至模組)
+// 驗證表單
 function validateReapplyForm() {
     let isValid = true;
     
@@ -524,12 +1028,13 @@ function validateReapplyForm() {
     }
     
     if (!isValid) {
+        alert('請填寫所有必填欄位');
     }
     
     return isValid;
 }
 
-// 輔助函數：驗證電話號碼
+// 驗證電話號碼
 function isValidPhone(phone) {
     // 簡單的臺灣電話格式驗證，可根據需要調整
     const phoneRegex = /^(0[2-9]\d{7,8}|09\d{8})$/;
