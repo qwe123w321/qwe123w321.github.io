@@ -405,7 +405,14 @@ function uploadBusinessLicense() {
 
 // 更新上傳預覽區域
 function updateUploadPreview() {
-    const uploadPreview = document.getElementById('uploadPreview');
+    const uploadPreview = document.getElementById('photoPreviewContainer');
+    
+    // 檢查元素是否存在
+    if (!uploadPreview) {
+        console.warn('找不到上傳預覽容器元素 (photoPreviewContainer)');
+        return; // 提前返回，避免錯誤
+    }
+    
     uploadPreview.innerHTML = '';
     
     if (uploadedFiles.length === 0) {
@@ -883,7 +890,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // 初始化上傳預覽區域
-        updateUploadPreview();
+        if (document.getElementById('photoPreviewContainer')) {
+            updateUploadPreview();
+        } else {
+            console.warn('初始化時找不到 photoPreviewContainer 元素');
+        }
     }
     
     // 添加診斷按鈕
