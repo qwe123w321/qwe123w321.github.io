@@ -32,6 +32,17 @@
         // 導入 App Check 攔截器
         import { installXHRInterceptor, installFetchInterceptor } from './app-check-module.js';
         
+        import { setupSessionManager } from './session-manager.js';
+        // 等待頁面加載完成後初始化會話管理器
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化會話管理器
+            const sessionManager = setupSessionManager();
+            
+            // 暴露給全局變數，以便其他腳本可以使用
+            window.sessionManager = sessionManager;
+            console.log('會話管理器已初始化');
+        });
+        
         // 將變數暴露給全局範圍
         window.auth = firebaseCompat.auth;
         window.db = firebaseCompat.db;
