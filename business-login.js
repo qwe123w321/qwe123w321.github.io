@@ -125,7 +125,69 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // 檢查URL參數
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirect = urlParams.get('redirect');
+    const businessId = urlParams.get('id');
+    
+    // 如果是從重新申請頁面被重定向回來的
+    if (redirect === 'reapply' && businessId) {
+        showInfo(`您需要先登入店家帳戶 (ID: ${businessId.substring(0, 5)}...) 才能進行重新申請。登入後將自動跳轉到重新申請頁面。`);
+        
+        // 存儲重定向信息，登入成功後使用
+        sessionStorage.setItem('redirect_after_login', `business-reapply.html?id=${businessId}`);
+    }
+    
+    // 檢查登入狀態，如果已登入且有重定向信息，則執行重定向
+    onAuthStateChanged(auth, function(user) {
+        if (user) {
+            const redirectUrl = sessionStorage.getItem('redirect_after_login');
+            if (redirectUrl) {
+                // 清除存儲的重定向URL
+                sessionStorage.removeItem('redirect_after_login');
+                
+                // 檢查重定向URL是否為重新申請頁面
+                if (redirectUrl.includes('business-reapply.html')) {
+                    // 檢查URL中的ID是否匹配當前用戶
+                    const urlId = new URLSearchParams(redirectUrl.split('?')[1]).get('id');
+                    
+                    if (urlId === user.uid) {
+                        console.log('檢測到登入後需要重定向到重新申請頁面');
+                        
+                        // 延遲執行重定向，確保其他初始化完成
+                        setTimeout(() => {
+                            window.location.href = redirectUrl;
+                        }, 500);
+                    }
+                }
+            }
+        }
+    });
 });
+
+// 顯示提示信息
+function showInfo(message) {
+    // 先清除之前的提示信息
+    clearErrorMessage();
+    
+    // 創建提示
+    const infoAlert = document.createElement('div');
+    infoAlert.className = 'alert alert-info mt-3';
+    infoAlert.role = 'alert';
+    
+    // 插入到登入表單之前
+    const loginForm = document.getElementById('businessLoginForm');
+    if (loginForm) {
+        loginForm.parentNode.insertBefore(infoAlert, loginForm);
+        
+        // 設置信息
+        infoAlert.textContent = message;
+        
+        // 自動滾動到信息處
+        infoAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
 
 // 添加 App Check 警告
 function addAppCheckWarning() {
@@ -614,7 +676,17 @@ async function reapplyForApproval() {
             reapplyBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 處理中...';
         }
         
-        // 重定向到重新申請頁面，帶上店家 ID
+        // 存儲會話標識到localStorage，幫助重新申請頁面恢復認證狀態
+        localStorage.setItem('business_reapply_session', user.uid);
+        
+        // 檢查App Check狀態
+        try {
+            await checkAppCheckStatus();
+        } catch (error) {
+            console.warn('App Check檢查失敗，但將繼續重新申請流程:', error);
+        }
+        
+        // 重定向到重新申請頁面，帶上店家ID
         window.location.href = `business-reapply.html?id=${user.uid}`;
         
     } catch (error) {
