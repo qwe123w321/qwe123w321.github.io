@@ -5,7 +5,7 @@ import { auth, signOut } from './firebase-config.js';
 
 // 會話配置
 const SESSION_CONFIG = {
-  TIMEOUT: 60 * 60 * 1000, // 60分鐘 (可依需求調整)
+  TIMEOUT: 1 * 60 * 1000, // 60分鐘 (可依需求調整)
   ACTIVITY_EVENTS: ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart']
 };
 
@@ -102,19 +102,20 @@ export function setupSessionManager() {
     
     // 添加事件監聽器
     document.getElementById('session-relogin').addEventListener('click', () => {
-      // 登出當前用戶
-      if (auth) {
-        signOut(auth).then(() => {
-          // 刷新頁面
-          window.location.reload();
-        }).catch(error => {
-          console.error('登出錯誤:', error);
-          window.location.reload();
-        });
-      } else {
-        // 如果auth不可用，直接刷新
-        window.location.reload();
-      }
+        // 登出當前用戶
+        if (auth) {
+            signOut(auth).then(() => {
+                // 強制重定向到登入頁面，添加時間戳防止緩存
+                window.location.replace('business-login.html?session=expired&t=' + Date.now());
+            }).catch(error => {
+                console.error('登出錯誤:', error);
+                // 即使登出失敗，也強制重定向
+                window.location.replace('business-login.html?session=expired&t=' + Date.now());
+            });
+        } else {
+            // 如果 auth 不可用，直接重定向
+            window.location.replace('business-login.html?session=expired&t=' + Date.now());
+        }
     });
     
     // 如果用戶仍然登入，則清理監聽器
