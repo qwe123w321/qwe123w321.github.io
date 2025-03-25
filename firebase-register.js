@@ -15,6 +15,8 @@ import {
     addDiagnosticsPanel
 } from './app-check-module.js';
 
+import { setupSessionManager } from './session-manager.js';
+
 // ===== 驗證相關函數 =====
 
 // 檢查欄位是否為空
@@ -1412,6 +1414,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 監聽第三步驟的輸入欄位
     setupStep3Validation();
+
+    // 初始化會話管理器
+    const sessionManager = setupSessionManager();
     
     // 獲取註冊表單
     const registerForm = document.getElementById('businessRegisterForm');
