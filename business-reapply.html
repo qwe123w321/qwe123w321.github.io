@@ -575,14 +575,14 @@
                                 
                                 <!-- 營業執照上傳 - 使用多照片上傳組件 -->
                                 <div class="form-group">
-                                    <label for="businessLicense">上傳營業執照或相關證明 <span class="text-danger">*</span></label>
+                                    <label for="businessLicenseFile">上傳營業執照或相關證明 <span class="text-danger">*</span></label>
                                     <div class="photo-upload-container">
                                         <label for="businessLicenseFile" class="custom-file-upload" id="uploadLabel">
                                             <i class="fas fa-cloud-upload-alt"></i>
                                             <div class="upload-text">點擊上傳檔案或將檔案拖曳至此</div>
                                             <div class="upload-hint">支援格式: JPG, PNG, PDF (最大檔案大小: 5MB)</div>
                                             <div class="upload-count">
-                                                已上傳: <span id="uploadCount">0</span>/<span id="maxUploadCount">5</span>
+                                                已上傳: <span id="uploadCountTop">0</span>/<span id="maxUploadCount">5</span>
                                             </div>
                                         </label>
                                         <input type="file" id="businessLicenseFile" style="display: none;" accept=".jpg,.jpeg,.png,.pdf" multiple>
@@ -599,11 +599,10 @@
                                             </div>
                                             <small class="text-muted">上傳處理中...</small>
                                         </div>
-                                    </div>
                                         
                                         <!-- 上傳資訊 -->
                                         <div class="upload-info mt-2">
-                                            <span class="text-muted"><span id="uploadCount">0</span>/<span id="maxUploadCount">5</span> 個檔案</span>
+                                            <span class="text-muted"><span id="uploadCountBottom">0</span>/<span id="maxUploadCount">5</span> 個檔案</span>
                                         </div>
                                     </div>
                                     <div class="error-feedback">請上傳營業執照或相關證明</div>
