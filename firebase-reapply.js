@@ -1,19 +1,114 @@
-// firebase-reapply.js
 import { auth, db, storage, doc, collection, onAuthStateChanged } from './firebase-config.js';
 import { setDoc, getDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
 
+// 導入App Check模組功能
+import { checkAppCheckStatus, installXHRInterceptor } from './app-check-module.js';
+
 // 等待 DOM 加載完成
 document.addEventListener('DOMContentLoaded', function() {
-    // 檢查用戶是否已登入
-    onAuthStateChanged(auth, function(user) {
-        if (user) {
-            // 用戶已登入，初始化重新申請頁面
-            initReapplyPage(user);
-        } else {
-            // 用戶未登入，重定向到登入頁面
+    console.log('重新申請頁面DOM已載入，準備初始化...');
+    
+    // 添加狀態變數以追蹤認證檢查
+    let authCheckComplete = false;
+    let redirectInProgress = false;
+    
+    // 先檢查 URL 參數
+    const urlParams = new URLSearchParams(window.location.search);
+    const businessId = urlParams.get('id');
+    
+    if (!businessId) {
+        console.error('URL中缺少店家ID參數');
+        if (!redirectInProgress) {
+            redirectInProgress = true;
+            // 提供更好的用戶體驗，顯示訊息後再跳轉
+            alert('缺少必要的店家ID參數，即將返回登入頁面');
             window.location.href = 'business-login.html';
         }
+        return;
+    }
+    console.log('檢測到店家ID參數:', businessId);
+    
+    // 先檢查App Check狀態
+    checkAppCheckStatus().then(result => {
+        console.log('App Check狀態檢查結果:', result.success ? '成功' : '失敗');
+        
+        // 安裝XHR攔截器以確保請求都帶有App Check令牌
+        installXHRInterceptor();
+        
+        // 延遲檢查認證狀態，給Firebase足夠時間恢復會話
+        setTimeout(() => {
+            console.log('延遲後開始檢查認證狀態...');
+            
+            // 檢查用戶是否已登入
+            onAuthStateChanged(auth, function(user) {
+                // 標記已完成認證檢查
+                authCheckComplete = true;
+                
+                if (user) {
+                    // 用戶已登入，檢查是否為正確的店家帳號
+                    console.log('用戶已登入:', user.uid);
+                    if (user.uid === businessId) {
+                        console.log('已驗證用戶權限，初始化重新申請頁面');
+                        initReapplyPage(user);
+                    } else {
+                        console.warn('用戶ID與URL參數不匹配');
+                        if (!redirectInProgress) {
+                            redirectInProgress = true;
+                            alert('您沒有權限訪問此店家的重新申請頁面');
+                            window.location.href = 'business-login.html';
+                        }
+                    }
+                } else {
+                    console.warn('用戶未登入，嘗試進行重新登入處理...');
+                    
+                    // 檢查是否有緩存的認證會話
+                    const cachedSession = localStorage.getItem('business_reapply_session');
+                    
+                    if (cachedSession && cachedSession === businessId) {
+                        console.log('檢測到緩存的會話ID，等待認證恢復...');
+                        
+                        // 提供視覺提示
+                        showLoadingMessage('認證狀態恢復中，請稍候...');
+                        
+                        // 再次檢查，給更多時間恢復認證狀態
+                        setTimeout(() => {
+                            if (auth.currentUser) {
+                                console.log('成功恢復認證狀態');
+                                initReapplyPage(auth.currentUser);
+                            } else {
+                                console.error('無法恢復認證狀態，重定向到登入頁面');
+                                if (!redirectInProgress) {
+                                    redirectInProgress = true;
+                                    localStorage.removeItem('business_reapply_session');
+                                    window.location.href = 'business-login.html?redirect=reapply&id=' + businessId;
+                                }
+                            }
+                        }, 2000);
+                    } else {
+                        // 沒有緩存會話，需要重新登入
+                        console.log('未找到緩存會話，重定向到登入頁面');
+                        if (!redirectInProgress) {
+                            redirectInProgress = true;
+                            window.location.href = 'business-login.html?redirect=reapply&id=' + businessId;
+                        }
+                    }
+                }
+            });
+        }, 1000); // 延遲1秒再檢查認證狀態
+    }).catch(error => {
+        console.error('App Check檢查失敗:', error);
+        // 即使App Check失敗，仍然嘗試讀取用戶狀態
+        onAuthStateChanged(auth, function(user) {
+            if (user && !redirectInProgress) {
+                console.log('App Check失敗但用戶已登入，嘗試繼續...');
+                initReapplyPage(user);
+            } else if (!redirectInProgress) {
+                redirectInProgress = true;
+                alert('初始化失敗，請重新登入');
+                window.location.href = 'business-login.html';
+            }
+        });
     });
     
     // 表單提交事件
@@ -22,6 +117,38 @@ document.addEventListener('DOMContentLoaded', function() {
         reapplyForm.addEventListener('submit', submitReapplication);
     }
 });
+
+// 顯示加載訊息
+function showLoadingMessage(message) {
+    // 檢查是否已存在加載訊息元素
+    let loadingElement = document.getElementById('loadingMessage');
+    
+    if (!loadingElement) {
+        // 創建加載訊息元素
+        loadingElement = document.createElement('div');
+        loadingElement.id = 'loadingMessage';
+        loadingElement.style.position = 'fixed';
+        loadingElement.style.top = '50%';
+        loadingElement.style.left = '50%';
+        loadingElement.style.transform = 'translate(-50%, -50%)';
+        loadingElement.style.padding = '20px';
+        loadingElement.style.background = 'rgba(0, 0, 0, 0.7)';
+        loadingElement.style.color = 'white';
+        loadingElement.style.borderRadius = '8px';
+        loadingElement.style.zIndex = '9999';
+        loadingElement.style.textAlign = 'center';
+        
+        document.body.appendChild(loadingElement);
+    }
+    
+    // 更新訊息內容
+    loadingElement.innerHTML = `
+        <div class="spinner-border text-light" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="mt-2">${message}</div>
+    `;
+}
 
 // 初始化重新申請頁面
 async function initReapplyPage(user) {
@@ -42,6 +169,9 @@ async function initReapplyPage(user) {
             window.location.href = 'business-login.html';
             return;
         }
+        
+        // 緩存會話ID，用於後續恢復
+        localStorage.setItem('business_reapply_session', user.uid);
         
         // 獲取店家信息
         const businessDoc = await getDoc(doc(db, 'businesses', businessId));
@@ -92,6 +222,14 @@ async function initReapplyPage(user) {
             window.loadExistingLicenses(licenseUrls);
         }
         
+        // 移除加載訊息
+        const loadingElement = document.getElementById('loadingMessage');
+        if (loadingElement) {
+            loadingElement.remove();
+        }
+        
+        console.log('重新申請頁面初始化完成');
+        
     } catch (error) {
         console.error('初始化重新申請頁面時發生錯誤:', error);
         alert('加載頁面時發生錯誤: ' + error.message);
@@ -119,6 +257,18 @@ async function submitReapplication(e) {
         const submitButton = document.querySelector('.btn-submit');
         submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 處理中...';
         submitButton.disabled = true;
+        
+        // 再次檢查App Check狀態
+        try {
+            const appCheckResult = await checkAppCheckStatus();
+            if (!appCheckResult.success) {
+                console.warn('App Check驗證失敗，但將繼續嘗試提交');
+            }
+            // 安裝攔截器確保請求帶有App Check令牌
+            installXHRInterceptor();
+        } catch (error) {
+            console.error('重新檢查App Check狀態失敗:', error);
+        }
         
         // 獲取表單數據
         const businessName = document.getElementById('businessName').value;
@@ -227,6 +377,9 @@ async function submitReapplication(e) {
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
         });
+        
+        // 清除會話緩存
+        localStorage.removeItem('business_reapply_session');
         
         // 顯示成功訊息
         const successAlert = document.createElement('div');
