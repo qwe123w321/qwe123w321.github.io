@@ -121,7 +121,18 @@ document.addEventListener('DOMContentLoaded', function() {
         reapplyForm.addEventListener('submit', submitReapplication);
     }
     
-    // 文件上傳功能初始化
+    // 修正上傳資訊顯示
+    const uploadInfoElements = document.querySelectorAll('.upload-info');
+    uploadInfoElements.forEach(element => {
+        const textElement = element.querySelector('.text-muted');
+        if (textElement) {
+            // 將"張照片"改為"張檔案"
+            const text = textElement.innerHTML;
+            textElement.innerHTML = text.replace('張照片', '張檔案');
+        }
+    });
+    
+    // 初始化文件上傳功能
     initializeFileUpload();
 });
 
@@ -385,7 +396,7 @@ async function loadExistingLicenses(licenseUrls) {
     }
 }
 
-// 從URL中提取文件名
+/// 從URL中提取文件名
 function getFileNameFromUrl(url) {
     try {
         // 嘗試解析URL
@@ -405,10 +416,10 @@ function getFileNameFromUrl(url) {
         }
         
         // 一般URL處理
-        return url.split('/').pop().split('?')[0] || "未命名文件";
+        return url.split('/').pop().split('?')[0] || "未命名檔案";
     } catch (error) {
         console.warn('解析URL時出錯:', error);
-        return "未命名文件";
+        return "未命名檔案";
     }
 }
 
@@ -421,9 +432,15 @@ function getFileExtension(fileName) {
 function initializeFileUpload() {
     console.log('初始化文件上傳功能...');
     
+    // 確保全局上傳文件數組已初始化
+    window.uploadedFiles = window.uploadedFiles || [];
+    
     const businessLicenseFile = document.getElementById('businessLicenseFile');
     const photoPreviewContainer = document.getElementById('photoPreviewContainer');
     const uploadProgress = document.getElementById('uploadProgress');
+    
+    // 獲取所有計數元素
+    const uploadCountElements = document.querySelectorAll('#uploadCount');
     
     if (!businessLicenseFile) {
         console.warn('找不到上傳文件輸入元素');
@@ -432,7 +449,43 @@ function initializeFileUpload() {
     
     if (!photoPreviewContainer) {
         console.warn('找不到照片預覽容器');
+        return;
     }
+    
+    // 更新所有計數顯示的元素
+    function updateAllCountElements() {
+        uploadCountElements.forEach(element => {
+            element.textContent = window.uploadedFiles.length;
+        });
+        
+        // 如果已達最大上傳數，隱藏上傳按鈕
+        const uploadLabel = document.getElementById('uploadLabel');
+        const maxCount = parseInt(document.getElementById('maxUploadCount')?.textContent || '5');
+        if (uploadLabel) {
+            uploadLabel.style.display = window.uploadedFiles.length >= maxCount ? 'none' : 'block';
+        }
+    }
+    
+    // 如果預覽容器為空，顯示空訊息
+    function updateEmptyState() {
+        if (photoPreviewContainer.children.length === 0) {
+            photoPreviewContainer.innerHTML = `
+                <div class="empty-preview-message w-100 text-center py-4">
+                    <i class="fas fa-file-upload mb-3" style="font-size: 2.5rem; color: #ccc;"></i>
+                    <p class="text-muted">尚未上傳任何檔案</p>
+                </div>
+            `;
+        } else if (photoPreviewContainer.querySelector('.empty-preview-message')) {
+            // 如果已有預覽項目，移除空狀態消息
+            const emptyMessage = photoPreviewContainer.querySelector('.empty-preview-message');
+            if (emptyMessage) {
+                photoPreviewContainer.removeChild(emptyMessage);
+            }
+        }
+    }
+    
+    // 初始時檢查空狀態
+    updateEmptyState();
     
     // 處理文件上傳
     businessLicenseFile.addEventListener('change', handleFileUpload);
@@ -460,6 +513,483 @@ function initializeFileUpload() {
     }
     
     console.log('文件上傳功能初始化完成');
+
+    // 處理文件上傳
+    async function handleFileUpload(e) {
+        e.preventDefault();
+        
+        console.log('處理文件上傳...');
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+        
+        // 獲取最大上傳數量
+        const maxUploadCountElement = document.getElementById('maxUploadCount');
+        const MAX_UPLOAD_COUNT = maxUploadCountElement ? parseInt(maxUploadCountElement.textContent) : 5;
+        const MAX_FILE_SIZE_MB = 5; // 每個文件最大5MB
+        
+        // 確保不超過最大上傳數量
+        if (window.uploadedFiles.length + files.length > MAX_UPLOAD_COUNT) {
+            alert(`最多只能上傳 ${MAX_UPLOAD_COUNT} 張檔案`);
+            return;
+        }
+        
+        console.log(`處理 ${files.length} 個檔案...`);
+        
+        // 顯示上傳進度
+        if (uploadProgress) {
+            uploadProgress.style.display = 'block';
+            const progressBar = uploadProgress.querySelector('.progress-bar');
+            if (progressBar) progressBar.style.width = '0%';
+        }
+        
+        // 清除空狀態消息
+        if (photoPreviewContainer.querySelector('.empty-preview-message')) {
+            photoPreviewContainer.innerHTML = '';
+        }
+        
+        // 逐個處理文件
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // 檢查文件大小
+            if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+                alert(`檔案 ${file.name} 超過大小限制（${MAX_FILE_SIZE_MB}MB）`);
+                continue;
+            }
+            
+            try {
+                // 更新進度條
+                const progressBar = uploadProgress.querySelector('.progress-bar');
+                if (progressBar) {
+                    progressBar.style.width = `${Math.round((i + 1) / files.length * 100)}%`;
+                }
+                
+                // 處理文件
+                console.log(`正在處理檔案: ${file.name}`);
+                
+                // 檢查文件類型是否允許
+                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+                if (!allowedTypes.includes(file.type)) {
+                    alert(`不支援的檔案類型: ${file.name}\n僅支援JPEG、PNG和PDF格式`);
+                    continue;
+                }
+                
+                // 壓縮圖片（如果是圖片類型）
+                let processedFile = file;
+                if (file.type.startsWith('image/')) {
+                    try {
+                        processedFile = await compressImage(file);
+                        console.log(`已壓縮圖片: ${file.name}`);
+                    } catch (error) {
+                        console.warn(`壓縮圖片失敗: ${error.message}，使用原始檔案`);
+                        processedFile = file;
+                    }
+                }
+                
+                // 創建文件ID和預覽URL
+                const fileId = `file-${Date.now()}-${window.uploadedFiles.length}`;
+                const preview = URL.createObjectURL(processedFile);
+                const isPDF = file.type === 'application/pdf';
+                
+                // 添加到上傳文件列表
+                window.uploadedFiles.push({
+                    id: fileId,
+                    file: processedFile,
+                    fileName: file.name,
+                    preview: preview,
+                    isPDF: isPDF
+                });
+                
+                // 創建預覽
+                createFilePreview(fileId, file);
+                
+                console.log(`檔案已添加到上傳列表: ${file.name}`);
+            } catch (error) {
+                console.error(`處理檔案 ${file.name} 時發生錯誤:`, error);
+                alert(`處理檔案 ${file.name} 時發生錯誤: ${error.message || '未知錯誤'}`);
+            }
+        }
+        
+        // 隱藏上傳進度
+        if (uploadProgress) {
+            uploadProgress.style.display = 'none';
+        }
+        
+        // 更新上傳計數和預覽
+        updateAllCountElements();
+        
+        // 重置文件輸入，以便可以重新選擇相同的文件
+        if (e.target && e.target.value !== undefined) {
+            e.target.value = '';
+        }
+        
+        console.log('檔案上傳處理完成');
+    }
+
+    // 創建文件預覽
+    function createFilePreview(fileId, file) {
+        const fileIndex = window.uploadedFiles.findIndex(item => item.id === fileId);
+        if (fileIndex === -1) return;
+        
+        const fileData = window.uploadedFiles[fileIndex];
+        const fileName = fileData.fileName;
+        const isPDF = fileData.isPDF || file.type === 'application/pdf';
+        const preview = fileData.preview;
+        
+        const previewItem = document.createElement('div');
+        previewItem.className = 'col-md-6 col-lg-4 mb-3';
+        previewItem.id = `preview-container-${fileId}`;
+        
+        if (isPDF) {
+            // PDF 預覽
+            previewItem.innerHTML = `
+                <div class="card h-100 file-preview-card">
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 160px;">
+                        <i class="fas fa-file-pdf text-danger" style="font-size: 3rem;"></i>
+                    </div>
+                    <div class="card-body p-3">
+                        <h6 class="card-title text-truncate mb-1" title="${fileName}">${fileName}</h6>
+                        <p class="card-text text-muted small mb-0">${formatFileSize(file.size)}</p>
+                    </div>
+                    <button class="position-absolute btn btn-sm btn-danger rounded-circle delete-file-btn" 
+                            style="top: 8px; right: 8px; width: 28px; height: 28px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; z-index: 10;" 
+                            data-id="${fileId}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        } else {
+            // 圖片預覽
+            previewItem.innerHTML = `
+                <div class="card h-100 file-preview-card">
+                    <div class="card-img-top" style="height: 160px; background-image: url('${preview}'); background-size: cover; background-position: center;"></div>
+                    <div class="card-body p-3">
+                        <h6 class="card-title text-truncate mb-1" title="${fileName}">${fileName}</h6>
+                        <p class="card-text text-muted small mb-0">${formatFileSize(file.size)}</p>
+                    </div>
+                    <button class="position-absolute btn btn-sm btn-danger rounded-circle delete-file-btn" 
+                            style="top: 8px; right: 8px; width: 28px; height: 28px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; z-index: 10;" 
+                            data-id="${fileId}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        }
+        
+        // 添加到預覽容器
+        photoPreviewContainer.appendChild(previewItem);
+        
+        // 添加刪除按鈕點擊事件
+        const deleteBtn = previewItem.querySelector('.delete-file-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', function() {
+                const fileId = this.getAttribute('data-id');
+                confirmDeleteFile(fileId);
+            });
+        }
+    }
+
+    // 確認刪除文件
+    function confirmDeleteFile(fileId) {
+        const fileIndex = window.uploadedFiles.findIndex(item => item.id === fileId);
+        if (fileIndex === -1) return;
+        
+        const fileName = window.uploadedFiles[fileIndex].fileName;
+        
+        // 顯示確認對話框
+        if (confirm(`確定要刪除檔案「${fileName}」嗎？`)) {
+            removeUploadedFile(fileId);
+        }
+    }
+
+    // 移除已上傳檔案（添加確認對話框）
+    function removeUploadedFile(index) {
+        if (index >= 0 && index < uploadedFiles.length) {
+            const fileName = uploadedFiles[index].fileName;
+            
+            // 添加確認對話框
+            if (confirm(`確定要刪除檔案「${fileName}」嗎？`)) {
+                // 釋放 URL 對象
+                URL.revokeObjectURL(uploadedFiles[index].preview);
+                
+                // 從列表中移除
+                uploadedFiles.splice(index, 1);
+                
+                // 更新預覽
+                enhancedUploadPreview();
+                
+                // 更新上傳計數
+                updateUploadCount();
+            }
+        }
+    }
+
+    // 防止拖放默認事件
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    // 拖放區域高亮
+    function highlight() {
+        document.querySelector('.custom-file-upload').classList.add('highlight');
+    }
+
+    // 拖放區域取消高亮
+    function unhighlight() {
+        document.querySelector('.custom-file-upload').classList.remove('highlight');
+    }
+
+    // 處理拖放
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files && files.length > 0) {
+            // 創建一個類似事件物件
+            const event = { 
+                target: { files: files },
+                preventDefault: () => {}
+            };
+            handleFileUpload(event);
+        }
+    }
+
+    // 格式化文件大小
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' Bytes';
+        else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
+        else return (bytes / 1048576).toFixed(2) + ' MB';
+    }
+
+    // 壓縮圖片
+    async function compressImage(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(event) {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // 計算新的尺寸，保持寬高比
+                    let width = img.width;
+                    let height = img.height;
+                    const maxDimension = 1024; // 最大寬度/高度
+                    
+                    if (width > height && width > maxDimension) {
+                        height = Math.round((height * maxDimension) / width);
+                        width = maxDimension;
+                    } else if (height > maxDimension) {
+                        width = Math.round((width * maxDimension) / height);
+                        height = maxDimension;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // 轉換為 Blob
+                    canvas.toBlob(
+                        (blob) => {
+                            // 創建新文件對象
+                            const compressedFile = new File([blob], file.name, {
+                                type: 'image/jpeg',
+                                lastModified: Date.now()
+                            });
+                            resolve(compressedFile);
+                        },
+                        'image/jpeg',
+                        0.7 // 設置壓縮質量 (0.7 = 70% 質量)
+                    );
+                };
+                img.onerror = function(error) {
+                    reject(error);
+                };
+            };
+            reader.onerror = function(error) {
+                reject(error);
+            };
+        });
+    }
+}
+
+// 加載已有的證照照片
+window.loadExistingLicenses = function(licenseUrls) {
+    console.log('開始載入已有證照照片...');
+    
+    const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+    if (!photoPreviewContainer) {
+        console.error('找不到照片預覽容器');
+        return;
+    }
+    
+    // 確保全局上傳文件數組已初始化
+    if (!window.uploadedFiles) {
+        window.uploadedFiles = [];
+    } else {
+        // 清空現有文件數組
+        window.uploadedFiles = [];
+    }
+    
+    // 清空預覽容器
+    photoPreviewContainer.innerHTML = '';
+    
+    // 更新上傳計數顯示
+    const uploadCountElements = document.querySelectorAll('#uploadCount');
+    uploadCountElements.forEach(element => {
+        element.textContent = licenseUrls.length;
+    });
+    
+    // 更新最大上傳數量顯示
+    const maxUploadCountElement = document.getElementById('maxUploadCount');
+    const MAX_UPLOAD_COUNT = maxUploadCountElement ? parseInt(maxUploadCountElement.textContent) : 5;
+    
+    // 如果已達最大上傳數量，隱藏上傳按鈕
+    const uploadLabel = document.getElementById('uploadLabel');
+    if (uploadLabel && licenseUrls.length >= MAX_UPLOAD_COUNT) {
+        uploadLabel.style.display = 'none';
+    }
+    
+    // 如果沒有照片，顯示空狀態
+    if (!licenseUrls || licenseUrls.length === 0) {
+        photoPreviewContainer.innerHTML = `
+            <div class="empty-preview-message w-100 text-center py-4">
+                <i class="fas fa-file-upload mb-3" style="font-size: 2.5rem; color: #ccc;"></i>
+                <p class="text-muted">尚未上傳任何檔案</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // 為每個URL創建預覽
+    for (let i = 0; i < licenseUrls.length; i++) {
+        const url = licenseUrls[i];
+        const fileId = `existing-file-${Date.now()}-${i}`;
+        
+        try {
+            // 提取文件名
+            const fileName = getFileNameFromUrl(url);
+            const fileExt = getFileExtension(fileName);
+            const isPDF = fileExt.toLowerCase() === 'pdf';
+            
+            // 添加到上傳文件數組
+            window.uploadedFiles.push({
+                id: fileId,
+                fileName: fileName,
+                preview: url,
+                existingUrl: url, // 標記為已存在的URL
+                isPDF: isPDF
+            });
+            
+            // 創建預覽元素
+            const previewItem = document.createElement('div');
+            previewItem.className = 'col-md-6 col-lg-4 mb-3';
+            previewItem.id = `preview-container-${fileId}`;
+            
+            if (isPDF) {
+                // PDF 預覽
+                previewItem.innerHTML = `
+                    <div class="card h-100 file-preview-card">
+                        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 160px;">
+                            <i class="fas fa-file-pdf text-danger" style="font-size: 3rem;"></i>
+                        </div>
+                        <div class="card-body p-3">
+                            <h6 class="card-title text-truncate mb-1" title="${fileName}">${fileName}</h6>
+                            <p class="card-text text-muted small mb-0">已存在的檔案</p>
+                        </div>
+                        <button class="position-absolute btn btn-sm btn-danger rounded-circle delete-file-btn" 
+                                style="top: 8px; right: 8px; width: 28px; height: 28px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; z-index: 10;" 
+                                data-id="${fileId}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            } else {
+                // 圖片預覽
+                previewItem.innerHTML = `
+                    <div class="card h-100 file-preview-card">
+                        <div class="card-img-top" style="height: 160px; background-image: url('${url}'); background-size: cover; background-position: center;"></div>
+                        <div class="card-body p-3">
+                            <h6 class="card-title text-truncate mb-1" title="${fileName}">${fileName}</h6>
+                            <p class="card-text text-muted small mb-0">已存在的檔案</p>
+                        </div>
+                        <button class="position-absolute btn btn-sm btn-danger rounded-circle delete-file-btn" 
+                                style="top: 8px; right: 8px; width: 28px; height: 28px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; z-index: 10;" 
+                                data-id="${fileId}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // 添加到預覽容器
+            photoPreviewContainer.appendChild(previewItem);
+            
+            // 添加刪除按鈕點擊事件
+            const deleteBtn = previewItem.querySelector('.delete-file-btn');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', function() {
+                    const fileId = this.getAttribute('data-id');
+                    confirmDeleteExistingFile(fileId);
+                });
+            }
+            
+            console.log(`成功載入證照照片 ${i+1}/${licenseUrls.length}: ${fileName}`);
+        } catch (error) {
+            console.error(`載入證照照片 ${i+1}/${licenseUrls.length} 時發生錯誤:`, error);
+        }
+    }
+    
+    console.log('已成功載入所有證照照片');
+}
+
+// 確認刪除已存在的文件
+function confirmDeleteExistingFile(fileId) {
+    const fileIndex = window.uploadedFiles.findIndex(item => item.id === fileId);
+    if (fileIndex === -1) return;
+    
+    const fileName = window.uploadedFiles[fileIndex].fileName;
+    
+    // 顯示確認對話框
+    if (confirm(`確定要刪除檔案「${fileName}」嗎？\n注意：刪除後需要重新上傳申請資料才會生效。`)) {
+        // 移除預覽元素
+        const previewElement = document.getElementById(`preview-container-${fileId}`);
+        if (previewElement) {
+            const parentElement = document.getElementById('photoPreviewContainer');
+            if (parentElement) {
+                parentElement.removeChild(previewElement);
+            }
+        }
+        
+        // 從數組中移除
+        window.uploadedFiles.splice(fileIndex, 1);
+        
+        // 更新上傳計數
+        const uploadCountElements = document.querySelectorAll('#uploadCount');
+        uploadCountElements.forEach(element => {
+            element.textContent = window.uploadedFiles.length;
+        });
+        
+        // 顯示上傳按鈕
+        const uploadLabel = document.getElementById('uploadLabel');
+        if (uploadLabel) {
+            uploadLabel.style.display = 'block';
+        }
+        
+        // 如果沒有照片，顯示空狀態
+        const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+        if (photoPreviewContainer && window.uploadedFiles.length === 0) {
+            photoPreviewContainer.innerHTML = `
+                <div class="empty-preview-message w-100 text-center py-4">
+                    <i class="fas fa-file-upload mb-3" style="font-size: 2.5rem; color: #ccc;"></i>
+                    <p class="text-muted">尚未上傳任何檔案</p>
+                </div>
+            `;
+        }
+    }
 }
 
 // 防止拖放默認事件
