@@ -3,10 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://www.google.com/recaptcha/api.js?render=6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G" 
-     async 
-     onload="console.log('reCAPTCHA 腳本加載成功', new Date().toISOString())" 
-     onerror="console.error('reCAPTCHA 腳本加載失敗', new Date().toISOString())"></script>
     <title>店家註冊 - BrewDate</title>
     <!-- SEO 優化 meta 標籤 -->
     <meta name="description" content="BREWDATE 商家合作平台 - 註冊您的店家帳戶，增加曝光度，吸引更多顧客。">
@@ -20,53 +16,19 @@
     <!-- Favicon -->
     <link rel="icon" href="logo_s.png" type="image/png">
 
-    <!-- 2. 添加 App Check 初始化模組 -->
+    <!-- 1. 首先加載 reCAPTCHA 腳本 (非常重要) -->
+    <script src="https://www.google.com/recaptcha/api.js?render=6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G" 
+         async 
+         onload="console.log('reCAPTCHA 腳本加載成功', new Date().toISOString())" 
+         onerror="console.error('reCAPTCHA 腳本加載失敗', new Date().toISOString())"></script>
+
+    <!-- 2. 導入 Firebase 配置和 App Check (統一模組) -->
     <script type="module">
         // 先導入 Firebase 配置
         import './firebase-config.js';
-        
-        // 導入統一的 App Check 模組
-        import { checkAppCheckStatus, addDiagnosticsPanel } from './app-check-module.js';
-        
-        // 添加診斷按鈕
-        document.addEventListener('DOMContentLoaded', () => {
-            // 創建診斷按鈕
-            const diagnosticsBtn = document.createElement('button');
-            diagnosticsBtn.id = 'appCheckDiagnosticsBtn';
-            diagnosticsBtn.innerHTML = '🔍';
-            diagnosticsBtn.title = 'App Check 診斷';
-            diagnosticsBtn.style.position = 'fixed';
-            diagnosticsBtn.style.bottom = '20px';
-            diagnosticsBtn.style.right = '20px';
-            diagnosticsBtn.style.width = '50px';
-            diagnosticsBtn.style.height = '50px';
-            diagnosticsBtn.style.borderRadius = '50%';
-            diagnosticsBtn.style.backgroundColor = '#007bff';
-            diagnosticsBtn.style.color = 'white';
-            diagnosticsBtn.style.border = 'none';
-            diagnosticsBtn.style.fontSize = '20px';
-            diagnosticsBtn.style.display = 'flex';
-            diagnosticsBtn.style.alignItems = 'center';
-            diagnosticsBtn.style.justifyContent = 'center';
-            diagnosticsBtn.style.cursor = 'pointer';
-            diagnosticsBtn.style.zIndex = '9999';
-            diagnosticsBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-            
-            // 添加點擊事件
-            diagnosticsBtn.addEventListener('click', () => {
-                addDiagnosticsPanel();
-                diagnosticsBtn.style.display = 'none';
-            });
-            
-            // 添加到頁面
-            document.body.appendChild(diagnosticsBtn);
-        });
-        
-        // 導入其他需要的模組
-        import './firebase-register.js';
     </script>
     
-    <!-- 添加 App Check 狀態指示器的樣式 -->
+    <!-- 3. 添加 App Check 狀態指示器的樣式 -->
     <style>
         #appCheckStatus {
             position: fixed;
@@ -96,557 +58,12 @@
             color: #721c24;
             display: block;
         }
-    </style>   
+    </style>
+    
     <!-- 錯誤處理 -->
     <script src="error-handler.js"></script>
-
-    <script>
-        // 密碼強度測量函數
-        function measurePasswordStrength(password) {
-            let strength = 0;
-            
-            // 檢查長度
-            if (password.length >= 8 && password.length <= 20) strength += 2;
-            else if (password.length > 0) strength += 1;
-            
-            // 檢查複雜性
-            if (/[a-z]/.test(password)) strength += 1; // 小寫字母
-            if (/[A-Z]/.test(password)) strength += 1; // 大寫字母
-            if (/[0-9]/.test(password)) strength += 1; // 數字
-            
-            if (strength < 3) return { strength: 'weak', class: 'bg-danger' };
-            if (strength < 5) return { strength: 'medium', class: 'bg-warning' };
-            return { strength: 'strong', class: 'bg-success' };
-        }
-
-        // 更新密碼強度視覺顯示
-        function updatePasswordStrength() {
-            const password = document.getElementById('password').value;
-            const strengthResult = measurePasswordStrength(password);
-            
-            // 更新強度指示條
-            const strengthBar = document.getElementById('password-strength-bar');
-            strengthBar.className = `progress-bar ${strengthResult.class}`;
-            
-            // 根據密碼長度和強度設置寬度
-            if (password.length === 0) {
-                strengthBar.style.width = '0%';
-            } else {
-                let percentage;
-                if (password.length <= 20) {
-                    percentage = Math.min(100, (password.length / 20) * 100);
-                } else {
-                    // 如果超過20字符，將進度條設為100%但顏色可能不是綠色(依據複雜度)
-                    percentage = 100;
-                }
-                strengthBar.style.width = `${percentage}%`;
-            }
-            
-            // 更新強度標籤
-            const strengthLabel = document.getElementById('password-strength-text');
-            if (password.length === 0) {
-                strengthLabel.textContent = '';
-            } else {
-                strengthLabel.textContent = `密碼強度: ${strengthResult.strength === 'weak' ? '弱' : strengthResult.strength === 'medium' ? '中' : '強'}`;
-            }
-            
-            // 更新密碼規則檢查
-            updatePasswordRulesCheck(password);
-        }
-
-        // 更新密碼規則檢查
-        function updatePasswordRulesCheck(password) {
-            // 檢查各項規則
-            const lengthCheck = password.length >= 8 && password.length <= 20;
-            const lowercaseCheck = /[a-z]/.test(password);
-            const uppercaseCheck = /[A-Z]/.test(password);
-            const numberCheck = /[0-9]/.test(password);
-            
-            // 更新規則顯示
-            document.getElementById('rule-length').className = lengthCheck ? 'text-success' : 'text-danger';
-            document.getElementById('rule-lowercase').className = lowercaseCheck ? 'text-success' : 'text-danger';
-            document.getElementById('rule-uppercase').className = uppercaseCheck ? 'text-success' : 'text-danger';
-            document.getElementById('rule-number').className = numberCheck ? 'text-success' : 'text-danger';
-            
-            // 更新圖標
-            document.getElementById('rule-length-icon').className = lengthCheck ? 'fas fa-check' : 'fas fa-times';
-            document.getElementById('rule-lowercase-icon').className = lowercaseCheck ? 'fas fa-check' : 'fas fa-times';
-            document.getElementById('rule-uppercase-icon').className = uppercaseCheck ? 'fas fa-check' : 'fas fa-times';
-            document.getElementById('rule-number-icon').className = numberCheck ? 'fas fa-check' : 'fas fa-times';
-            
-            // 更新確認密碼檢查
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            const matchCheck = password === confirmPassword && password !== '';
-            
-            if (confirmPassword !== '') {
-                document.getElementById('rule-match').className = matchCheck ? 'text-success' : 'text-danger';
-                document.getElementById('rule-match-icon').className = matchCheck ? 'fas fa-check' : 'fas fa-times';
-            }
-        }
-
-        // 更新密碼規則檢查
-        function updateSummary() {
-            // 創建元素並添加到摘要區域
-            const summaryInfo = document.querySelector('.summary-info .row');
-            
-            if (!summaryInfo) {
-                console.error('找不到摘要信息容器');
-                return;
-            }
-            
-            // 清空現有內容
-            summaryInfo.innerHTML = '';
-            
-            // 動態添加摘要項目
-            function addSummaryItem(label, value) {
-                const div = document.createElement('div');
-                div.className = 'col-12 mb-2';
-                div.innerHTML = `<strong>${label}：</strong> <span>${value}</span>`;
-                summaryInfo.appendChild(div);
-            }
-            
-            // 添加所有表單項目的摘要
-            const email = document.getElementById('email');
-            addSummaryItem('電子郵件', email ? email.value : '未提供');
-            
-            const businessType = document.getElementById('businessType');
-            const businessTypeText = businessType && businessType.selectedIndex > 0 ? 
-                businessType.options[businessType.selectedIndex].text : '未選擇';
-            
-            const businessName = document.getElementById('businessName');
-            addSummaryItem('店家名稱', businessName ? businessName.value : '未提供');
-            addSummaryItem('店家類型', businessTypeText);
-            
-            const businessAddress = document.getElementById('businessAddress');
-            addSummaryItem('店家地址', businessAddress ? businessAddress.value : '未提供');
-            
-            const businessPhone = document.getElementById('businessPhone');
-            addSummaryItem('店家電話', businessPhone ? businessPhone.value : '未提供');
-            
-            const contactName = document.getElementById('contactName');
-            addSummaryItem('聯絡人姓名', contactName ? contactName.value : '未提供');
-            
-            const contactPhone = document.getElementById('contactPhone');
-            addSummaryItem('聯絡人電話', contactPhone ? contactPhone.value : '未提供');
-        }
-
-        // 確保這個函數可以全局使用
-        window.updateSummary = updateSummary;
-
-        // 多照片上傳功能初始化
-        function initMultiPhotoUpload() {
-            const businessLicenseFile = document.getElementById('businessLicenseFile');
-            const photoPreviewContainer = document.getElementById('photoPreviewContainer');
-            const uploadProgress = document.getElementById('uploadProgress');
-            const uploadCountElement = document.getElementById('uploadCount');
-            const uploadLabel = document.getElementById('uploadLabel');
-            
-            if (!businessLicenseFile || !photoPreviewContainer) {
-                console.error('找不到上傳或預覽元素');
-                return;
-            }
-            
-            // 確保 window.uploadedFiles 被初始化
-            if (!window.uploadedFiles) {
-                window.uploadedFiles = [];
-            }
-            
-            // 配置參數
-            const MAX_UPLOAD_COUNT = 5; // 最大上傳張數
-            const MAX_FILE_SIZE_MB = 5; // 每個文件最大 5MB
-            
-            // 更新上傳計數
-            function updateUploadCount() {
-                if (uploadCountElement) {
-                    uploadCountElement.textContent = window.uploadedFiles.length;
-                }
-                
-                if (uploadLabel) {
-                    if (window.uploadedFiles.length >= MAX_UPLOAD_COUNT) {
-                        uploadLabel.style.display = 'none';
-                    } else {
-                        uploadLabel.style.display = 'block';
-                    }
-                }
-            }
-            
-            // 處理文件上傳
-            businessLicenseFile.addEventListener('change', async function(e) {
-                const files = Array.from(e.target.files);
-                
-                if (window.uploadedFiles.length + files.length > MAX_UPLOAD_COUNT) {
-                    alert(`最多只能上傳 ${MAX_UPLOAD_COUNT} 張照片`);
-                    return;
-                }
-                
-                for (const file of files) {
-                    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-                        alert(`文件 ${file.name} 超過大小限制（${MAX_FILE_SIZE_MB}MB）`);
-                        continue;
-                    }
-                    
-                    try {
-                        // 顯示上傳進度
-                        if (uploadProgress) {
-                            uploadProgress.style.display = 'block';
-                        }
-                        
-                        // 壓縮圖片（如果是圖片類型）
-                        let processedFile = file;
-                        if (file.type.startsWith('image/')) {
-                            processedFile = await compressImage(file);
-                        }
-                        
-                        // 添加到上傳文件列表
-                        const fileId = `file-${Date.now()}-${window.uploadedFiles.length}`;
-                        window.uploadedFiles.push({
-                            id: fileId,
-                            file: processedFile,
-                            fileName: file.name,
-                            objectURL: URL.createObjectURL(processedFile)
-                        });
-                        
-                        // 創建預覽元素
-                        createFilePreview(fileId, file);
-                        
-                        // 更新上傳計數
-                        updateUploadCount();
-                        
-                        // 隱藏上傳進度
-                        if (uploadProgress) {
-                            uploadProgress.style.display = 'none';
-                        }
-                    } catch (error) {
-                        console.error('處理文件錯誤:', error);
-                        alert(`處理文件 ${file.name} 時發生錯誤`);
-                        if (uploadProgress) {
-                            uploadProgress.style.display = 'none';
-                        }
-                    }
-                }
-                
-                // 重置文件輸入，以便可以重新選擇相同的文件
-                businessLicenseFile.value = '';
-            });
-            
-            // 壓縮圖片
-            async function compressImage(file) {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onload = function(event) {
-                        const img = new Image();
-                        img.src = event.target.result;
-                        img.onload = function() {
-                            const canvas = document.createElement('canvas');
-                            const ctx = canvas.getContext('2d');
-                            
-                            // 計算新的尺寸，保持寬高比
-                            let width = img.width;
-                            let height = img.height;
-                            const maxDimension = 1024; // 最大寬度/高度
-                            
-                            if (width > height && width > maxDimension) {
-                                height = Math.round((height * maxDimension) / width);
-                                width = maxDimension;
-                            } else if (height > maxDimension) {
-                                width = Math.round((width * maxDimension) / height);
-                                height = maxDimension;
-                            }
-                            
-                            canvas.width = width;
-                            canvas.height = height;
-                            ctx.drawImage(img, 0, 0, width, height);
-                            
-                            // 轉換為 Blob
-                            canvas.toBlob(
-                                (blob) => {
-                                    // 創建新文件對象
-                                    const compressedFile = new File([blob], file.name, {
-                                        type: 'image/jpeg',
-                                        lastModified: Date.now()
-                                    });
-                                    resolve(compressedFile);
-                                },
-                                'image/jpeg',
-                                0.7 // 設置壓縮質量 (0.7 = 70% 質量)
-                            );
-                        };
-                    };
-                    reader.onerror = function(error) {
-                        reject(error);
-                    };
-                });
-            }
-            
-            // 創建文件預覽
-            function createFilePreview(fileId, file) {
-                const previewItem = document.createElement('div');
-                previewItem.className = 'photo-preview-item';
-                previewItem.id = fileId;
-                
-                // 判斷文件類型
-                if (file.type.startsWith('image/')) {
-                    // 圖片預覽
-                    const img = document.createElement('img');
-                    img.src = URL.createObjectURL(file);
-                    img.alt = file.name;
-                    img.onload = function() {
-                        URL.revokeObjectURL(this.src);
-                    };
-                    previewItem.appendChild(img);
-                } else {
-                    // PDF 或其他文件類型
-                    const fileIcon = document.createElement('div');
-                    fileIcon.className = 'file-icon';
-                    fileIcon.innerHTML = '<i class="fas fa-file-pdf fa-2x"></i>';
-                    fileIcon.style.display = 'flex';
-                    fileIcon.style.alignItems = 'center';
-                    fileIcon.style.justifyContent = 'center';
-                    fileIcon.style.height = '100%';
-                    fileIcon.style.backgroundColor = '#f8f9fa';
-                    previewItem.appendChild(fileIcon);
-                }
-                
-                // 文件名
-                const fileName = document.createElement('div');
-                fileName.className = 'file-name';
-                fileName.textContent = file.name;
-                previewItem.appendChild(fileName);
-                
-                // 刪除按鈕
-                const deleteBtn = document.createElement('div');
-                deleteBtn.className = 'delete-btn';
-                deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
-                deleteBtn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    
-                    // 從上傳文件列表中移除
-                    window.uploadedFiles = window.uploadedFiles.filter(item => item.id !== fileId);
-                    
-                    // 移除預覽元素
-                    photoPreviewContainer.removeChild(previewItem);
-                    
-                    // 更新上傳計數
-                    updateUploadCount();
-                });
-                previewItem.appendChild(deleteBtn);
-                
-                // 添加到預覽容器
-                photoPreviewContainer.appendChild(previewItem);
-            }
-            
-            // 使用 DnD (Drag and Drop) 上傳
-            const uploadArea = document.querySelector('.custom-file-upload');
-            
-            if (uploadArea) {
-                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                    uploadArea.addEventListener(eventName, preventDefaults, false);
-                });
-                
-                function preventDefaults(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-                
-                ['dragenter', 'dragover'].forEach(eventName => {
-                    uploadArea.addEventListener(eventName, highlight, false);
-                });
-                
-                ['dragleave', 'drop'].forEach(eventName => {
-                    uploadArea.addEventListener(eventName, unhighlight, false);
-                });
-                
-                function highlight() {
-                    uploadArea.classList.add('highlight');
-                }
-                
-                function unhighlight() {
-                    uploadArea.classList.remove('highlight');
-                }
-                
-                uploadArea.addEventListener('drop', handleDrop, false);
-                
-                function handleDrop(e) {
-                    const dt = e.dataTransfer;
-                    const files = dt.files;
-                    businessLicenseFile.files = files;
-                    
-                    // 觸發 change 事件
-                    const event = new Event('change', { bubbles: true });
-                    businessLicenseFile.dispatchEvent(event);
-                }
-            }
-            
-            // 初始更新計數
-            updateUploadCount();
-        }
-
-        function handleFormKeyPress(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                
-                // 獲取當前活動的表單步驟
-                const activeStep = document.querySelector('.form-step.active');
-                const stepNumber = parseInt(activeStep.id.match(/\d+/)[0]);
-                
-                // 如果是最後一步，則提交表單
-                if (stepNumber === 4) {
-                    document.getElementById('businessRegisterForm').dispatchEvent(new Event('submit'));
-                } else {
-                    // 否則跳轉到下一步
-                    nextStep(stepNumber);
-                }
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const style = document.createElement('style');
-            style.textContent = `
-                .photo-preview-item.load-error {
-                    border: 2px solid #dc3545;
-                }
-                .photo-preview-item.load-error::after {
-                    content: "載入錯誤";
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background: rgba(220, 53, 69, 0.8);
-                    color: white;
-                    padding: 2px 6px;
-                    border-radius: 3px;
-                    font-size: 10px;
-                }
-            `;
-            document.head.appendChild(style);
-            
-            // 初始化多照片上傳功能
-            initMultiPhotoUpload();
-        });
-
-        // DOM加載完成後執行
-        document.addEventListener('DOMContentLoaded', function() {
-            // 初始化表單元素
-            initFormElements();
-            
-            // 添加密碼強度和規則顯示元素
-            addPasswordStrengthElements();
-            
-            // 為密碼輸入欄位添加事件監聽
-            document.getElementById('password').addEventListener('input', updatePasswordStrength);
-            document.getElementById('confirmPassword').addEventListener('input', function() {
-                updatePasswordRulesCheck(document.getElementById('password').value);
-            });
-            
-            // 為表單添加鍵盤事件監聽
-            document.getElementById('businessRegisterForm').addEventListener('keypress', handleFormKeyPress);
-            
-            // 設置步驟切換時動態修改必填屬性
-            document.querySelectorAll('.btn-next').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const currentStep = parseInt(this.getAttribute('onclick').match(/\d+/)[0]);
-                    const nextStep = currentStep + 1;
-                    
-                    // 為當前步驟的輸入元素移除必填屬性
-                    document.querySelectorAll(`#step-${currentStep}-content input, #step-${currentStep}-content select`).forEach(el => {
-                        if (el.type !== 'hidden') {
-                            el.required = false;
-                        }
-                    });
-                    
-                    // 為下一步的輸入元素設置必填屬性
-                    setTimeout(() => {
-                        document.querySelectorAll(`#step-${nextStep}-content input, #step-${nextStep}-content select`).forEach(el => {
-                            if (el.getAttribute('data-required') !== 'false' && el.type !== 'hidden' && el.id !== 'businessLicenseFile') {
-                                el.required = true;
-                            }
-                        });
-                    }, 100);
-                });
-            });
-            
-            // 為上一步按鈕添加處理邏輯
-            document.querySelectorAll('.btn-prev').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    if (this.getAttribute('onclick')) {
-                        const currentStep = parseInt(this.getAttribute('onclick').match(/\d+/)[0]);
-                        
-                        // 為當前步驟的輸入元素移除必填屬性
-                        document.querySelectorAll(`#step-${currentStep}-content input, #step-${currentStep}-content select`).forEach(el => {
-                            if (el.type !== 'hidden') {
-                                el.required = false;
-                            }
-                        });
-                        
-                        // 為上一步的輸入元素設置必填屬性
-                        setTimeout(() => {
-                            const prevStep = currentStep - 1;
-                            document.querySelectorAll(`#step-${prevStep}-content input, #step-${prevStep}-content select`).forEach(el => {
-                                if (el.getAttribute('data-required') !== 'false' && el.type !== 'hidden') {
-                                    el.required = true;
-                                }
-                            });
-                        }, 100);
-                    }
-                });
-            });
-            
-            // 處理文件上傳顯示
-            document.getElementById('businessLicenseFile').addEventListener('change', function(e) {
-                const fileName = e.target.files[0] ? e.target.files[0].name : '';
-                // document.getElementById('businessLicenseFileName').textContent = fileName;
-            });
-            
-            // 初始化密碼強度和規則顯示
-            updatePasswordStrength();
-        });
-
-        // 添加密碼強度和規則顯示元素
-        function addPasswordStrengthElements() {
-            // 找到密碼輸入欄位
-            const passwordInputGroup = document.getElementById('password').closest('.form-group');
-            
-            // 添加密碼強度條和規則說明
-            const strengthElement = document.createElement('div');
-            strengthElement.innerHTML = `
-                <div class="mt-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <small id="password-strength-text"></small>
-                    </div>
-                    <div class="progress mt-1" style="height: 6px;">
-                        <div id="password-strength-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
-                    </div>
-                    <div class="mt-2 password-rules">
-                        <small class="d-block mb-1">密碼必須符合以下條件：</small>
-                        <ul class="ps-3 mb-0" style="list-style-type: none;">
-                            <li id="rule-length" class="text-danger"><i id="rule-length-icon" class="fas fa-times"></i> 長度為 8-20 個字符</li>
-                            <li id="rule-lowercase" class="text-danger"><i id="rule-lowercase-icon" class="fas fa-times"></i> 包含至少一個小寫字母</li>
-                            <li id="rule-uppercase" class="text-danger"><i id="rule-uppercase-icon" class="fas fa-times"></i> 包含至少一個大寫字母</li>
-                            <li id="rule-number" class="text-danger"><i id="rule-number-icon" class="fas fa-times"></i> 包含至少一個數字</li>
-                        </ul>
-                    </div>
-                </div>
-            `;
-            
-            passwordInputGroup.appendChild(strengthElement);
-            
-            // 為確認密碼欄位添加匹配檢查
-            const confirmPasswordGroup = document.getElementById('confirmPassword').closest('.form-group');
-            const matchElement = document.createElement('div');
-            matchElement.innerHTML = `
-                <div class="mt-2 password-rules">
-                    <ul class="ps-3 mb-0" style="list-style-type: none;">
-                        <li id="rule-match" class="text-danger"><i id="rule-match-icon" class="fas fa-times"></i> 密碼匹配</li>
-                    </ul>
-                </div>
-            `;
-            confirmPasswordGroup.appendChild(matchElement);
-        }
-    </script>
     
     <style>
-        
         /* 註冊區塊樣式 */
         .register-section {
             padding: 120px 0 80px;
@@ -1044,6 +461,26 @@
                 justify-content: space-between;
             }
         
+        /* 添加密碼強度相關樣式 */
+        .password-rules {
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .password-rules ul {
+            padding-left: 0;
+            margin-bottom: 0;
+        }
+
+        .password-rules li {
+            margin-bottom: 4px;
+        }
+
+        .password-rules li i {
+            margin-right: 5px;
+            width: 14px;
+        }
+
         /* 響應式調整 */
         @media (max-width: 991px) {
             .register-image {
@@ -1184,6 +621,25 @@
                                             </button>
                                         </div>
                                         <div class="error-feedback">密碼長度至少為8位，且包含字母和數字</div>
+                                        
+                                        <!-- 添加密碼強度顯示 -->
+                                        <div class="mt-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small id="password-strength-text"></small>
+                                            </div>
+                                            <div class="progress mt-1" style="height: 6px;">
+                                                <div id="password-strength-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                            </div>
+                                            <div class="mt-2 password-rules">
+                                                <small class="d-block mb-1">密碼必須符合以下條件：</small>
+                                                <ul class="ps-3 mb-0" style="list-style-type: none;">
+                                                    <li id="rule-length" class="text-danger"><i id="rule-length-icon" class="fas fa-times"></i> 長度為 8-20 個字符</li>
+                                                    <li id="rule-lowercase" class="text-danger"><i id="rule-lowercase-icon" class="fas fa-times"></i> 包含至少一個小寫字母</li>
+                                                    <li id="rule-uppercase" class="text-danger"><i id="rule-uppercase-icon" class="fas fa-times"></i> 包含至少一個大寫字母</li>
+                                                    <li id="rule-number" class="text-danger"><i id="rule-number-icon" class="fas fa-times"></i> 包含至少一個數字</li>
+                                                </ul>
+                                            </div>
+                                        </div>
                                     </div>
                                     
                                     <div class="form-group">
@@ -1195,11 +651,16 @@
                                             </button>
                                         </div>
                                         <div class="error-feedback">兩次輸入的密碼不一致</div>
+                                        <div class="mt-2 password-rules">
+                                            <ul class="ps-3 mb-0" style="list-style-type: none;">
+                                                <li id="rule-match" class="text-danger"><i id="rule-match-icon" class="fas fa-times"></i> 密碼匹配</li>
+                                            </ul>
+                                        </div>
                                     </div>
                                     
                                     <div class="form-btn-group">
-                                        <button type="button" class="btn btn-prev disabled">上一步</button>
-                                        <button type="button" class="btn btn-next" onclick="nextStep(1)">下一步</button>
+                                        <button type="button" class="btn btn-prev disabled" data-step="1">上一步</button>
+                                        <button type="button" class="btn btn-next" data-step="1">下一步</button>
                                     </div>
                                 </div>
                                 
@@ -1207,13 +668,13 @@
                                 <div class="form-step" id="step-2-content">
                                     <div class="form-group">
                                         <label for="businessName">店家名稱 <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="businessName" name="businessName" required>
+                                        <input type="text" class="form-control" id="businessName" name="businessName">
                                         <div class="error-feedback">請輸入店家名稱</div>
                                     </div>
                                     
                                     <div class="form-group">
                                         <label for="businessType">店家類型 <span class="text-danger">*</span></label>
-                                        <select class="form-select form-control" id="businessType" name="businessType" required>
+                                        <select class="form-select form-control" id="businessType" name="businessType">
                                             <option value="" selected disabled>請選擇</option>
                                             <option value="cafe">咖啡廳</option>
                                             <option value="restaurant">餐廳</option>
@@ -1227,19 +688,19 @@
                                     
                                     <div class="form-group">
                                         <label for="businessAddress">店家地址 <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="businessAddress" name="businessAddress" required>
+                                        <input type="text" class="form-control" id="businessAddress" name="businessAddress">
                                         <div class="error-feedback">請輸入店家地址</div>
                                     </div>
                                     
                                     <div class="form-group">
                                         <label for="businessPhone">店家電話 <span class="text-danger">*</span></label>
-                                        <input type="tel" class="form-control" id="businessPhone" name="businessPhone" required>
+                                        <input type="tel" class="form-control" id="businessPhone" name="businessPhone">
                                         <div class="error-feedback">請輸入有效的店家電話</div>
                                     </div>
                                     
                                     <div class="form-btn-group">
-                                        <button type="button" class="btn btn-prev" onclick="prevStep(2)">上一步</button>
-                                        <button type="button" class="btn btn-next" onclick="nextStep(2)">下一步</button>
+                                        <button type="button" class="btn btn-prev" data-step="2">上一步</button>
+                                        <button type="button" class="btn btn-next" data-step="2">下一步</button>
                                     </div>
                                 </div>
                                 
@@ -1247,13 +708,13 @@
                                 <div class="form-step" id="step-3-content">
                                     <div class="form-group">
                                         <label for="contactName">聯絡人姓名 <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="contactName" name="contactName" required>
+                                        <input type="text" class="form-control" id="contactName" name="contactName">
                                         <div class="error-feedback">請輸入聯絡人姓名</div>
                                     </div>
                                     
                                     <div class="form-group">
                                         <label for="contactPhone">聯絡人手機 <span class="text-danger">*</span></label>
-                                        <input type="tel" class="form-control" id="contactPhone" name="contactPhone" required>
+                                        <input type="tel" class="form-control" id="contactPhone" name="contactPhone">
                                         <div class="error-feedback">請輸入有效的聯絡人手機</div>
                                     </div>
                                     
@@ -1290,7 +751,7 @@
                                     
                                     <div class="form-group">
                                         <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="termsCheck" name="termsCheck" required>
+                                            <input class="form-check-input" type="checkbox" id="termsCheck" name="termsCheck">
                                             <label class="form-check-label" for="termsCheck">
                                                 我已閱讀並同意 <a href="#" target="_blank">使用條款</a> 和 <a href="#" target="_blank">隱私政策</a>
                                             </label>
@@ -1299,8 +760,8 @@
                                     </div>
                                     
                                     <div class="form-btn-group">
-                                        <button type="button" class="btn btn-prev" onclick="prevStep(3)">上一步</button>
-                                        <button type="button" class="btn btn-next" onclick="nextStep(3)">下一步</button>
+                                        <button type="button" class="btn btn-prev" data-step="3">上一步</button>
+                                        <button type="button" class="btn btn-next" data-step="3">下一步</button>
                                     </div>
                                 </div>
                                 
@@ -1315,9 +776,7 @@
                                     <div class="summary-info bg-light p-3 rounded mb-4">
                                         <h5 class="mb-3">資訊確認</h5>
                                         <div class="row">
-                                            <div class="col-12 mb-2">
-                                                <strong>上傳文件：</strong> <span id="summary-business-license"></span>
-                                            </div>
+                                            <!-- 摘要信息將通過 JavaScript 動態生成 -->
                                         </div>
                                     </div>
                                     
@@ -1326,7 +785,7 @@
                                     </div>
                                     
                                     <div class="form-btn-group">
-                                        <button type="button" class="btn btn-prev" onclick="prevStep(4)">上一步</button>
+                                        <button type="button" class="btn btn-prev" data-step="4">上一步</button>
                                         <button type="submit" class="btn btn-submit">提交註冊</button>
                                     </div>
                                 </div>
@@ -1404,349 +863,7 @@
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-            
-    <script>
-        // 確保全局變量初始化
-        window.uploadedFiles = window.uploadedFiles || [];
-
-        // 獲取上傳的文件列表 - 確保全局可用
-        window.getUploadedBusinessLicenseFiles = function() {
-            return window.uploadedFiles || [];
-        };    
-
-        // 導航欄滾動效果
-        window.addEventListener('scroll', function() {
-            const navbar = document.querySelector('.navbar');
-            if (window.scrollY > 50) {
-                navbar.classList.add('scrolled');
-            } else {
-                navbar.classList.remove('scrolled');
-            }
-        });
-        
-        // 切換密碼可見性
-        document.getElementById('togglePassword').addEventListener('click', function() {
-            togglePasswordVisibility('password', this);
-        });
-        
-        document.getElementById('toggleConfirmPassword').addEventListener('click', function() {
-            togglePasswordVisibility('confirmPassword', this);
-        });
-        
-        function togglePasswordVisibility(inputId, button) {
-            const passwordInput = document.getElementById(inputId);
-            const icon = button.querySelector('i');
-            
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                passwordInput.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
-        }
-        
-        // 檔案上傳處理
-        document.getElementById('businessLicenseFile').addEventListener('change', function(e) {
-            const fileName = e.target.files[0] ? e.target.files[0].name : '';
-            // document.getElementById('businessLicenseFileName').textContent = fileName;
-        });
-        
-        // 表單驗證
-        function validateStep(stepNumber) {
-            let isValid = true;
-            
-            // 根據不同步驟驗證不同欄位
-            if (stepNumber === 1) {
-                // 驗證電子郵件
-                const email = document.getElementById('email');
-                if (!email.value || !isValidEmail(email.value)) {
-                    email.classList.add('is-invalid');
-                    isValid = false;
-                } else {
-                    email.classList.remove('is-invalid');
-                }
-                
-                // 驗證密碼
-                const password = document.getElementById('password');
-                if (!password.value || password.value.length < 8 || !(/\d/.test(password.value) && /[a-zA-Z]/.test(password.value))) {
-                    password.classList.add('is-invalid');
-                    isValid = false;
-                } else {
-                    password.classList.remove('is-invalid');
-                }
-                
-                // 驗證確認密碼
-                const confirmPassword = document.getElementById('confirmPassword');
-                if (!confirmPassword.value || confirmPassword.value !== password.value) {
-                    confirmPassword.classList.add('is-invalid');
-                    isValid = false;
-                } else {
-                    confirmPassword.classList.remove('is-invalid');
-                }
-            }
-            
-            else if (stepNumber === 2) {
-                // 驗證店家名稱
-                const businessName = document.getElementById('businessName');
-                if (!businessName.value) {
-                    businessName.classList.add('is-invalid');
-                    isValid = false;
-                } else {
-                    businessName.classList.remove('is-invalid');
-                }
-                
-                // 驗證店家類型
-                const businessType = document.getElementById('businessType');
-                if (!businessType.value) {
-                    businessType.classList.add('is-invalid');
-                    isValid = false;
-                } else {
-                    businessType.classList.remove('is-invalid');
-                }
-                
-                // 驗證店家地址
-                const businessAddress = document.getElementById('businessAddress');
-                if (!businessAddress.value) {
-                    businessAddress.classList.add('is-invalid');
-                    isValid = false;
-                } else {
-                    businessAddress.classList.remove('is-invalid');
-                }
-                
-                // 驗證店家電話
-                const businessPhone = document.getElementById('businessPhone');
-                if (!businessPhone.value || !isValidPhone(businessPhone.value)) {
-                    businessPhone.classList.add('is-invalid');
-                    isValid = false;
-                } else {
-                    businessPhone.classList.remove('is-invalid');
-                }
-            }
-            
-            else if (stepNumber === 3) {
-                // 驗證聯絡人姓名
-                const contactName = document.getElementById('contactName');
-                if (!contactName.value) {
-                    contactName.classList.add('is-invalid');
-                    isValid = false;
-                } else {
-                    contactName.classList.remove('is-invalid');
-                }
-                
-                // 驗證聯絡人手機
-                const contactPhone = document.getElementById('contactPhone');
-                if (!contactPhone.value || !isValidPhone(contactPhone.value)) {
-                    contactPhone.classList.add('is-invalid');
-                    isValid = false;
-                } else {
-                    contactPhone.classList.remove('is-invalid');
-                }
-                
-                // 驗證營業執照上傳
-                const uploadedFiles = window.getUploadedBusinessLicenseFiles();
-                console.log('驗證上傳檔案:', uploadedFiles);
-                if (!uploadedFiles || uploadedFiles.length === 0) {
-                    document.querySelector('.custom-file-upload').classList.add('is-invalid');
-                    console.log('檔案驗證失敗: 未上傳檔案');
-                    isValid = false;
-                } else {
-                    document.querySelector('.custom-file-upload').classList.remove('is-invalid');
-                    console.log('檔案驗證成功: 已上傳 ' + uploadedFiles.length + ' 個檔案');
-                }
-                
-                // 驗證條款勾選
-                const termsCheck = document.getElementById('termsCheck');
-                if (!termsCheck.checked) {
-                    termsCheck.classList.add('is-invalid');
-                    isValid = false;
-                } else {
-                    termsCheck.classList.remove('is-invalid');
-                }
-            }
-            
-            return isValid;
-        }
-        
-        // 更新摘要信息
-        function updateSummary() {
-            // 創建元素並添加到摘要區域
-            const summaryInfo = document.querySelector('.summary-info .row');
-            
-            // 清空現有內容
-            summaryInfo.innerHTML = '';
-            
-            // 動態添加摘要項目
-            function addSummaryItem(label, value) {
-                const div = document.createElement('div');
-                div.className = 'col-12 mb-2';
-                div.innerHTML = `<strong>${label}：</strong> <span>${value}</span>`;
-                summaryInfo.appendChild(div);
-            }
-            
-            // 添加所有表單項目的摘要
-            addSummaryItem('電子郵件', document.getElementById('email').value);
-            
-            const businessType = document.getElementById('businessType');
-            const businessTypeText = businessType.options[businessType.selectedIndex]?.text || '未選擇';
-            
-            addSummaryItem('店家名稱', document.getElementById('businessName').value);
-            addSummaryItem('店家類型', businessTypeText);
-            addSummaryItem('店家地址', document.getElementById('businessAddress').value);
-            addSummaryItem('店家電話', document.getElementById('businessPhone').value);
-            addSummaryItem('聯絡人姓名', document.getElementById('contactName').value);
-            addSummaryItem('聯絡人電話', document.getElementById('contactPhone').value);
-            
-            // 處理文件上傳 - 顯示實際上傳的檔案
-            const uploadedFiles = window.getUploadedBusinessLicenseFiles();
-            let fileDescription = '未上傳';
-
-            if (uploadedFiles && uploadedFiles.length > 0) {
-                if (uploadedFiles.length === 1) {
-                    fileDescription = uploadedFiles[0].fileName;
-                } else {
-                    fileDescription = `已上傳 ${uploadedFiles.length} 個檔案`;
-                }
-            }
-
-            addSummaryItem('上傳文件', fileDescription);
-            console.log('摘要顯示上傳檔案:', fileDescription);
-        }
-
-    // 下一步
-    function nextStep(currentStep) {
-        console.log(`嘗試進入下一步: 從第 ${currentStep} 步到第 ${currentStep + 1} 步`);
-        const isValidStep = validateStep(currentStep);
-        console.log(`步驟 ${currentStep} 驗證結果:`, isValidStep);
-        if (!validateStep(currentStep)) {
-            console.log(`步驟 ${currentStep} 驗證失敗，無法進入下一步`);
-            return;
-        }
-        
-        // 隱藏當前步驟
-        document.getElementById(`step-${currentStep}-content`).classList.remove('active');
-        
-        // 標記當前步驟為已完成
-        document.getElementById(`step-${currentStep}`).classList.remove('active');
-        document.getElementById(`step-${currentStep}`).classList.add('completed');
-        
-        // 顯示下一步
-        const nextStepNumber = currentStep + 1;
-        document.getElementById(`step-${nextStepNumber}-content`).classList.add('active');
-        document.getElementById(`step-${nextStepNumber}`).classList.add('active');
-        
-        // 如果是進入最後一步，更新摘要信息
-        if (nextStepNumber === 4) {
-            updateSummary();
-        }
-    }
-
-    // 上一步
-    function prevStep(currentStep) {
-        // 隱藏當前步驟
-        document.getElementById(`step-${currentStep}-content`).classList.remove('active');
-        document.getElementById(`step-${currentStep}`).classList.remove('active');
-        
-        // 顯示上一步
-        const prevStepNumber = currentStep - 1;
-        document.getElementById(`step-${prevStepNumber}-content`).classList.add('active');
-        document.getElementById(`step-${prevStepNumber}`).classList.add('active');
-        document.getElementById(`step-${prevStepNumber}`).classList.remove('completed');
-    }
-
-    // 初始化表單元素，解決 "An invalid form control with name='' is not focusable" 問題
-    function initFormElements() {
-        // 第二步的元素
-        document.querySelectorAll('#step-2-content input, #step-2-content select').forEach(el => {
-            el.required = false; // 初始時不設置為必填
-        });
-        
-        // 第三步的元素
-        document.querySelectorAll('#step-3-content input').forEach(el => {
-            el.required = false; // 初始時不設置為必填
-        });
-        document.getElementById('termsCheck').required = false;
-    }
-
-    // DOM加載完成後執行
-    document.addEventListener('DOMContentLoaded', function() {
-        // 初始化表單元素
-        initFormElements();
-        
-        // 設置步驟切換時動態修改必填屬性
-        document.querySelectorAll('.btn-next').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const currentStep = parseInt(this.getAttribute('onclick').match(/\d+/)[0]);
-                const nextStep = currentStep + 1;
-                
-                // 為當前步驟的輸入元素移除必填屬性
-                document.querySelectorAll(`#step-${currentStep}-content input, #step-${currentStep}-content select`).forEach(el => {
-                    if (el.type !== 'hidden') {
-                        el.required = false;
-                    }
-                });
-                
-                // 為下一步的輸入元素設置必填屬性
-                setTimeout(() => {
-                    document.querySelectorAll(`#step-${nextStep}-content input, #step-${nextStep}-content select`).forEach(el => {
-                        if (el.getAttribute('data-required') !== 'false' && el.type !== 'hidden' && el.id !== 'businessLicenseFile') {
-                            el.required = true;
-                        }
-                    });
-                }, 100);
-            });
-        });
-        
-        // 為上一步按鈕添加處理邏輯
-        document.querySelectorAll('.btn-prev').forEach(btn => {
-            btn.addEventListener('click', function() {
-                if (this.getAttribute('onclick')) {
-                    const currentStep = parseInt(this.getAttribute('onclick').match(/\d+/)[0]);
-                    
-                    // 為當前步驟的輸入元素移除必填屬性
-                    document.querySelectorAll(`#step-${currentStep}-content input, #step-${currentStep}-content select`).forEach(el => {
-                        if (el.type !== 'hidden') {
-                            el.required = false;
-                        }
-                    });
-                    
-                    // 為上一步的輸入元素設置必填屬性
-                    setTimeout(() => {
-                        const prevStep = currentStep - 1;
-                        document.querySelectorAll(`#step-${prevStep}-content input, #step-${prevStep}-content select`).forEach(el => {
-                            if (el.getAttribute('data-required') !== 'false' && el.type !== 'hidden') {
-                                el.required = true;
-                            }
-                        });
-                    }, 100);
-                }
-            });
-        });
-        
-        // 處理文件上傳顯示
-        document.getElementById('businessLicenseFile').addEventListener('change', function(e) {
-            const fileName = e.target.files[0] ? e.target.files[0].name : '';
-            // document.getElementById('businessLicenseFileName').textContent = fileName;
-        });
-    });
-
-    // 輔助函數：驗證電子郵件
-    function isValidEmail(email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
-    }
-
-    // 輔助函數：驗證電話號碼
-    function isValidPhone(phone) {
-        // 簡單的臺灣電話格式驗證，可根據需要調整
-        const phoneRegex = /^(0[2-9]\d{7,8}|09\d{8})$/;
-        return phoneRegex.test(phone);
-    }
     
-    </script>
-
     <!-- 在頁面結束前添加以下初始化腳本 -->
     <script type="module">
         // 導入必要的模組，確保正確的初始化順序
@@ -1784,5 +901,8 @@
             }
         });
     </script>
+    
+    <!-- 導入主要的 JavaScript 文件 -->
+    <script type="module" src="firebase-register.js"></script>
 </body>
 </html>
