@@ -17,8 +17,111 @@
     <!-- Favicon -->
     <link rel="icon" href="logo_s.png" type="image/png">
 
-    <!-- 添加Firebase ES 模組 script 標籤 -->
-    <script type="module" src="firebase-reapply.js"></script>
+    <!-- 1. 先載入reCAPTCHA腳本 -->
+    <script src="https://www.google.com/recaptcha/api.js?render=6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G" 
+    async 
+    onload="console.log('reCAPTCHA 腳本加載成功', new Date().toISOString())" 
+    onerror="console.error('reCAPTCHA 腳本加載失敗', new Date().toISOString())"></script>
+
+    <!-- 2. 添加初始化App Check的模組 -->
+    <script type="module">
+    // 先導入Firebase配置
+    import './firebase-config.js';
+
+    // 導入App Check模組功能
+    import { checkAppCheckStatus, addDiagnosticsPanel } from './app-check-module.js';
+
+    // 頁面加載後檢查App Check狀態
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('重新申請頁面已加載，初始化App Check...');
+        try {
+            const result = await checkAppCheckStatus();
+            console.log('App Check初始化結果:', result.success ? '成功' : '失敗');
+            
+            // 創建診斷按鈕（僅在開發環境）
+            if (window.location.hostname === 'localhost' || 
+                window.location.hostname === '127.0.0.1' || 
+                window.location.hostname.includes('192.168.')) {
+                
+                const diagnosticsBtn = document.createElement('button');
+                diagnosticsBtn.id = 'appCheckDiagnosticsBtn';
+                diagnosticsBtn.innerHTML = '🔍';
+                diagnosticsBtn.title = 'App Check 診斷';
+                diagnosticsBtn.style.position = 'fixed';
+                diagnosticsBtn.style.bottom = '20px';
+                diagnosticsBtn.style.right = '20px';
+                diagnosticsBtn.style.width = '50px';
+                diagnosticsBtn.style.height = '50px';
+                diagnosticsBtn.style.borderRadius = '50%';
+                diagnosticsBtn.style.backgroundColor = '#007bff';
+                diagnosticsBtn.style.color = 'white';
+                diagnosticsBtn.style.border = 'none';
+                diagnosticsBtn.style.fontSize = '20px';
+                diagnosticsBtn.style.display = 'flex';
+                diagnosticsBtn.style.alignItems = 'center';
+                diagnosticsBtn.style.justifyContent = 'center';
+                diagnosticsBtn.style.cursor = 'pointer';
+                diagnosticsBtn.style.zIndex = '9999';
+                diagnosticsBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+                
+                diagnosticsBtn.addEventListener('click', () => {
+                    addDiagnosticsPanel();
+                    diagnosticsBtn.style.display = 'none';
+                });
+                
+                document.body.appendChild(diagnosticsBtn);
+            }
+        } catch (error) {
+            console.error('App Check初始化失敗:', error);
+        }
+    });
+    </script>
+
+    <!-- 3. 添加App Check狀態指示器樣式 -->
+    <style>
+    #appCheckStatus {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 9999;
+        display: none;
+    }
+
+    #appCheckStatus.initializing {
+        background-color: #ffeeba;
+        color: #856404;
+        display: block;
+    }
+
+    #appCheckStatus.success {
+        background-color: #d4edda;
+        color: #155724;
+        display: block;
+    }
+
+    #appCheckStatus.error {
+        background-color: #f8d7da;
+        color: #721c24;
+        display: block;
+    }
+
+    /* 加載指示器樣式 */
+    #loadingMessage {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        border-radius: 8px;
+        z-index: 9999;
+        text-align: center;
+    }
+    </style>
     
     <!-- 錯誤處理 -->
     <script src="error-handler.js"></script>
