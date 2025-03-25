@@ -646,9 +646,13 @@ async function nextStep(currentStep) {
         document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
         document.getElementById(`step-${nextStep}`).classList.add('active');
         
-        // 如果是最後一步，顯示提交按鈕
+        // 如果是第3步，顯示提交按鈕
         if (nextStep === 3) {
             document.querySelector('.btn-submit').style.display = 'block';
+        }
+        
+        // 如果進入第4步，更新摘要信息
+        if (nextStep === 4) {
             updateSummaryInfo();
         }
         
