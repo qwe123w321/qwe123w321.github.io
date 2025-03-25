@@ -214,6 +214,23 @@ function updatePasswordRulesCheck(password) {
     }
 }
 
+// 密碼強度相關事件監聽
+const passwordInput = document.getElementById('password');
+const confirmPasswordInput = document.getElementById('confirmPassword');
+
+if (passwordInput) {
+    passwordInput.addEventListener('input', updatePasswordStrength);
+    // 初始化顯示
+    updatePasswordStrength();
+}
+
+if (confirmPasswordInput) {
+    confirmPasswordInput.addEventListener('input', function() {
+        const password = document.getElementById('password').value;
+        updatePasswordRulesCheck(password);
+    });
+}
+
 // 驗證某個步驟的所有欄位
 async function validateStep(stepNumber) {
     let isValid = true;
