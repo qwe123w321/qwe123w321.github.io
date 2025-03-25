@@ -4,11 +4,17 @@ import { createUserWithEmailAndPassword, sendEmailVerification } from 'https://w
 import { setDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
 import { ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
 
+// 導入 App Check 模組的功能
+import { checkAppCheckStatus, getAppCheckToken, installXHRInterceptor } from './app-check-module.js';
+
 document.addEventListener('DOMContentLoaded', function() {
     // 獲取註冊表單
     const registerForm = document.getElementById('businessRegisterForm');
     
     if (registerForm) {
+        // 優先安裝 XHR 攔截器以確保所有請求都帶有 App Check 令牌
+        installXHRInterceptor();
+        
         // 為表單添加提交事件監聽器
         registerForm.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -29,6 +35,24 @@ document.addEventListener('DOMContentLoaded', function() {
             submitButton.disabled = true;
             
             try {
+                // 先檢查 App Check 狀態
+                console.log('註冊前檢查 App Check 狀態...');
+                const appCheckResult = await checkAppCheckStatus();
+                
+                if (!appCheckResult.success) {
+                    console.warn('App Check 驗證失敗，註冊可能會被拒絕');
+                    
+                    // 顯示警告但允許繼續嘗試
+                    const warningDiv = document.createElement('div');
+                    warningDiv.className = 'alert alert-warning mt-3';
+                    warningDiv.innerHTML = `
+                        <strong>警告:</strong> App Check 驗證失敗，但仍將嘗試註冊。如果失敗，請刷新頁面後重試。
+                    `;
+                    document.querySelector('.register-form-header').after(warningDiv);
+                } else {
+                    console.log('App Check 驗證成功，繼續註冊流程');
+                }
+                
                 // 獲取表單數據
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
@@ -150,6 +174,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     errorMessage = '密碼強度不夠，請設置更複雜的密碼';
                 } else if (error.code === 'auth/network-request-failed') {
                     errorMessage = '網絡連接失敗，請檢查您的網絡連接';
+                } else if (error.code === 'auth/firebase-app-check-token-is-invalid') {
+                    errorMessage = 'App Check 驗證失敗。請刷新頁面後重試，或檢查您的瀏覽器設置。';
+                    
+                    // 添加 App Check 診斷按鈕
+                    setTimeout(() => {
+                        const errorAlert = document.querySelector('.register-error-alert');
+                        if (errorAlert) {
+                            const diagBtn = document.createElement('button');
+                            diagBtn.className = 'btn btn-sm btn-warning mt-2';
+                            diagBtn.textContent = '執行 App Check 診斷';
+                            diagBtn.addEventListener('click', async function() {
+                                // 重新檢查 App Check 狀態
+                                const result = await checkAppCheckStatus();
+                                alert(`App Check 診斷結果: ${result.success ? '成功' : '失敗'}`);
+                            });
+                            errorAlert.appendChild(diagBtn);
+                        }
+                    }, 100);
                 } else if (error.message) {
                     errorMessage = error.message;
                 }
@@ -169,3 +211,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// 暴露 validateStep 函數給全局使用，以避免找不到該函數的錯誤
+window.validateStep = function(stepNumber) {
+    // 這裡假設 business-register.html 中已經定義了 validateStep 函數
+    if (typeof validateStep === 'function') {
+        return validateStep(stepNumber);
+    }
+    
+    // 如果找不到函數，使用一個簡單的回退實現
+    console.warn('找不到 validateStep 函數，使用回退版本');
+    
+    // 第三步的簡單驗證
+    if (stepNumber === 3) {
+        const contactName = document.getElementById('contactName');
+        const contactPhone = document.getElementById('contactPhone');
+        const termsCheck = document.getElementById('termsCheck');
+        
+        return contactName && contactName.value && 
+               contactPhone && contactPhone.value && 
+               termsCheck && termsCheck.checked;
+    }
+    
+    return true;
+};
