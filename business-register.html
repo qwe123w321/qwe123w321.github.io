@@ -1,235 +1,1788 @@
-// firebase-register.js
-import { auth, db, storage, doc, collection, onAuthStateChanged } from './firebase-config.js';
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
-import { setDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
-import { ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
-
-// 導入 App Check 模組的功能
-import { checkAppCheckStatus, getAppCheckToken, installXHRInterceptor } from './app-check-module.js';
-
-document.addEventListener('DOMContentLoaded', function() {
-    // 獲取註冊表單
-    const registerForm = document.getElementById('businessRegisterForm');
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://www.google.com/recaptcha/api.js?render=6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G" 
+     async 
+     onload="console.log('reCAPTCHA 腳本加載成功', new Date().toISOString())" 
+     onerror="console.error('reCAPTCHA 腳本加載失敗', new Date().toISOString())"></script>
+    <title>店家註冊 - BrewDate</title>
+    <!-- SEO 優化 meta 標籤 -->
+    <meta name="description" content="BREWDATE 商家合作平台 - 註冊您的店家帳戶，增加曝光度，吸引更多顧客。">
+    <meta name="keywords" content="BREWDATE, 商家註冊, 店家平台, 約會場所, 合作夥伴">
     
-    if (registerForm) {
-        // 優先安裝 XHR 攔截器以確保所有請求都帶有 App Check 令牌
-        installXHRInterceptor();
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="base.css">
+    <!-- Favicon -->
+    <link rel="icon" href="logo_s.png" type="image/png">
+
+    <!-- 2. 添加 App Check 初始化模組 -->
+    <script type="module">
+        // 先導入 Firebase 配置
+        import './firebase-config.js';
         
-        // 為表單添加提交事件監聽器
-        registerForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
+        // 導入統一的 App Check 模組
+        import { checkAppCheckStatus, addDiagnosticsPanel } from './app-check-module.js';
+        
+        // 添加診斷按鈕
+        document.addEventListener('DOMContentLoaded', () => {
+            // 創建診斷按鈕
+            const diagnosticsBtn = document.createElement('button');
+            diagnosticsBtn.id = 'appCheckDiagnosticsBtn';
+            diagnosticsBtn.innerHTML = '🔍';
+            diagnosticsBtn.title = 'App Check 診斷';
+            diagnosticsBtn.style.position = 'fixed';
+            diagnosticsBtn.style.bottom = '20px';
+            diagnosticsBtn.style.right = '20px';
+            diagnosticsBtn.style.width = '50px';
+            diagnosticsBtn.style.height = '50px';
+            diagnosticsBtn.style.borderRadius = '50%';
+            diagnosticsBtn.style.backgroundColor = '#007bff';
+            diagnosticsBtn.style.color = 'white';
+            diagnosticsBtn.style.border = 'none';
+            diagnosticsBtn.style.fontSize = '20px';
+            diagnosticsBtn.style.display = 'flex';
+            diagnosticsBtn.style.alignItems = 'center';
+            diagnosticsBtn.style.justifyContent = 'center';
+            diagnosticsBtn.style.cursor = 'pointer';
+            diagnosticsBtn.style.zIndex = '9999';
+            diagnosticsBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
             
-            // 檢查第三步的必填字段是否已填寫
-            if (!validateStep(3)) {
-                // 如果未驗證通過，切換到第三步
-                document.querySelectorAll('.form-step').forEach(step => step.classList.remove('active'));
-                document.getElementById('step-3-content').classList.add('active');
-                document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
-                document.getElementById('step-3').classList.add('active');
+            // 添加點擊事件
+            diagnosticsBtn.addEventListener('click', () => {
+                addDiagnosticsPanel();
+                diagnosticsBtn.style.display = 'none';
+            });
+            
+            // 添加到頁面
+            document.body.appendChild(diagnosticsBtn);
+        });
+        
+        // 導入其他需要的模組
+        import './firebase-register.js';
+    </script>
+    
+    <!-- 添加 App Check 狀態指示器的樣式 -->
+    <style>
+        #appCheckStatus {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 9999;
+            display: none;
+        }
+        
+        #appCheckStatus.initializing {
+            background-color: #ffeeba;
+            color: #856404;
+            display: block;
+        }
+        
+        #appCheckStatus.success {
+            background-color: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        
+        #appCheckStatus.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+    </style>   
+    <!-- 錯誤處理 -->
+    <script src="error-handler.js"></script>
+
+    <script>
+        // 密碼強度測量函數
+        function measurePasswordStrength(password) {
+            let strength = 0;
+            
+            // 檢查長度
+            if (password.length >= 8 && password.length <= 20) strength += 2;
+            else if (password.length > 0) strength += 1;
+            
+            // 檢查複雜性
+            if (/[a-z]/.test(password)) strength += 1; // 小寫字母
+            if (/[A-Z]/.test(password)) strength += 1; // 大寫字母
+            if (/[0-9]/.test(password)) strength += 1; // 數字
+            
+            if (strength < 3) return { strength: 'weak', class: 'bg-danger' };
+            if (strength < 5) return { strength: 'medium', class: 'bg-warning' };
+            return { strength: 'strong', class: 'bg-success' };
+        }
+
+        // 更新密碼強度視覺顯示
+        function updatePasswordStrength() {
+            const password = document.getElementById('password').value;
+            const strengthResult = measurePasswordStrength(password);
+            
+            // 更新強度指示條
+            const strengthBar = document.getElementById('password-strength-bar');
+            strengthBar.className = `progress-bar ${strengthResult.class}`;
+            
+            // 根據密碼長度和強度設置寬度
+            if (password.length === 0) {
+                strengthBar.style.width = '0%';
+            } else {
+                let percentage;
+                if (password.length <= 20) {
+                    percentage = Math.min(100, (password.length / 20) * 100);
+                } else {
+                    // 如果超過20字符，將進度條設為100%但顏色可能不是綠色(依據複雜度)
+                    percentage = 100;
+                }
+                strengthBar.style.width = `${percentage}%`;
+            }
+            
+            // 更新強度標籤
+            const strengthLabel = document.getElementById('password-strength-text');
+            if (password.length === 0) {
+                strengthLabel.textContent = '';
+            } else {
+                strengthLabel.textContent = `密碼強度: ${strengthResult.strength === 'weak' ? '弱' : strengthResult.strength === 'medium' ? '中' : '強'}`;
+            }
+            
+            // 更新密碼規則檢查
+            updatePasswordRulesCheck(password);
+        }
+
+        // 更新密碼規則檢查
+        function updatePasswordRulesCheck(password) {
+            // 檢查各項規則
+            const lengthCheck = password.length >= 8 && password.length <= 20;
+            const lowercaseCheck = /[a-z]/.test(password);
+            const uppercaseCheck = /[A-Z]/.test(password);
+            const numberCheck = /[0-9]/.test(password);
+            
+            // 更新規則顯示
+            document.getElementById('rule-length').className = lengthCheck ? 'text-success' : 'text-danger';
+            document.getElementById('rule-lowercase').className = lowercaseCheck ? 'text-success' : 'text-danger';
+            document.getElementById('rule-uppercase').className = uppercaseCheck ? 'text-success' : 'text-danger';
+            document.getElementById('rule-number').className = numberCheck ? 'text-success' : 'text-danger';
+            
+            // 更新圖標
+            document.getElementById('rule-length-icon').className = lengthCheck ? 'fas fa-check' : 'fas fa-times';
+            document.getElementById('rule-lowercase-icon').className = lowercaseCheck ? 'fas fa-check' : 'fas fa-times';
+            document.getElementById('rule-uppercase-icon').className = uppercaseCheck ? 'fas fa-check' : 'fas fa-times';
+            document.getElementById('rule-number-icon').className = numberCheck ? 'fas fa-check' : 'fas fa-times';
+            
+            // 更新確認密碼檢查
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const matchCheck = password === confirmPassword && password !== '';
+            
+            if (confirmPassword !== '') {
+                document.getElementById('rule-match').className = matchCheck ? 'text-success' : 'text-danger';
+                document.getElementById('rule-match-icon').className = matchCheck ? 'fas fa-check' : 'fas fa-times';
+            }
+        }
+
+        // 更新密碼規則檢查
+        function updateSummary() {
+            // 創建元素並添加到摘要區域
+            const summaryInfo = document.querySelector('.summary-info .row');
+            
+            if (!summaryInfo) {
+                console.error('找不到摘要信息容器');
                 return;
             }
             
-            // 禁用提交按鈕防止重複提交
-            const submitButton = document.querySelector('.btn-submit');
-            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 處理中...';
-            submitButton.disabled = true;
+            // 清空現有內容
+            summaryInfo.innerHTML = '';
             
-            try {
-                // 先檢查 App Check 狀態
-                console.log('註冊前檢查 App Check 狀態...');
-                const appCheckResult = await checkAppCheckStatus();
-                
-                if (!appCheckResult.success) {
-                    console.warn('App Check 驗證失敗，註冊可能會被拒絕');
-                    
-                    // 顯示警告但允許繼續嘗試
-                    const warningDiv = document.createElement('div');
-                    warningDiv.className = 'alert alert-warning mt-3';
-                    warningDiv.innerHTML = `
-                        <strong>警告:</strong> App Check 驗證失敗，但仍將嘗試註冊。如果失敗，請刷新頁面後重試。
-                    `;
-                    document.querySelector('.register-form-header').after(warningDiv);
-                } else {
-                    console.log('App Check 驗證成功，繼續註冊流程');
+            // 動態添加摘要項目
+            function addSummaryItem(label, value) {
+                const div = document.createElement('div');
+                div.className = 'col-12 mb-2';
+                div.innerHTML = `<strong>${label}：</strong> <span>${value}</span>`;
+                summaryInfo.appendChild(div);
+            }
+            
+            // 添加所有表單項目的摘要
+            const email = document.getElementById('email');
+            addSummaryItem('電子郵件', email ? email.value : '未提供');
+            
+            const businessType = document.getElementById('businessType');
+            const businessTypeText = businessType && businessType.selectedIndex > 0 ? 
+                businessType.options[businessType.selectedIndex].text : '未選擇';
+            
+            const businessName = document.getElementById('businessName');
+            addSummaryItem('店家名稱', businessName ? businessName.value : '未提供');
+            addSummaryItem('店家類型', businessTypeText);
+            
+            const businessAddress = document.getElementById('businessAddress');
+            addSummaryItem('店家地址', businessAddress ? businessAddress.value : '未提供');
+            
+            const businessPhone = document.getElementById('businessPhone');
+            addSummaryItem('店家電話', businessPhone ? businessPhone.value : '未提供');
+            
+            const contactName = document.getElementById('contactName');
+            addSummaryItem('聯絡人姓名', contactName ? contactName.value : '未提供');
+            
+            const contactPhone = document.getElementById('contactPhone');
+            addSummaryItem('聯絡人電話', contactPhone ? contactPhone.value : '未提供');
+        }
+
+        // 確保這個函數可以全局使用
+        window.updateSummary = updateSummary;
+
+        // 多照片上傳功能初始化
+        function initMultiPhotoUpload() {
+            const businessLicenseFile = document.getElementById('businessLicenseFile');
+            const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+            const uploadProgress = document.getElementById('uploadProgress');
+            const uploadCountElement = document.getElementById('uploadCount');
+            const uploadLabel = document.getElementById('uploadLabel');
+            
+            if (!businessLicenseFile || !photoPreviewContainer) {
+                console.error('找不到上傳或預覽元素');
+                return;
+            }
+            
+            // 確保 window.uploadedFiles 被初始化
+            if (!window.uploadedFiles) {
+                window.uploadedFiles = [];
+            }
+            
+            // 配置參數
+            const MAX_UPLOAD_COUNT = 5; // 最大上傳張數
+            const MAX_FILE_SIZE_MB = 5; // 每個文件最大 5MB
+            
+            // 更新上傳計數
+            function updateUploadCount() {
+                if (uploadCountElement) {
+                    uploadCountElement.textContent = window.uploadedFiles.length;
                 }
                 
-                // 獲取表單數據
-                const email = document.getElementById('email').value;
-                const password = document.getElementById('password').value;
-                const businessName = document.getElementById('businessName').value;
-                const businessType = document.getElementById('businessType').value;
-                const businessAddress = document.getElementById('businessAddress').value;
-                const businessPhone = document.getElementById('businessPhone').value;
-                const contactName = document.getElementById('contactName').value;
-                const contactPhone = document.getElementById('contactPhone').value;
+                if (uploadLabel) {
+                    if (window.uploadedFiles.length >= MAX_UPLOAD_COUNT) {
+                        uploadLabel.style.display = 'none';
+                    } else {
+                        uploadLabel.style.display = 'block';
+                    }
+                }
+            }
+            
+            // 處理文件上傳
+            businessLicenseFile.addEventListener('change', async function(e) {
+                const files = Array.from(e.target.files);
                 
-                console.log("提交表單資料:", {email, businessName, businessType});
+                if (window.uploadedFiles.length + files.length > MAX_UPLOAD_COUNT) {
+                    alert(`最多只能上傳 ${MAX_UPLOAD_COUNT} 張照片`);
+                    return;
+                }
                 
-                // 1. 創建 Firebase 用戶 (使用模組化 API)
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-                
-                // 2. 發送驗證郵件
-                await sendEmailVerification(user);
-                
-                // 3. 確保用戶已完全認證 (新增)
-                await new Promise((resolve) => {
-                    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
-                        if (authUser) {
-                            unsubscribe();
-                            resolve();
-                        }
-                    });
-                });
-                
-                // 4. 存儲店家資訊到 Firestore (添加 ownerId 字段)
-                await setDoc(doc(db, 'businesses', user.uid), {
-                    businessName: businessName,
-                    businessType: businessType,
-                    address: businessAddress,
-                    phoneNumber: businessPhone,
-                    contactName: contactName,
-                    contactPhone: contactPhone,
-                    ownerId: user.uid,  // 添加這個字段以符合安全規則
-                    status: 'pending', 
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp()
-                });
-                
-                // 5. 處理營業執照上傳
-                const uploadedFiles = window.getUploadedBusinessLicenseFiles();
-                console.log('提交表單處理上傳檔案:', uploadedFiles);
-
-                let licenseUrls = [];
-                
-                if (uploadedFiles && uploadedFiles.length > 0) {
-                    // 建立照片URL陣列
-                    for (const uploadedFile of uploadedFiles) {
-                        const file = uploadedFile.file;
-                        const storageReference = ref(storage, `licenses/${user.uid}/${uploadedFile.fileName}`);
-                        
-                        // 上傳檔案
-                        await uploadBytes(storageReference, file);
-                        
-                        // 獲取下載 URL
-                        const licenseUrl = await getDownloadURL(storageReference);
-                        licenseUrls.push(licenseUrl);
+                for (const file of files) {
+                    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+                        alert(`文件 ${file.name} 超過大小限制（${MAX_FILE_SIZE_MB}MB）`);
+                        continue;
                     }
                     
-                    // 更新店家文檔添加執照 URL 數組
-                    await updateDoc(doc(db, 'businesses', user.uid), {
-                        licenseUrls: licenseUrls
-                    });
+                    try {
+                        // 顯示上傳進度
+                        if (uploadProgress) {
+                            uploadProgress.style.display = 'block';
+                        }
+                        
+                        // 壓縮圖片（如果是圖片類型）
+                        let processedFile = file;
+                        if (file.type.startsWith('image/')) {
+                            processedFile = await compressImage(file);
+                        }
+                        
+                        // 添加到上傳文件列表
+                        const fileId = `file-${Date.now()}-${window.uploadedFiles.length}`;
+                        window.uploadedFiles.push({
+                            id: fileId,
+                            file: processedFile,
+                            fileName: file.name,
+                            objectURL: URL.createObjectURL(processedFile)
+                        });
+                        
+                        // 創建預覽元素
+                        createFilePreview(fileId, file);
+                        
+                        // 更新上傳計數
+                        updateUploadCount();
+                        
+                        // 隱藏上傳進度
+                        if (uploadProgress) {
+                            uploadProgress.style.display = 'none';
+                        }
+                    } catch (error) {
+                        console.error('處理文件錯誤:', error);
+                        alert(`處理文件 ${file.name} 時發生錯誤`);
+                        if (uploadProgress) {
+                            uploadProgress.style.display = 'none';
+                        }
+                    }
                 }
                 
-                // 6. 創建審核請求 (確保字段完全匹配)
-                await setDoc(doc(db, 'businessApprovalRequests', user.uid), {
-                    userId: user.uid,
-                    businessName: businessName,
-                    businessType: businessType,
-                    address: businessAddress,
-                    phoneNumber: businessPhone,
-                    contactName: contactName,
-                    contactPhone: contactPhone,
-                    licenseUrls: licenseUrls,
-                    status: 'pending',
-                    rejectReason: null,
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp()
+                // 重置文件輸入，以便可以重新選擇相同的文件
+                businessLicenseFile.value = '';
+            });
+            
+            // 壓縮圖片
+            async function compressImage(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.src = event.target.result;
+                        img.onload = function() {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            
+                            // 計算新的尺寸，保持寬高比
+                            let width = img.width;
+                            let height = img.height;
+                            const maxDimension = 1024; // 最大寬度/高度
+                            
+                            if (width > height && width > maxDimension) {
+                                height = Math.round((height * maxDimension) / width);
+                                width = maxDimension;
+                            } else if (height > maxDimension) {
+                                width = Math.round((width * maxDimension) / height);
+                                height = maxDimension;
+                            }
+                            
+                            canvas.width = width;
+                            canvas.height = height;
+                            ctx.drawImage(img, 0, 0, width, height);
+                            
+                            // 轉換為 Blob
+                            canvas.toBlob(
+                                (blob) => {
+                                    // 創建新文件對象
+                                    const compressedFile = new File([blob], file.name, {
+                                        type: 'image/jpeg',
+                                        lastModified: Date.now()
+                                    });
+                                    resolve(compressedFile);
+                                },
+                                'image/jpeg',
+                                0.7 // 設置壓縮質量 (0.7 = 70% 質量)
+                            );
+                        };
+                    };
+                    reader.onerror = function(error) {
+                        reject(error);
+                    };
+                });
+            }
+            
+            // 創建文件預覽
+            function createFilePreview(fileId, file) {
+                const previewItem = document.createElement('div');
+                previewItem.className = 'photo-preview-item';
+                previewItem.id = fileId;
+                
+                // 判斷文件類型
+                if (file.type.startsWith('image/')) {
+                    // 圖片預覽
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.alt = file.name;
+                    img.onload = function() {
+                        URL.revokeObjectURL(this.src);
+                    };
+                    previewItem.appendChild(img);
+                } else {
+                    // PDF 或其他文件類型
+                    const fileIcon = document.createElement('div');
+                    fileIcon.className = 'file-icon';
+                    fileIcon.innerHTML = '<i class="fas fa-file-pdf fa-2x"></i>';
+                    fileIcon.style.display = 'flex';
+                    fileIcon.style.alignItems = 'center';
+                    fileIcon.style.justifyContent = 'center';
+                    fileIcon.style.height = '100%';
+                    fileIcon.style.backgroundColor = '#f8f9fa';
+                    previewItem.appendChild(fileIcon);
+                }
+                
+                // 文件名
+                const fileName = document.createElement('div');
+                fileName.className = 'file-name';
+                fileName.textContent = file.name;
+                previewItem.appendChild(fileName);
+                
+                // 刪除按鈕
+                const deleteBtn = document.createElement('div');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
+                deleteBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    
+                    // 從上傳文件列表中移除
+                    window.uploadedFiles = window.uploadedFiles.filter(item => item.id !== fileId);
+                    
+                    // 移除預覽元素
+                    photoPreviewContainer.removeChild(previewItem);
+                    
+                    // 更新上傳計數
+                    updateUploadCount();
+                });
+                previewItem.appendChild(deleteBtn);
+                
+                // 添加到預覽容器
+                photoPreviewContainer.appendChild(previewItem);
+            }
+            
+            // 使用 DnD (Drag and Drop) 上傳
+            const uploadArea = document.querySelector('.custom-file-upload');
+            
+            if (uploadArea) {
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    uploadArea.addEventListener(eventName, preventDefaults, false);
                 });
                 
-                // 7. 登出用戶（因為需要等待審核）
-                await auth.signOut();
+                function preventDefaults(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
                 
-                // 顯示成功訊息
-                const successAlert = document.createElement('div');
-                successAlert.className = 'alert alert-success mt-4';
-                successAlert.innerHTML = `
-                    <h5>註冊申請已成功提交！</h5>
-                    <p>我們將盡快審核您的申請，並請確認您的郵箱完成驗證。</p>
-                    <p>5秒後將自動跳轉到登入頁面...</p>
-                `;
-                document.querySelector('.register-form-container').appendChild(successAlert);
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    uploadArea.addEventListener(eventName, highlight, false);
+                });
                 
-                // 5秒後跳轉到登入頁面
-                setTimeout(() => {
-                    window.location.href = 'business-login.html?status=registered';
-                }, 5000);
+                ['dragleave', 'drop'].forEach(eventName => {
+                    uploadArea.addEventListener(eventName, unhighlight, false);
+                });
                 
-            } catch (error) {
-                console.error('註冊時發生錯誤:', error);
+                function highlight() {
+                    uploadArea.classList.add('highlight');
+                }
                 
-                // 恢復按鈕狀態
-                submitButton.innerHTML = '提交註冊';
-                submitButton.disabled = false;
+                function unhighlight() {
+                    uploadArea.classList.remove('highlight');
+                }
                 
-                // 顯示錯誤訊息
-                let errorMessage = '註冊過程中發生錯誤，請稍後再試';
+                uploadArea.addEventListener('drop', handleDrop, false);
                 
-                if (error.code === 'auth/email-already-in-use') {
-                    errorMessage = '此電子郵件已被使用';
-                } else if (error.code === 'auth/invalid-email') {
-                    errorMessage = '無效的電子郵件格式';
-                } else if (error.code === 'auth/weak-password') {
-                    errorMessage = '密碼強度不夠，請設置更複雜的密碼';
-                } else if (error.code === 'auth/network-request-failed') {
-                    errorMessage = '網絡連接失敗，請檢查您的網絡連接';
-                } else if (error.code === 'auth/firebase-app-check-token-is-invalid') {
-                    errorMessage = 'App Check 驗證失敗。請刷新頁面後重試，或檢查您的瀏覽器設置。';
+                function handleDrop(e) {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    businessLicenseFile.files = files;
                     
-                    // 添加 App Check 診斷按鈕
-                    setTimeout(() => {
-                        const errorAlert = document.querySelector('.register-error-alert');
-                        if (errorAlert) {
-                            const diagBtn = document.createElement('button');
-                            diagBtn.className = 'btn btn-sm btn-warning mt-2';
-                            diagBtn.textContent = '執行 App Check 診斷';
-                            diagBtn.addEventListener('click', async function() {
-                                // 重新檢查 App Check 狀態
-                                const result = await checkAppCheckStatus();
-                                alert(`App Check 診斷結果: ${result.success ? '成功' : '失敗'}`);
-                            });
-                            errorAlert.appendChild(diagBtn);
-                        }
-                    }, 100);
-                } else if (error.message) {
-                    errorMessage = error.message;
+                    // 觸發 change 事件
+                    const event = new Event('change', { bubbles: true });
+                    businessLicenseFile.dispatchEvent(event);
                 }
-                
-                // 添加錯誤提示元素（如果不存在）
-                let errorAlert = document.querySelector('.register-error-alert');
-                if (!errorAlert) {
-                    errorAlert = document.createElement('div');
-                    errorAlert.className = 'alert alert-danger register-error-alert mt-3';
-                    errorAlert.role = 'alert';
-                    document.querySelector('.register-form-header').after(errorAlert);
-                }
-                
-                errorAlert.textContent = errorMessage;
-                errorAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
-        });
-    }
-});
-
-// 注意：我們不需要再定義 validateStep 函數，因為它已經在 business-register.html 中定義了
-// 如果我們再定義會導致無限遞迴錯誤
-// 只檢查 window.validateStep 是否存在，如果不存在才添加一個簡單的實現
-if (typeof window.validateStep !== 'function') {
-    console.warn('找不到 validateStep 函數，添加一個簡單的實現');
-    
-    window.validateStep = function(stepNumber) {
-        // 第三步的簡單驗證
-        if (stepNumber === 3) {
-            const contactName = document.getElementById('contactName');
-            const contactPhone = document.getElementById('contactPhone');
-            const termsCheck = document.getElementById('termsCheck');
             
-            return contactName && contactName.value && 
-                   contactPhone && contactPhone.value && 
-                   termsCheck && termsCheck.checked;
+            // 初始更新計數
+            updateUploadCount();
+        }
+
+        function handleFormKeyPress(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                
+                // 獲取當前活動的表單步驟
+                const activeStep = document.querySelector('.form-step.active');
+                const stepNumber = parseInt(activeStep.id.match(/\d+/)[0]);
+                
+                // 如果是最後一步，則提交表單
+                if (stepNumber === 4) {
+                    document.getElementById('businessRegisterForm').dispatchEvent(new Event('submit'));
+                } else {
+                    // 否則跳轉到下一步
+                    nextStep(stepNumber);
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const style = document.createElement('style');
+            style.textContent = `
+                .photo-preview-item.load-error {
+                    border: 2px solid #dc3545;
+                }
+                .photo-preview-item.load-error::after {
+                    content: "載入錯誤";
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: rgba(220, 53, 69, 0.8);
+                    color: white;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    font-size: 10px;
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // 初始化多照片上傳功能
+            initMultiPhotoUpload();
+        });
+
+        // DOM加載完成後執行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化表單元素
+            initFormElements();
+            
+            // 添加密碼強度和規則顯示元素
+            addPasswordStrengthElements();
+            
+            // 為密碼輸入欄位添加事件監聽
+            document.getElementById('password').addEventListener('input', updatePasswordStrength);
+            document.getElementById('confirmPassword').addEventListener('input', function() {
+                updatePasswordRulesCheck(document.getElementById('password').value);
+            });
+            
+            // 為表單添加鍵盤事件監聽
+            document.getElementById('businessRegisterForm').addEventListener('keypress', handleFormKeyPress);
+            
+            // 設置步驟切換時動態修改必填屬性
+            document.querySelectorAll('.btn-next').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const currentStep = parseInt(this.getAttribute('onclick').match(/\d+/)[0]);
+                    const nextStep = currentStep + 1;
+                    
+                    // 為當前步驟的輸入元素移除必填屬性
+                    document.querySelectorAll(`#step-${currentStep}-content input, #step-${currentStep}-content select`).forEach(el => {
+                        if (el.type !== 'hidden') {
+                            el.required = false;
+                        }
+                    });
+                    
+                    // 為下一步的輸入元素設置必填屬性
+                    setTimeout(() => {
+                        document.querySelectorAll(`#step-${nextStep}-content input, #step-${nextStep}-content select`).forEach(el => {
+                            if (el.getAttribute('data-required') !== 'false' && el.type !== 'hidden' && el.id !== 'businessLicenseFile') {
+                                el.required = true;
+                            }
+                        });
+                    }, 100);
+                });
+            });
+            
+            // 為上一步按鈕添加處理邏輯
+            document.querySelectorAll('.btn-prev').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (this.getAttribute('onclick')) {
+                        const currentStep = parseInt(this.getAttribute('onclick').match(/\d+/)[0]);
+                        
+                        // 為當前步驟的輸入元素移除必填屬性
+                        document.querySelectorAll(`#step-${currentStep}-content input, #step-${currentStep}-content select`).forEach(el => {
+                            if (el.type !== 'hidden') {
+                                el.required = false;
+                            }
+                        });
+                        
+                        // 為上一步的輸入元素設置必填屬性
+                        setTimeout(() => {
+                            const prevStep = currentStep - 1;
+                            document.querySelectorAll(`#step-${prevStep}-content input, #step-${prevStep}-content select`).forEach(el => {
+                                if (el.getAttribute('data-required') !== 'false' && el.type !== 'hidden') {
+                                    el.required = true;
+                                }
+                            });
+                        }, 100);
+                    }
+                });
+            });
+            
+            // 處理文件上傳顯示
+            document.getElementById('businessLicenseFile').addEventListener('change', function(e) {
+                const fileName = e.target.files[0] ? e.target.files[0].name : '';
+                // document.getElementById('businessLicenseFileName').textContent = fileName;
+            });
+            
+            // 初始化密碼強度和規則顯示
+            updatePasswordStrength();
+        });
+
+        // 添加密碼強度和規則顯示元素
+        function addPasswordStrengthElements() {
+            // 找到密碼輸入欄位
+            const passwordInputGroup = document.getElementById('password').closest('.form-group');
+            
+            // 添加密碼強度條和規則說明
+            const strengthElement = document.createElement('div');
+            strengthElement.innerHTML = `
+                <div class="mt-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small id="password-strength-text"></small>
+                    </div>
+                    <div class="progress mt-1" style="height: 6px;">
+                        <div id="password-strength-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div class="mt-2 password-rules">
+                        <small class="d-block mb-1">密碼必須符合以下條件：</small>
+                        <ul class="ps-3 mb-0" style="list-style-type: none;">
+                            <li id="rule-length" class="text-danger"><i id="rule-length-icon" class="fas fa-times"></i> 長度為 8-20 個字符</li>
+                            <li id="rule-lowercase" class="text-danger"><i id="rule-lowercase-icon" class="fas fa-times"></i> 包含至少一個小寫字母</li>
+                            <li id="rule-uppercase" class="text-danger"><i id="rule-uppercase-icon" class="fas fa-times"></i> 包含至少一個大寫字母</li>
+                            <li id="rule-number" class="text-danger"><i id="rule-number-icon" class="fas fa-times"></i> 包含至少一個數字</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+            
+            passwordInputGroup.appendChild(strengthElement);
+            
+            // 為確認密碼欄位添加匹配檢查
+            const confirmPasswordGroup = document.getElementById('confirmPassword').closest('.form-group');
+            const matchElement = document.createElement('div');
+            matchElement.innerHTML = `
+                <div class="mt-2 password-rules">
+                    <ul class="ps-3 mb-0" style="list-style-type: none;">
+                        <li id="rule-match" class="text-danger"><i id="rule-match-icon" class="fas fa-times"></i> 密碼匹配</li>
+                    </ul>
+                </div>
+            `;
+            confirmPasswordGroup.appendChild(matchElement);
+        }
+    </script>
+    
+    <style>
+        
+        /* 註冊區塊樣式 */
+        .register-section {
+            padding: 120px 0 80px;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #F6EEE0 0%, #E8D8CF 100%);
+            position: relative;
         }
         
-        return true;
-    };
-}
+        .register-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .register-card {
+            background-color: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+        }
+        
+        .register-image {
+            height: 100%;
+            background-image: url('cafe-interior.jpg');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        
+        .register-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 1;
+        }
+        
+        .register-image-content {
+            position: absolute;
+            bottom: 40px;
+            left: 30px;
+            right: 30px;
+            color: white;
+            z-index: 2;
+        }
+        
+        .register-image-content h2 {
+            font-family: 'Playfair Display', 'Noto Serif TC', serif;
+            font-size: 28px;
+            margin-bottom: 15px;
+            color: #f8f6f2; /* 米白色 */
+        }
+        
+        .register-image-content p {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+        
+        .benefits-list {
+            padding-left: 0;
+            list-style: none;
+        }
+        
+        .benefits-list li {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .benefits-list li i {
+            background-color: rgba(255, 255, 255, 0.2);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-size: 12px;
+        }
+        
+        .register-form-container {
+            padding: 30px 40px;
+        }
+        
+        .register-form-header {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .register-form-header h3 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--dark-color);
+            margin-bottom: 10px;
+            font-family: 'Playfair Display', 'Noto Serif TC', serif;
+        }
+        
+        .register-form-header p {
+            color: #777;
+            font-size: 15px;
+        }
+        
+        /* 步驟指示器 */
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        
+        .step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+        
+        .step:not(:last-child):after {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background-color: #ddd;
+            z-index: 1;
+        }
+        
+        .step-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #ddd;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            position: relative;
+            z-index: 2;
+            margin-bottom: 8px;
+        }
+        
+        .step.active .step-number {
+            background-color: var(--primary-color);
+        }
+        
+        .step.completed .step-number {
+            background-color: var(--success-color);
+        }
+        
+        .step-label {
+            font-size: 14px;
+            color: #777;
+        }
+        
+        .step.active .step-label {
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+        
+        .step.completed .step-label {
+            color: var(--success-color);
+        }
+        
+        /* 表單部分 */
+        .form-step {
+            display: none;
+        }
+        
+        .form-step.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            font-weight: 500;
+            margin-bottom: 8px;
+            display: block;
+        }
+        
+        .form-control {
+            height: 50px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(157, 127, 134, 0.25);
+        }
+        
+        textarea.form-control {
+            height: auto;
+            min-height: 100px;
+        }
+        
+        .password-field {
+            position: relative;
+        }
+        
+        .password-toggle {
+            position: absolute;
+            top: 50%;
+            right: 15px;
+            transform: translateY(-50%);
+            border: none;
+            background: none;
+            color: #777;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .password-toggle:hover {
+            color: var(--primary-color);
+        }
+        
+        .form-check-input {
+            margin-top: 0.25rem;
+        }
+        
+        .form-btn-group {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+        
+        .btn-prev {
+            background-color: transparent;
+            border: 1px solid #ddd;
+            color: #777;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-prev:hover {
+            background-color: #f8f9fa;
+            color: var(--dark-color);
+        }
+        
+        .btn-next, .btn-submit {
+            background-color: var(--primary-color);
+            border: none;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-next:hover, .btn-submit:hover {
+            background-color: #8a6e74;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .error-feedback {
+            display: none;
+            width: 100%;
+            margin-top: .25rem;
+            font-size: 14px;
+            color: var(--danger-color);
+        }
+        
+        .form-control.is-invalid {
+            border-color: var(--danger-color);
+        }
+        
+        .form-control.is-invalid + .error-feedback {
+            display: block;
+        }
+        
+        /* 檔案上傳樣式 */
+        .custom-file-upload {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .custom-file-upload:hover {
+            border-color: var(--primary-color);
+            background-color: var(--primary-light);
+        }
+        
+        .custom-file-upload i {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: #777;
+        }
+        
+        .file-name {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #777;
+            word-break: break-all;
+        }
+        
+        .register-footer {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 14px;
+            color: #777;
+        }
+        
+        .register-footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .register-footer a:hover {
+            text-decoration: underline;
+        }
+        
+        /* 營業相關照片預覽 */
+        .photo-upload-container {
+                margin-bottom: 15px;
+            }
+            
+            .photo-preview-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-top: 15px;
+            }
+            
+            .photo-preview-item {
+                position: relative;
+                width: 100px;
+                height: 100px;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
+            
+            .photo-preview-item img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+            
+            .photo-preview-item .delete-btn {
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                width: 20px;
+                height: 20px;
+                background-color: rgba(255, 255, 255, 0.8);
+                color: #dc3545;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                font-size: 12px;
+            }
+            
+            .photo-preview-item .file-name {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background-color: rgba(0, 0, 0, 0.6);
+                color: white;
+                font-size: 10px;
+                padding: 2px 5px;
+                text-overflow: ellipsis;
+                overflow: hidden;
+                white-space: nowrap;
+            }
+            
+            .upload-progress {
+                margin-top: 10px;
+            }
+            
+            .upload-info {
+                display: flex;
+                justify-content: space-between;
+            }
+        
+        /* 響應式調整 */
+        @media (max-width: 991px) {
+            .register-image {
+                min-height: 300px;
+                background-position: center;
+            }
+            
+            .register-form-container {
+                padding: 30px 20px;
+            }
+            
+            .step-label {
+                font-size: 12px;
+            }
+        }
+        
+        @media (max-width: 767px) {
+            .register-section {
+                padding: 100px 0 50px;
+            }
+            
+            .register-image-content h2 {
+                font-size: 24px;
+            }
+            
+            .benefits-list li {
+                font-size: 14px;
+            }
+            
+            .form-btn-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .btn-prev, .btn-next, .btn-submit {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="appCheckStatus" class="initializing">App Check: 初始化中...</div>
+    <!-- 導航欄 -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <img src="logo.png" alt="BREWDATE" height="40">
+                BREWDATE
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#home">首頁</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#features">特色</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#business">商家合作</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#download">下載APP</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="business-login.html">店家登入</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 註冊區塊 -->
+    <section class="register-section">
+        <div class="container register-container">
+            <div class="register-card">
+                <div class="row g-0">
+                    <div class="col-lg-5 d-none d-lg-block">
+                        <div class="register-image">
+                            <div class="register-image-content">
+                                <h2>成為BREWDATE<br>合作店家</h2>
+                                <p>註冊店家帳戶，立即獲得以下優勢：</p>
+                                <ul class="benefits-list">
+                                    <li><i class="fas fa-check"></i> 接觸更多高質量潛在客戶</li>
+                                    <li><i class="fas fa-check"></i> 提高店面曝光度和客流量</li>
+                                    <li><i class="fas fa-check"></i> 獲得詳細的數據分析報告</li>
+                                    <li><i class="fas fa-check"></i> 輕鬆管理店家資訊和優惠</li>
+                                    <li><i class="fas fa-check"></i> 增強品牌形象與影響力</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-7">
+                        <div class="register-form-container">
+                            <div class="register-form-header">
+                                <h3>店家註冊</h3>
+                                <p>請填寫以下資訊，輕鬆完成註冊流程</p>
+                            </div>
+                            
+                            <!-- 步驟指示器 -->
+                            <div class="step-indicator">
+                                <div class="step active" id="step-1">
+                                    <div class="step-number">1</div>
+                                    <div class="step-label">基本資訊</div>
+                                </div>
+                                <div class="step" id="step-2">
+                                    <div class="step-number">2</div>
+                                    <div class="step-label">店家資訊</div>
+                                </div>
+                                <div class="step" id="step-3">
+                                    <div class="step-number">3</div>
+                                    <div class="step-label">身份驗證</div>
+                                </div>
+                                <div class="step" id="step-4">
+                                    <div class="step-number">4</div>
+                                    <div class="step-label">完成註冊</div>
+                                </div>
+                            </div>
+                            
+                            <form id="businessRegisterForm">
+                                <!-- 步驟 1：基本資訊 -->
+                                <div class="form-step active" id="step-1-content">
+                                    <div class="form-group">
+                                        <label for="email">電子郵件 <span class="text-danger">*</span></label>
+                                        <input type="email" class="form-control" id="email" name="email" required>
+                                        <div class="error-feedback">請輸入有效的電子郵件地址</div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="password">密碼 <span class="text-danger">*</span></label>
+                                        <div class="password-field">
+                                            <input type="password" class="form-control" id="password" name="password" required>
+                                            <button type="button" class="password-toggle" id="togglePassword">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                        <div class="error-feedback">密碼長度至少為8位，且包含字母和數字</div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="confirmPassword">確認密碼 <span class="text-danger">*</span></label>
+                                        <div class="password-field">
+                                            <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+                                            <button type="button" class="password-toggle" id="toggleConfirmPassword">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                        <div class="error-feedback">兩次輸入的密碼不一致</div>
+                                    </div>
+                                    
+                                    <div class="form-btn-group">
+                                        <button type="button" class="btn btn-prev disabled">上一步</button>
+                                        <button type="button" class="btn btn-next" onclick="nextStep(1)">下一步</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- 步驟 2：店家資訊 -->
+                                <div class="form-step" id="step-2-content">
+                                    <div class="form-group">
+                                        <label for="businessName">店家名稱 <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="businessName" name="businessName" required>
+                                        <div class="error-feedback">請輸入店家名稱</div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="businessType">店家類型 <span class="text-danger">*</span></label>
+                                        <select class="form-select form-control" id="businessType" name="businessType" required>
+                                            <option value="" selected disabled>請選擇</option>
+                                            <option value="cafe">咖啡廳</option>
+                                            <option value="restaurant">餐廳</option>
+                                            <option value="bar">酒吧</option>
+                                            <option value="dessert">甜點店</option>
+                                            <option value="tea">茶飲店</option>
+                                            <option value="other">其他</option>
+                                        </select>
+                                        <div class="error-feedback">請選擇店家類型</div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="businessAddress">店家地址 <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="businessAddress" name="businessAddress" required>
+                                        <div class="error-feedback">請輸入店家地址</div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="businessPhone">店家電話 <span class="text-danger">*</span></label>
+                                        <input type="tel" class="form-control" id="businessPhone" name="businessPhone" required>
+                                        <div class="error-feedback">請輸入有效的店家電話</div>
+                                    </div>
+                                    
+                                    <div class="form-btn-group">
+                                        <button type="button" class="btn btn-prev" onclick="prevStep(2)">上一步</button>
+                                        <button type="button" class="btn btn-next" onclick="nextStep(2)">下一步</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- 步驟 3：身份驗證 -->
+                                <div class="form-step" id="step-3-content">
+                                    <div class="form-group">
+                                        <label for="contactName">聯絡人姓名 <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="contactName" name="contactName" required>
+                                        <div class="error-feedback">請輸入聯絡人姓名</div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="contactPhone">聯絡人手機 <span class="text-danger">*</span></label>
+                                        <input type="tel" class="form-control" id="contactPhone" name="contactPhone" required>
+                                        <div class="error-feedback">請輸入有效的聯絡人手機</div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="businessLicense">上傳營業執照或相關證明 <span class="text-danger">*</span></label>
+                                        <div class="photo-upload-container">
+                                            <label for="businessLicenseFile" class="custom-file-upload" id="uploadLabel">
+                                                <i class="fas fa-upload d-block mb-2"></i>
+                                                <span>點擊上傳檔案或將檔案拖曳至此</span>
+                                                <span class="text-muted d-block mt-1">支援格式: JPG, PNG, PDF (最大檔案大小: 5MB)</span>
+                                            </label>
+                                            <input type="file" id="businessLicenseFile" style="display: none;" accept=".jpg,.jpeg,.png,.pdf" multiple>
+                                            
+                                            <!-- 預覽容器 -->
+                                            <div class="photo-preview-container" id="photoPreviewContainer">
+                                                <!-- 照片預覽將在這裡動態生成 -->
+                                            </div>
+                                            
+                                            <!-- 上傳進度 -->
+                                            <div class="upload-progress" id="uploadProgress" style="display: none;">
+                                                <div class="progress">
+                                                    <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                                </div>
+                                                <small class="text-muted">上傳中...</small>
+                                            </div>
+                                            
+                                            <!-- 上傳資訊 -->
+                                            <div class="upload-info mt-2">
+                                                <span class="text-muted"><span id="uploadCount">0</span>/<span id="maxUploadCount">5</span> 張照片</span>
+                                            </div>
+                                        </div>
+                                        <div class="error-feedback">請上傳營業執照或相關證明</div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="termsCheck" name="termsCheck" required>
+                                            <label class="form-check-label" for="termsCheck">
+                                                我已閱讀並同意 <a href="#" target="_blank">使用條款</a> 和 <a href="#" target="_blank">隱私政策</a>
+                                            </label>
+                                            <div class="error-feedback">請確認同意使用條款和隱私政策</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-btn-group">
+                                        <button type="button" class="btn btn-prev" onclick="prevStep(3)">上一步</button>
+                                        <button type="button" class="btn btn-next" onclick="nextStep(3)">下一步</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- 步驟 4：完成註冊 -->
+                                <div class="form-step" id="step-4-content">
+                                    <div class="text-center mb-4">
+                                        <i class="fas fa-check-circle" style="font-size: 60px; color: var(--success-color);"></i>
+                                        <h4 class="mt-3">即將完成註冊</h4>
+                                        <p>請確認以下資訊無誤，並點擊「提交註冊」按鈕完成註冊流程。</p>
+                                    </div>
+                                    
+                                    <div class="summary-info bg-light p-3 rounded mb-4">
+                                        <h5 class="mb-3">資訊確認</h5>
+                                        <div class="row">
+                                            <div class="col-12 mb-2">
+                                                <strong>上傳文件：</strong> <span id="summary-business-license"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-text mb-4">
+                                        <small>提交後，我們將審核您提供的資料，並在 1-3 個工作日內通過電子郵件通知您審核結果。</small>
+                                    </div>
+                                    
+                                    <div class="form-btn-group">
+                                        <button type="button" class="btn btn-prev" onclick="prevStep(4)">上一步</button>
+                                        <button type="submit" class="btn btn-submit">提交註冊</button>
+                                    </div>
+                                </div>
+                            </form>
+                            
+                            <div class="register-footer">
+                                <p>已有帳號？<a href="business-login.html">立即登入</a></p>
+                                <p>回到 <a href="index.html">首頁</a></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 頁腳 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="footer-info">
+                        <h3>BREWDATE</h3>
+                        <p>用一杯咖啡的時間，找到真實的火花</p>
+                        <div class="social-links">
+                            <a href="#"><i class="fab fa-facebook-f"></i></a>
+                            <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <div class="footer-links">
+                        <h4>快速連結</h4>
+                        <ul>
+                            <li><a href="index.html#home">首頁</a></li>
+                            <li><a href="index.html#features">特色</a></li>
+                            <li><a href="index.html#business">商家合作</a></li>
+                            <li><a href="index.html#download">下載應用</a></li>
+                            <li><a href="index.html#faq">常見問題</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="footer-links">
+                        <h4>聯絡我們</h4>
+                        <ul>
+                            <li><i class="fas fa-envelope"></i> <a href="mailto:qwe123w321@gmail.com">qwe123w321@gmail.com</a></li>
+                            <li><i class="fas fa-phone"></i> <a href="tel:+886905 235 393">+886 905 235 393</a></li>
+                            <li><i class="fas fa-map-marker-alt"></i> <span>台北市信義區松仁路 100 號</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="copyright">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p>&copy; 2025 BREWDATE. 保留所有權利.</p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="footer-bottom-links">
+                            <a href="#">隱私政策</a>
+                            <a href="#">使用條款</a>
+                            <a href="#">Cookie 政策</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+            
+    <script>
+        // 確保全局變量初始化
+        window.uploadedFiles = window.uploadedFiles || [];
+
+        // 獲取上傳的文件列表 - 確保全局可用
+        window.getUploadedBusinessLicenseFiles = function() {
+            return window.uploadedFiles || [];
+        };    
+
+        // 導航欄滾動效果
+        window.addEventListener('scroll', function() {
+            const navbar = document.querySelector('.navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+        
+        // 切換密碼可見性
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            togglePasswordVisibility('password', this);
+        });
+        
+        document.getElementById('toggleConfirmPassword').addEventListener('click', function() {
+            togglePasswordVisibility('confirmPassword', this);
+        });
+        
+        function togglePasswordVisibility(inputId, button) {
+            const passwordInput = document.getElementById(inputId);
+            const icon = button.querySelector('i');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+        
+        // 檔案上傳處理
+        document.getElementById('businessLicenseFile').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : '';
+            // document.getElementById('businessLicenseFileName').textContent = fileName;
+        });
+        
+        // 表單驗證
+        function validateStep(stepNumber) {
+            let isValid = true;
+            
+            // 根據不同步驟驗證不同欄位
+            if (stepNumber === 1) {
+                // 驗證電子郵件
+                const email = document.getElementById('email');
+                if (!email.value || !isValidEmail(email.value)) {
+                    email.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    email.classList.remove('is-invalid');
+                }
+                
+                // 驗證密碼
+                const password = document.getElementById('password');
+                if (!password.value || password.value.length < 8 || !(/\d/.test(password.value) && /[a-zA-Z]/.test(password.value))) {
+                    password.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    password.classList.remove('is-invalid');
+                }
+                
+                // 驗證確認密碼
+                const confirmPassword = document.getElementById('confirmPassword');
+                if (!confirmPassword.value || confirmPassword.value !== password.value) {
+                    confirmPassword.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    confirmPassword.classList.remove('is-invalid');
+                }
+            }
+            
+            else if (stepNumber === 2) {
+                // 驗證店家名稱
+                const businessName = document.getElementById('businessName');
+                if (!businessName.value) {
+                    businessName.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    businessName.classList.remove('is-invalid');
+                }
+                
+                // 驗證店家類型
+                const businessType = document.getElementById('businessType');
+                if (!businessType.value) {
+                    businessType.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    businessType.classList.remove('is-invalid');
+                }
+                
+                // 驗證店家地址
+                const businessAddress = document.getElementById('businessAddress');
+                if (!businessAddress.value) {
+                    businessAddress.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    businessAddress.classList.remove('is-invalid');
+                }
+                
+                // 驗證店家電話
+                const businessPhone = document.getElementById('businessPhone');
+                if (!businessPhone.value || !isValidPhone(businessPhone.value)) {
+                    businessPhone.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    businessPhone.classList.remove('is-invalid');
+                }
+            }
+            
+            else if (stepNumber === 3) {
+                // 驗證聯絡人姓名
+                const contactName = document.getElementById('contactName');
+                if (!contactName.value) {
+                    contactName.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    contactName.classList.remove('is-invalid');
+                }
+                
+                // 驗證聯絡人手機
+                const contactPhone = document.getElementById('contactPhone');
+                if (!contactPhone.value || !isValidPhone(contactPhone.value)) {
+                    contactPhone.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    contactPhone.classList.remove('is-invalid');
+                }
+                
+                // 驗證營業執照上傳
+                const uploadedFiles = window.getUploadedBusinessLicenseFiles();
+                console.log('驗證上傳檔案:', uploadedFiles);
+                if (!uploadedFiles || uploadedFiles.length === 0) {
+                    document.querySelector('.custom-file-upload').classList.add('is-invalid');
+                    console.log('檔案驗證失敗: 未上傳檔案');
+                    isValid = false;
+                } else {
+                    document.querySelector('.custom-file-upload').classList.remove('is-invalid');
+                    console.log('檔案驗證成功: 已上傳 ' + uploadedFiles.length + ' 個檔案');
+                }
+                
+                // 驗證條款勾選
+                const termsCheck = document.getElementById('termsCheck');
+                if (!termsCheck.checked) {
+                    termsCheck.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    termsCheck.classList.remove('is-invalid');
+                }
+            }
+            
+            return isValid;
+        }
+        
+        // 更新摘要信息
+        function updateSummary() {
+            // 創建元素並添加到摘要區域
+            const summaryInfo = document.querySelector('.summary-info .row');
+            
+            // 清空現有內容
+            summaryInfo.innerHTML = '';
+            
+            // 動態添加摘要項目
+            function addSummaryItem(label, value) {
+                const div = document.createElement('div');
+                div.className = 'col-12 mb-2';
+                div.innerHTML = `<strong>${label}：</strong> <span>${value}</span>`;
+                summaryInfo.appendChild(div);
+            }
+            
+            // 添加所有表單項目的摘要
+            addSummaryItem('電子郵件', document.getElementById('email').value);
+            
+            const businessType = document.getElementById('businessType');
+            const businessTypeText = businessType.options[businessType.selectedIndex]?.text || '未選擇';
+            
+            addSummaryItem('店家名稱', document.getElementById('businessName').value);
+            addSummaryItem('店家類型', businessTypeText);
+            addSummaryItem('店家地址', document.getElementById('businessAddress').value);
+            addSummaryItem('店家電話', document.getElementById('businessPhone').value);
+            addSummaryItem('聯絡人姓名', document.getElementById('contactName').value);
+            addSummaryItem('聯絡人電話', document.getElementById('contactPhone').value);
+            
+            // 處理文件上傳 - 顯示實際上傳的檔案
+            const uploadedFiles = window.getUploadedBusinessLicenseFiles();
+            let fileDescription = '未上傳';
+
+            if (uploadedFiles && uploadedFiles.length > 0) {
+                if (uploadedFiles.length === 1) {
+                    fileDescription = uploadedFiles[0].fileName;
+                } else {
+                    fileDescription = `已上傳 ${uploadedFiles.length} 個檔案`;
+                }
+            }
+
+            addSummaryItem('上傳文件', fileDescription);
+            console.log('摘要顯示上傳檔案:', fileDescription);
+        }
+
+    // 下一步
+    function nextStep(currentStep) {
+        console.log(`嘗試進入下一步: 從第 ${currentStep} 步到第 ${currentStep + 1} 步`);
+        const isValidStep = validateStep(currentStep);
+        console.log(`步驟 ${currentStep} 驗證結果:`, isValidStep);
+        if (!validateStep(currentStep)) {
+            console.log(`步驟 ${currentStep} 驗證失敗，無法進入下一步`);
+            return;
+        }
+        
+        // 隱藏當前步驟
+        document.getElementById(`step-${currentStep}-content`).classList.remove('active');
+        
+        // 標記當前步驟為已完成
+        document.getElementById(`step-${currentStep}`).classList.remove('active');
+        document.getElementById(`step-${currentStep}`).classList.add('completed');
+        
+        // 顯示下一步
+        const nextStepNumber = currentStep + 1;
+        document.getElementById(`step-${nextStepNumber}-content`).classList.add('active');
+        document.getElementById(`step-${nextStepNumber}`).classList.add('active');
+        
+        // 如果是進入最後一步，更新摘要信息
+        if (nextStepNumber === 4) {
+            updateSummary();
+        }
+    }
+
+    // 上一步
+    function prevStep(currentStep) {
+        // 隱藏當前步驟
+        document.getElementById(`step-${currentStep}-content`).classList.remove('active');
+        document.getElementById(`step-${currentStep}`).classList.remove('active');
+        
+        // 顯示上一步
+        const prevStepNumber = currentStep - 1;
+        document.getElementById(`step-${prevStepNumber}-content`).classList.add('active');
+        document.getElementById(`step-${prevStepNumber}`).classList.add('active');
+        document.getElementById(`step-${prevStepNumber}`).classList.remove('completed');
+    }
+
+    // 初始化表單元素，解決 "An invalid form control with name='' is not focusable" 問題
+    function initFormElements() {
+        // 第二步的元素
+        document.querySelectorAll('#step-2-content input, #step-2-content select').forEach(el => {
+            el.required = false; // 初始時不設置為必填
+        });
+        
+        // 第三步的元素
+        document.querySelectorAll('#step-3-content input').forEach(el => {
+            el.required = false; // 初始時不設置為必填
+        });
+        document.getElementById('termsCheck').required = false;
+    }
+
+    // DOM加載完成後執行
+    document.addEventListener('DOMContentLoaded', function() {
+        // 初始化表單元素
+        initFormElements();
+        
+        // 設置步驟切換時動態修改必填屬性
+        document.querySelectorAll('.btn-next').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const currentStep = parseInt(this.getAttribute('onclick').match(/\d+/)[0]);
+                const nextStep = currentStep + 1;
+                
+                // 為當前步驟的輸入元素移除必填屬性
+                document.querySelectorAll(`#step-${currentStep}-content input, #step-${currentStep}-content select`).forEach(el => {
+                    if (el.type !== 'hidden') {
+                        el.required = false;
+                    }
+                });
+                
+                // 為下一步的輸入元素設置必填屬性
+                setTimeout(() => {
+                    document.querySelectorAll(`#step-${nextStep}-content input, #step-${nextStep}-content select`).forEach(el => {
+                        if (el.getAttribute('data-required') !== 'false' && el.type !== 'hidden' && el.id !== 'businessLicenseFile') {
+                            el.required = true;
+                        }
+                    });
+                }, 100);
+            });
+        });
+        
+        // 為上一步按鈕添加處理邏輯
+        document.querySelectorAll('.btn-prev').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (this.getAttribute('onclick')) {
+                    const currentStep = parseInt(this.getAttribute('onclick').match(/\d+/)[0]);
+                    
+                    // 為當前步驟的輸入元素移除必填屬性
+                    document.querySelectorAll(`#step-${currentStep}-content input, #step-${currentStep}-content select`).forEach(el => {
+                        if (el.type !== 'hidden') {
+                            el.required = false;
+                        }
+                    });
+                    
+                    // 為上一步的輸入元素設置必填屬性
+                    setTimeout(() => {
+                        const prevStep = currentStep - 1;
+                        document.querySelectorAll(`#step-${prevStep}-content input, #step-${prevStep}-content select`).forEach(el => {
+                            if (el.getAttribute('data-required') !== 'false' && el.type !== 'hidden') {
+                                el.required = true;
+                            }
+                        });
+                    }, 100);
+                }
+            });
+        });
+        
+        // 處理文件上傳顯示
+        document.getElementById('businessLicenseFile').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : '';
+            // document.getElementById('businessLicenseFileName').textContent = fileName;
+        });
+    });
+
+    // 輔助函數：驗證電子郵件
+    function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    // 輔助函數：驗證電話號碼
+    function isValidPhone(phone) {
+        // 簡單的臺灣電話格式驗證，可根據需要調整
+        const phoneRegex = /^(0[2-9]\d{7,8}|09\d{8})$/;
+        return phoneRegex.test(phone);
+    }
+    
+    </script>
+
+    <!-- 在頁面結束前添加以下初始化腳本 -->
+    <script type="module">
+        // 導入必要的模組，確保正確的初始化順序
+        import { auth, db, appCheck } from './firebase-config.js';
+        import { checkAppCheckStatus, addDiagnosticsPanel } from './app-check-module.js';
+        
+        // DOM 加載完成後初始化 UI 元素
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('頁面加載完成，開始設置 App Check 狀態指示器...');
+            const statusElement = document.getElementById('appCheckStatus');
+            
+            try {
+                // 延遲執行檢查，給 reCAPTCHA 足夠的加載時間
+                setTimeout(async () => {
+                    try {
+                        const result = await checkAppCheckStatus();
+                        if (result.success) {
+                            statusElement.className = 'success';
+                            statusElement.textContent = 'App Check: 已驗證 ✓';
+                            setTimeout(() => { statusElement.style.display = 'none'; }, 3000);
+                        } else {
+                            statusElement.className = 'error';
+                            statusElement.textContent = 'App Check: 驗證失敗 ✗';
+                            setTimeout(() => { statusElement.style.display = 'none'; }, 5000);
+                        }
+                    } catch (error) {
+                        statusElement.className = 'error';
+                        statusElement.textContent = 'App Check: 發生錯誤 ✗';
+                        console.error('App Check 初始化錯誤:', error);
+                        setTimeout(() => { statusElement.style.display = 'none'; }, 5000);
+                    }
+                }, 2000); // 延遲 2 秒後檢查，提高成功率
+            } catch (error) {
+                console.error('設置狀態指示器時發生錯誤:', error);
+            }
+        });
+    </script>
+</body>
+</html>
