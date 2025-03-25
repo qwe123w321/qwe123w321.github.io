@@ -842,12 +842,39 @@ function enhancedUploadPreview() {
         previewCard.style.overflow = 'hidden';
         previewCard.style.boxShadow = '0 3px 8px rgba(0,0,0,0.1)';
         previewCard.style.marginBottom = '15px';
+        previewCard.style.cursor = 'pointer';
+        
+        // 為整個卡片添加點擊事件，打開檔案預覽
+        previewCard.addEventListener('click', function(e) {
+            // 防止點擊刪除按鈕時觸發預覽
+            if (e.target.closest('.delete-file-btn')) {
+                return;
+            }
+            
+            // 創建一個臨時URL用於打開檔案
+            const fileURL = URL.createObjectURL(uploadedFile.file);
+            
+            // 在新視窗打開檔案
+            window.open(fileURL, '_blank');
+            
+            // 使用完後釋放URL資源
+            setTimeout(() => URL.revokeObjectURL(fileURL), 100);
+        });
         
         if (isPDF) {
-            // PDF 檔案顯示
+            // PDF 檔案顯示 - 使用PDF內嵌預覽
             previewCard.innerHTML = `
-                <div style="height: 120px; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa;">
-                    <i class="fas fa-file-pdf text-danger" style="font-size: 3rem;"></i>
+                <div style="height: 160px; position: relative; background-color: #f8f9fa; display: flex; justify-content: center; align-items: center;">
+                    <object data="${URL.createObjectURL(uploadedFile.file)}" type="application/pdf" width="100%" height="100%" style="opacity: 0.8;">
+                        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                            <i class="fas fa-file-pdf text-danger" style="font-size: 3rem;"></i>
+                            <span class="mt-2" style="font-size: 12px; color: #666;">點擊預覽PDF</span>
+                        </div>
+                    </object>
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none;">
+                        <i class="fas fa-file-pdf text-danger" style="font-size: 3rem;"></i>
+                        <span class="mt-2" style="font-size: 12px; color: #666;">點擊預覽PDF</span>
+                    </div>
                 </div>
                 <div style="padding: 10px; background-color: white;">
                     <div class="file-name" title="${uploadedFile.file.name}">${uploadedFile.file.name}</div>
@@ -857,7 +884,12 @@ function enhancedUploadPreview() {
         } else {
             // 圖片檔案顯示
             previewCard.innerHTML = `
-                <img src="${uploadedFile.preview}" alt="預覽" style="width: 100%; height: 160px; object-fit: cover;">
+                <div style="height: 160px; position: relative;">
+                    <img src="${uploadedFile.preview}" alt="預覽" style="width: 100%; height: 100%; object-fit: cover;">
+                    <div style="position: absolute; bottom: 0; right: 0; background-color: rgba(0,0,0,0.5); color: white; font-size: 12px; padding: 2px 8px; border-top-left-radius: 5px;">
+                        點擊放大
+                    </div>
+                </div>
                 <div style="padding: 10px; background-color: white;">
                     <div class="file-name" title="${uploadedFile.file.name}">${uploadedFile.file.name}</div>
                     <div class="file-size">${formatFileSize(uploadedFile.file.size)}</div>
@@ -865,7 +897,7 @@ function enhancedUploadPreview() {
             `;
         }
         
-        // 添加刪除按鈕 - 使用直接綁定事件而非onclick
+        // 添加刪除按鈕
         const deleteButton = document.createElement('button');
         deleteButton.className = 'position-absolute btn btn-sm btn-danger rounded-circle delete-file-btn';
         deleteButton.style.top = '8px';
@@ -877,9 +909,11 @@ function enhancedUploadPreview() {
         deleteButton.style.alignItems = 'center';
         deleteButton.style.justifyContent = 'center';
         deleteButton.style.fontSize = '12px';
+        deleteButton.style.zIndex = '10';
         deleteButton.innerHTML = '<i class="fas fa-times"></i>';
         deleteButton.setAttribute('data-index', index);
-        deleteButton.addEventListener('click', function() {
+        deleteButton.addEventListener('click', function(e) {
+            e.stopPropagation(); // 阻止冒泡，避免觸發卡片的點擊事件
             removeUploadedFile(index);
         });
         
@@ -922,18 +956,40 @@ function updateSummaryInfo() {
         { label: '上傳證明文件', value: `${uploadedFilesCount}個檔案` }
     ];
     
-    // 顯示摘要信息
+    // 使用改進的佈局顯示摘要信息
     summaryItems.forEach(item => {
         const col = document.createElement('div');
-        col.className = 'col-md-6 mb-2';
+        col.className = 'col-md-12 mb-2';
         col.innerHTML = `
             <div class="d-flex">
-                <div class="fw-bold me-2">${item.label}:</div>
-                <div>${item.value}</div>
+                <div class="fw-bold me-3" style="min-width: 120px;">${item.label}:</div>
+                <div class="text-break">${item.value || '尚未填寫'}</div>
             </div>
         `;
         summaryContainer.appendChild(col);
     });
+    
+    // 顯示上傳的文件預覽（如果有）
+    if (uploadedFilesCount > 0) {
+        const filesPreviewCol = document.createElement('div');
+        filesPreviewCol.className = 'col-12 mt-3';
+        filesPreviewCol.innerHTML = `
+            <div class="fw-bold mb-2">已上傳檔案預覽:</div>
+            <div class="d-flex flex-wrap file-summary-previews">
+                ${uploadedFiles.map((file, idx) => `
+                    <div class="me-2 mb-2 position-relative" style="width: 60px; height: 60px;">
+                        ${file.file.type === 'application/pdf' 
+                            ? `<div class="d-flex align-items-center justify-content-center bg-light h-100 w-100 rounded">
+                                 <i class="fas fa-file-pdf text-danger"></i>
+                               </div>`
+                            : `<img src="${file.preview}" class="img-thumbnail" style="width: 60px; height: 60px; object-fit: cover;" alt="預覽">`
+                        }
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        summaryContainer.appendChild(filesPreviewCol);
+    }
 }
 
 // 替換原有的初始化文件上傳功能
@@ -1398,7 +1454,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // 文件選擇變更事件 - 使用正確的處理函數
         const fileInput = document.getElementById('businessLicenseFile');
         if (fileInput) {
-            fileInput.addEventListener('change', handleFileUpload);
+            fileInput.addEventListener('change', uploadBusinessLicense);
         }
         
         // 密碼顯示/隱藏按鈕點擊事件
@@ -1458,8 +1514,42 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 處理文件上傳按鈕的點擊事件
 function uploadBusinessLicense(e) {
-    // 直接使用新的處理函數
-    handleFileUpload(e);
+    // 檢查是否存在改進的處理函數，如果存在則優先使用
+    if (typeof improvedFileUploadHandler === 'function') {
+        improvedFileUploadHandler(e);
+    }
+    // 如果都不存在，直接處理檔案
+    else {
+        console.warn('找不到文件上傳處理函數，使用內建處理');
+        
+        // 簡單的文件處理邏輯
+        const files = e.target.files || (e.dataTransfer ? e.dataTransfer.files : null);
+        if (files && files.length > 0) {
+            Array.from(files).forEach(file => {
+                // 創建檔案預覽
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    uploadedFiles.push({
+                        id: `file-${Date.now()}-${uploadedFiles.length}`,
+                        file: file,
+                        fileName: file.name,
+                        preview: event.target.result,
+                        isPDF: file.type === 'application/pdf'
+                    });
+                    
+                    // 更新上傳計數和預覽
+                    updateUploadCount();
+                    enhancedUploadPreview();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    }
+    
+    // 如果是input元素，重置它的value，以便可以重複選擇相同文件
+    if (e.target && e.target.type === 'file') {
+        e.target.value = '';
+    }
 }
 
 
