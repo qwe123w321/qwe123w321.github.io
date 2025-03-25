@@ -1,0 +1,640 @@
+<!-- 添加對模態框內容的樣式 -->
+<style>
+    /* 條款容器和區段樣式 */
+    .terms-container {
+        font-family: 'Noto Sans TC', sans-serif;
+        color: #333;
+    }
+    
+    .terms-section {
+        margin-bottom: 2.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .terms-section:last-child {
+        border-bottom: none;
+    }
+    
+    .terms-section h2 {
+        color: #9D7F86;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .terms-section h3 {
+        color: #495057;
+        font-weight: 600;
+        margin: 1.2rem 0 0.8rem;
+        font-size: 1.3rem;
+    }
+    
+    .terms-section p {
+        color: #6c757d;
+        line-height: 1.7;
+        margin-bottom: 1rem;
+    }
+    
+    /* 列表樣式 */
+    .terms-list {
+        padding-left: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .terms-list li {
+        margin-bottom: 0.8rem;
+        line-height: 1.6;
+        color: #495057;
+    }
+    
+    .terms-list li strong {
+        color: #343a40;
+    }
+    
+    /* 安全提醒特定樣式 */
+    .safety-icon {
+        color: #9D7F86;
+    }
+    
+    .safety-section {
+        background-color: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    
+    .safety-item {
+        margin-bottom: 1.5rem;
+    }
+    
+    .safety-item h3 {
+        display: flex;
+        align-items: center;
+        color: #495057;
+        font-size: 1.2rem;
+        margin-bottom: 0.8rem;
+    }
+    
+    .safety-item h3 i {
+        color: #9D7F86;
+        margin-right: 0.5rem;
+    }
+    
+    .safety-resources {
+        background-color: #f0f4f8;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid #9D7F86;
+    }
+    
+    /* 響應式調整 */
+    @media (max-width: 768px) {
+        .terms-section h2 {
+            font-size: 1.5rem;
+        }
+        
+        .terms-section h3 {
+            font-size: 1.2rem;
+        }
+        
+        .terms-list {
+            padding-left: 1.2rem;
+        }
+    }
+</style>
+
+<!-- 服務條款模態框 -->
+<div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="termsModalLabel">BrewDate 服務條款</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="terms-container">
+                    <div class="terms-section">
+                        <h2>一、接受條款</h2>
+                        
+                        <h3>條款效力</h3>
+                        <p>感謝您使用本交友約會應用程式（以下簡稱「本APP」）。在使用本APP之前，請您仔細閱讀並同意本服務條款（以下簡稱「本條款」）的所有內容。</p>
+                        <p>一旦您開始使用本APP，即表示您已閱讀、瞭解並同意接受本條款的所有內容；若您不同意本條款的任何內容，請勿使用本APP。</p>
+                        
+                        <h3>條款適用範圍</h3>
+                        <p>本條款適用於您與本APP之間有關使用本APP各項功能與服務的所有權利義務。</p>
+                        <p>若您在不同平台（例如iOS、Android或網頁版本）使用本APP，則本條款同樣具有約束力。</p>
+                        
+                        <h3>條款修訂告知</h3>
+                        <p>本APP保留於任何時間修改或變更本條款之權利，並會在本APP顯著處公告修訂後的內容。</p>
+                        <p>若您在本條款修改或更新後仍繼續使用本APP，即視為您已閱讀、瞭解並同意接受修改後的條款。</p>
+                    </div>
+                    
+                    <div class="terms-section">
+                        <h2>二、服務內容</h2>
+                        
+                        <h3>服務功能</h3>
+                        <p>本APP旨在提供用戶即時發現「附近的人」並發起活動，供其他用戶報名參加，以促進線上互動及線下交流。</p>
+                        <p>同時，本APP會與合作店家配合，提供優惠或招待等活動資訊，作為促進約會或聚會的協助管道。</p>
+                        
+                        <h3>平台定位</h3>
+                        <p>本APP僅作為資訊與活動交流平台，協助用戶彼此溝通、互動或建立連結；本APP本身不直接參與用戶之間的互動或活動。</p>
+                        <p>用戶間的線下或其他任何形式的互動行為、交易或關係，皆由用戶自行承擔風險及責任。本APP對此不負任何保證責任或損害賠償責任。</p>
+                        
+                        <h3>第三方連結與合作</h3>
+                        <p>若本APP內提供第三方網站或服務的連結（例如合作店家活動），僅是為了方便用戶取得資訊。第三方網站或服務之內容及提供方式，屬該第三方獨立經營，本APP不對其合法性、正確性或安全性負責。</p>
+                        <p>若您選擇與合作店家或其他第三方進行任何後續交易或合作，請自行判斷並承擔相關風險。</p>
+                    </div>
+                    
+                    <div class="terms-section">
+                        <h2>三、用戶資格</h2>
+                        
+                        <h3>年齡與行為能力</h3>
+                        <p>您必須年滿18歲並具備完全民事行為能力，方可註冊及使用本APP的服務。</p>
+                        <p>若您不符合前述資格，請勿使用本APP。</p>
+                        
+                        <h3>註冊資訊</h3>
+                        <p>您在註冊時須提供真實、準確、完整的個人資料，包括但不限於姓名（或暱稱）、年齡、聯絡方式等。</p>
+                        <p>您承諾會即時更新上述個人資料，以確保資訊之準確性及即時性；若資料有異動而未更新，可能影響您使用本APP之權益。</p>
+                        
+                        <h3>違反資格規定之處置</h3>
+                        <p>若本APP發現或合理懷疑您提供之資訊不實、不完整或有違法嫌疑，本APP有權暫停或終止您的帳號，並拒絕您在現階段或未來使用本APP之全部或部分服務。</p>
+                        <p>本APP對此擁有最終決定權，並無須為帳號暫停或終止所造成之任何損失向您負責。</p>
+                    </div>
+                    
+                    <div class="terms-section">
+                        <h2>四、用戶行為規範</h2>
+                        
+                        <h3>禁止事項</h3>
+                        <ul>
+                            <li><strong>非法或侵權活動：</strong>不得利用本APP從事任何違反法律或侵害他人權益之行為，包括但不限於傳播淫穢、色情、暴力、恐怖或違反公共秩序善良風俗之內容。</li>
+                            <li><strong>騷擾或誹謗：</strong>不得騷擾、誹謗、威脅其他用戶，或冒充他人進行任何不當行為，亦不得侵害他人名譽、隱私或其他合法權益。</li>
+                            <li><strong>虛假資訊或欺詐：</strong>不得發布虛假資訊或從事任何可能構成詐欺之行為，包括誤導、詐騙其他用戶的行為。</li>
+                            <li><strong>未經授權蒐集：</strong>不得未經合法授權即收集、使用、儲存或公開他人個人資料。</li>
+                            <li><strong>技術干擾：</strong>不得散布病毒、惡意程式碼或任何其他程式，企圖干擾本APP或其他用戶之正常使用。</li>
+                            <li><strong>商業行為限制：</strong>未經本APP事先書面許可，不得於本APP上進行商業廣告、推銷商品或服務、招攬或募集資金等商業行為。</li>
+                        </ul>
+                        
+                        <h3>使用規範</h3>
+                        <p>不得干擾或試圖干擾本APP的正常運行（例如進行駭客攻擊、試圖破解系統、散播不實訊息等）。</p>
+                        <p>不得以任何方式破壞其他用戶對本APP的使用體驗，包括散佈廣告、垃圾訊息或其他令人反感的行為。</p>
+                        <p>用戶應遵守當地法律法規及本條款的規範，不得進行其他可能違反法律、違反本條款或侵害本APP及其他用戶權益的行為。</p>
+                        
+                        <h3>違反規範之處置</h3>
+                        <p>若用戶違反上述規範，本APP有權立即暫停或終止該用戶帳號，並可視情況採取法律行動。</p>
+                        <p>本APP並有權保留相關記錄，作為必要時協助司法或其他主管機關調查之用。</p>
+                    </div>
+                    
+                    <div class="terms-section">
+                        <h2>五、內容的所有權及智慧財產權聲明</h2>
+                        
+                        <h3>用戶內容權利</h3>
+                        <p>用戶在本APP上發布的內容（包含但不限於文字、圖片、音訊、影片等）的智慧財產權，原則上由內容創作人或合法擁有者本人保有。</p>
+                        <p>用戶於本APP上發布內容時，即同意授權本APP在全球範圍內，得以免費、永久、不可撤銷、非排他性的方式，進行使用、複製、修改、改作、發佈、翻譯及分發該內容，並可作為本APP運營、推廣或行銷之用。此授權並不代表本APP對用戶的內容負有任何審核或保證責任。</p>
+                        
+                        <h3>平台內容版權</h3>
+                        <p>本APP所提供的一切服務與內容（例如程式碼、技術、介面、網頁設計、文本、圖片、音訊、影片及其他著作），其智慧財產權均歸屬於本APP或相關權利人所有，受到著作權法、商標法、專利法及其他相關法律之保護。</p>
+                        <p>未經本APP或權利人書面明示同意，任何人不得以任何形式對前述內容進行重製、改作、公開散布、公開傳輸、改編或以其他方式使用，亦不得用於任何商業目的。</p>
+                        
+                        <h3>侵權舉報機制</h3>
+                        <p>若您認為本APP上的任何內容涉嫌侵害您的智慧財產權或其他權利，請透過本APP提供之客服管道通知我們，並提供相關證明文件。我們會依法評估並採取必要之處置，包括但不限於暫停或刪除涉嫌侵權之內容。</p>
+                    </div>
+                    
+                    <div class="terms-section">
+                        <h2>六、隱私政策</h2>
+                        
+                        <h3>隱私重視</h3>
+                        <p>本APP非常重視用戶的隱私權，會依據適用的隱私法規，並遵照《隱私政策》的規定收集、使用、儲存及分享您的個人資訊。</p>
+                        <p>您在使用本APP前，應詳細閱讀《隱私政策》，並確認瞭解我們的資料處理方式。</p>
+                        
+                        <h3>個人資料的收集與使用</h3>
+                        <p>當您使用本APP時，為提供服務之必要，我們可能需要蒐集您的個人資料（例如地理位置、聯絡方式、使用紀錄等）。</p>
+                        <p>相關資料的具體收集方式、處理目的及使用範圍，請參考《隱私政策》中所詳列之說明。</p>
+                        
+                        <h3>資料保護措施</h3>
+                        <p>我們將採取合理且符合業界標準的技術及管理措施，保障用戶的個人資料安全。</p>
+                        <p>但由於網路特性，仍無法保證資訊傳輸及儲存之絕對安全。若因不可抗力或第三方非法入侵造成資料外洩，本APP將依法律規定及本APP內部程序處理並通報。</p>
+                        
+                        <h3>隱私政策更新</h3>
+                        <p>我們保留隨時修改隱私政策之權利，並會於本APP上公告最新版本。請您隨時關注公告並留意隱私政策的更新。</p>
+                    </div>
+                    
+                    <div class="terms-section">
+                        <h2>七、免責聲明</h2>
+                        
+                        <h3>用戶內容真實性</h3>
+                        <p>本APP僅提供資訊交流平台，本APP不對用戶發布內容之真實性、準確性、完整性或合法性做任何保證。</p>
+                        <p>用戶需自行判斷其他用戶所發布內容的真實與可信度，並自行承擔互動或後續行動所可能帶來之風險。</p>
+                        
+                        <h3>用戶互動及線下活動</h3>
+                        <p>用戶之間的互動（包含通訊、見面、交易或其他任何形式）純屬用戶自行決定，本APP不介入亦不負任何責任。</p>
+                        <p>尤其是線下見面或活動，建議用戶提高警覺，仔細評估風險，包括地點安全、人身與財產風險等。本APP對此不承擔任何直接或間接責任。</p>
+                        
+                        <h3>服務連續性與穩定性</h3>
+                        <p>本APP不保證服務之連續性、即時性、安全性或無錯誤，亦不對服務在任何時間、任何設備或任何環境下都能正常運行做出承諾。</p>
+                        <p>因網路狀況不佳、不可抗力、系統維護或其他因素造成本APP無法運作或功能受限，本APP不負任何賠償責任，但將盡力於合理時間內恢復服務。</p>
+                        
+                        <h3>對第三方的免責聲明</h3>
+                        <p>本APP對合作店家或第三方所提供之優惠、產品或服務的真實性、品質、合法性不承擔保證責任。</p>
+                        <p>如因第三方之行為或疏失導致任何糾紛、損害、損失或法律責任，請您與該第三方自行協商處理；本APP不負任何連帶或代位責任。</p>
+                    </div>
+                    
+                    <!-- 省略部分內容以節省空間，實際應用時應包含完整條款 -->
+                    <div class="terms-section">
+                        <h2>八至十三、其他條款</h2>
+                        <p class="text-center">
+                            <a href="#" class="btn btn-outline-secondary mt-3" data-bs-toggle="collapse" data-bs-target="#fullTerms">
+                                查看完整條款
+                            </a>
+                        </p>
+                        
+                        <div class="collapse" id="fullTerms">
+                            <div class="terms-subsection mt-4">
+                                <h2>八、責任限制</h2>
+                                
+                                <h3>損害賠償限制</h3>
+                                <p>在適用法律允許的最大範圍內，本APP對於因使用或無法使用本APP所導致之任何間接、附帶、特殊、後果性或懲罰性損害（包含但不限於營業利益損失、使用中斷、資料流失等），均不承擔任何責任，即使本APP已被告知發生此類損害的可能性。</p>
+                                
+                                <h3>法律保留</h3>
+                                <p>本條款中的免責或責任限制不排除依法應當由本APP承擔之責任，但其範圍將以相關法律法規所規定的最大限度為準。</p>
+                                
+                                <h3>責任範圍</h3>
+                                <p>本APP對用戶因自身行為或與其他用戶之互動行為所導致的任何損害或糾紛，不承擔任何保證責任。</p>
+                                <p>若使用者與其他人或第三方產生任何法律糾紛，責任應由糾紛當事人各自承擔。</p>
+                            </div>
+                            
+                            <div class="terms-subsection">
+                                <h2>九、費用與付款</h2>
+                                
+                                <h3>服務費用</h3>
+                                <p>本APP有部分功能或服務為付費使用。相關費用標準及收費方式將在該服務頁面上明確說明。</p>
+                                <p>用戶在選擇使用付費功能前，應仔細閱讀並確認相關費用、方案及服務內容。</p>
+                                
+                                <h3>付款方式</h3>
+                                <p>用戶可使用本APP支援的付款管道（例如信用卡、行動支付）進行支付。</p>
+                                <p>您須確保提供之付款資訊正確且有效，並具備該付款方式的合法使用權限。若付款失敗或遭退回，可能導致服務無法正常使用或延遲。</p>
+                                
+                                <h3>自動續訂</h3>
+                                <p>若用戶訂閱之服務包含自動續訂機制，則在每個訂閱期屆滿前會自動續期並從用戶提供的付款方式中扣款。</p>
+                                <p>若用戶不想繼續使用，請確保於訂閱期結束前依照本APP或平台規定的程序取消訂閱。若未及時取消，已扣之費用不予退還。</p>
+                                
+                                <h3>退費政策</h3>
+                                <p>除非法律另有規定或本APP於服務頁面另有明確約定，付費服務一經扣款則不予退費。</p>
+                                <p>若因本APP故障、系統問題或本APP須負責之原因，導致用戶無法使用已付費之服務，可聯繫客服提出申訴。本APP將依實際情況及法律規定處理。</p>
+                            </div>
+                            
+                            <div class="terms-subsection">
+                                <h2>十、契約終止</h2>
+                                
+                                <h3>用戶終止</h3>
+                                <p>用戶可隨時停止使用本APP，並可透過客服管道申請註銷帳號。</p>
+                                <p>註銷帳號後，依照本APP資料保存政策，您的部分使用紀錄或個人資料可能仍需保存一段期間（例如法定保管期間）方能刪除。</p>
+                                
+                                <h3>本APP終止</h3>
+                                <p>若用戶違反本條款或相關法律法規，本APP有權在不經事先通知的情況下暫停或終止對該用戶之服務，並刪除或保留帳號資料。</p>
+                                <p>若本APP停止營運或因其他原因無法繼續提供服務，本APP將於合理期間內公告並通知用戶，並說明相關後續安排。</p>
+                            </div>
+                            
+                            <div class="terms-subsection">
+                                <h2>十一、法律適用與爭議解決</h2>
+                                
+                                <h3>法律適用</h3>
+                                <p>本條款之訂立、生效、履行、解釋及爭議解決均以中華民國（台灣）法律為準據法。</p>
+                                <p>本APP將依照當地相關法律法規履行個資保護與消費者保障等義務。</p>
+                                
+                                <h3>爭議解決</h3>
+                                <p>若因本條款或本APP服務所生爭議，雙方應儘量友好協商解決；若協商不成，任何一方可向本APP所在地具有管轄權的法院提起訴訟。</p>
+                                <p>您亦可考慮向消費者保護團體（如消費者基金會）或其他相關機關諮詢您的權利。</p>
+                            </div>
+                            
+                            <div class="terms-subsection">
+                                <h2>十二、條款的修改</h2>
+                                
+                                <h3>修改權限</h3>
+                                <p>本APP保留隨時修改、增訂或刪除本條款之全部或部分內容的權利，並會透過本APP顯著位置公告或通知。</p>
+                                <p>修改後之條款於公告時即生效，除非公告中另有生效日之約定。</p>
+                                
+                                <h3>繼續使用視為同意</h3>
+                                <p>若您於本條款修改後繼續使用本APP，即表示您已閱讀、瞭解並同意接受修訂後之條款內容。</p>
+                                <p>若您不同意修訂內容，可立即停止使用並申請帳號註銷。</p>
+                            </div>
+                            
+                            <div class="terms-subsection">
+                                <h2>十三、其他</h2>
+                                
+                                <h3>完整性</h3>
+                                <p>本條款構成您與本APP之間就本APP使用服務所達成的完整協議，並取代之前任何口頭或書面協議，雙方均受本條款約束。</p>
+                                
+                                <h3>可分性</h3>
+                                <p>若本條款的任何條款被有管轄權之法院視為無效、違法或不可執行，該條款得自本條款中分離，而不影響其他條款的效力與執行力。</p>
+                                
+                                <h3>權利放棄</h3>
+                                <p>本APP對任何違反本條款之行為未行使或延遲行使其權利，不構成本APP對該權利之放棄；亦不影響本APP於未來行使該權利之合法性。</p>
+                                
+                                <h3>標題與語言</h3>
+                                <p>本條款內所列標題僅為方便閱讀而設，不具法律或契約效力。</p>
+                                <p>若本條款存在多種語言版本，且不同語言版本間有差異時，以中文版本為準。</p>
+                                
+                                <h3>法務諮詢</h3>
+                                <p>本APP並非執行法律業務的機構，條款內容僅提供一般性資訊參考。若您對本條款或本APP服務涉及之任何法律層面有疑慮，建議您諮詢專業律師或相關主管機關。</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="terms-section text-center">
+                        <p>感謝您仔細閱讀本條款並使用本APP，祝您使用愉快！若有任何問題或需求，歡迎隨時透過客服管道與我們聯繫。</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 隱私條款模態框 -->
+<div class="modal fade" id="privacyModal" tabindex="-1" aria-labelledby="privacyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="privacyModalLabel">BrewDate 隱私條款</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="terms-container">
+                    <div class="privacy-intro text-center mb-4">
+                        <h2>我們重視您的隱私</h2>
+                        <p class="lead">BrewDate致力於保護您的個人資料並提供透明的資料處理方式</p>
+                    </div>
+                    
+                    <div class="terms-section">
+                        <h2>一、資料收集</h2>
+                        
+                        <h3>我們收集的資料</h3>
+                        <p>為了提供更好的服務體驗，我們可能收集以下資料：</p>
+                        <ul class="terms-list">
+                            <li><strong>帳戶資料：</strong>您在註冊過程中提供的資訊，如姓名、生日、性別、電子郵件地址和電話號碼。</li>
+                            <li><strong>個人資料：</strong>您在個人檔案中分享的資訊，如照片、興趣愛好、教育背景和職業資訊。</li>
+                            <li><strong>位置資料：</strong>經您同意後，我們會收集您的裝置位置資訊，以提供基於位置的服務。</li>
+                            <li><strong>使用資料：</strong>您如何使用我們的應用程式，包括點擊、瀏覽時間、互動方式等資訊。</li>
+                            <li><strong>裝置資訊：</strong>您使用的裝置類型、作業系統版本、語言設定等技術資訊。</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="terms-section">
+                        <h2>二、資料使用</h2>
+                        
+                        <h3>我們如何使用您的資料</h3>
+                        <p>我們收集的資料將用於：</p>
+                        <ul class="terms-list">
+                            <li>提供、維護和改善我們的服務</li>
+                            <li>根據您的喜好和位置推薦活動和其他用戶</li>
+                            <li>實現位置定位功能，讓您能找到附近的活動和用戶</li>
+                            <li>處理您的交易，包括預約和付款</li>
+                            <li>發送重要通知，如系統更新和政策變更</li>
+                            <li>提供客戶支援和回應您的請求</li>
+                            <li>防止詐欺和濫用行為，維護用戶安全</li>
+                            <li>分析應用程式使用情況以改進用戶體驗</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="terms-section">
+                        <h2>三、資料分享</h2>
+                        
+                        <h3>我們如何分享您的資料</h3>
+                        <p>我們不會出售或出租您的個人資料。我們可能在以下情況下分享您的資料：</p>
+                        <ul class="terms-list">
+                            <li><strong>其他用戶：</strong>根據您的帳戶設定和互動方式，其他用戶可能看到您的公開資料，如照片、姓名和興趣愛好。</li>
+                            <li><strong>服務提供商：</strong>我們可能與協助我們提供服務的第三方供應商分享您的資料，如雲端服務、支付處理、資料分析等。</li>
+                            <li><strong>合作店家：</strong>當您預約或參與合作店家活動時，必要的資訊會被分享以實現預約功能。</li>
+                            <li><strong>法律要求：</strong>若法律要求、法院命令或政府機關合法要求，我們可能披露您的資料。</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="terms-section">
+                        <h2>四、資料安全</h2>
+                        
+                        <h3>如何保護您的資料</h3>
+                        <p>我們採取多層級的安全措施保護您的個人資料，包括：</p>
+                        <ul class="terms-list">
+                            <li>使用加密技術保護資料傳輸</li>
+                            <li>實施嚴格的資料存取控制</li>
+                            <li>定期審查和更新安全措施</li>
+                            <li>對員工進行隱私和安全培訓</li>
+                        </ul>
+                        <p>然而，互聯網和電子儲存並非絕對安全，我們無法保證100%的資料安全。</p>
+                    </div>
+                    
+                    <div class="terms-section">
+                        <h2>五、您的權利</h2>
+                        
+                        <h3>您對自己資料的控制權</h3>
+                        <p>根據適用的隱私法規，您擁有以下權利：</p>
+                        <ul class="terms-list">
+                            <li><strong>存取權：</strong>您有權存取我們持有的關於您的個人資料</li>
+                            <li><strong>更正權：</strong>您可以要求更正不準確或不完整的個人資料</li>
+                            <li><strong>刪除權：</strong>在某些情況下，您可以要求刪除您的個人資料</li>
+                            <li><strong>限制處理權：</strong>在某些情況下，您可以要求限制處理您的個人資料</li>
+                            <li><strong>資料可攜權：</strong>您可以要求以結構化、通用格式接收您的個人資料</li>
+                            <li><strong>反對權：</strong>您有權反對我們處理您的個人資料的某些方式</li>
+                        </ul>
+                        <p>若要行使這些權利，請通過應用程式內的設定或聯繫我們的客服團隊。</p>
+                    </div>
+                    
+                    <div class="terms-section">
+                        <h2>六、Cookie 和追蹤技術</h2>
+                        
+                        <h3>我們如何使用 Cookie</h3>
+                        <p>我們使用 Cookie 和類似技術來提升您的體驗，包括：</p>
+                        <ul class="terms-list">
+                            <li>記住您的偏好設定</li>
+                            <li>保持您的登入狀態</li>
+                            <li>分析應用程式使用情況</li>
+                            <li>提供個人化推薦</li>
+                        </ul>
+                        <p>您可以通過瀏覽器或裝置設定管理 Cookie 偏好，但這可能影響某些功能的可用性。</p>
+                    </div>
+                    
+                    <div class="terms-section">
+                        <h2>七、隱私政策更新</h2>
+                        
+                        <h3>政策變更通知</h3>
+                        <p>我們可能不時更新本隱私政策。重大變更將通過應用程式內通知、電子郵件或網站公告通知您。</p>
+                        <p>繼續使用我們的服務表示您接受修訂後的隱私政策。我們建議您定期查閱本政策以了解最新資訊。</p>
+                    </div>
+                    
+                    <div class="terms-section">
+                        <h2>八、聯繫我們</h2>
+                        
+                        <p>如果您對本隱私政策有任何疑問或意見，或想行使您的隱私權利，請通過以下方式聯繫我們：</p>
+                        <div class="contact-info text-center my-4">
+                            <p><i class="fas fa-envelope me-2"></i> qwe123w321@gmail.com</p>
+                            <p><i class="fas fa-phone me-2"></i> +886 905 235 393</p>
+                        </div>
+                    </div>
+                    
+                    <div class="terms-section text-center">
+                        <p>最後更新日期：2023年12月1日</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 安全提醒模態框 -->
+<div class="modal fade" id="safetyModal" tabindex="-1" aria-labelledby="safetyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="safetyModalLabel">BrewDate 安全提醒</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="terms-container">
+                    <div class="safety-intro text-center mb-4">
+                        <div class="safety-icon mb-3">
+                            <i class="fas fa-shield-alt fa-3x text-primary"></i>
+                        </div>
+                        <h2>您的安全是我們的首要優先</h2>
+                        <p class="lead">為確保您擁有安全且愉快的約會體驗，請遵循以下安全指南</p>
+                    </div>
+                    
+                    <div class="terms-section safety-section">
+                        <h2>一、線上互動安全</h2>
+                        
+                        <div class="safety-item">
+                            <h3><i class="fas fa-user-shield me-2"></i>保護個人資料</h3>
+                            <ul class="terms-list">
+                                <li>請勿在個人資料或訊息中分享敏感個人資訊，如完整的身份證號碼、銀行資料或家庭住址</li>
+                                <li>使用具有足夠強度的密碼，並定期更換</li>
+                                <li>小心分享社群媒體資訊，可能揭露您的個人資訊和位置</li>
+                                <li>不要與任何人分享您的BrewDate帳號密碼</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="safety-item">
+                            <h3><i class="fas fa-comment-slash me-2"></i>警惕可疑行為</h3>
+                            <ul class="terms-list">
+                                <li>對過於急切想見面或要求提供財務資訊的用戶保持警惕</li>
+                                <li>提防借口需要金錢幫助的請求，無論理由多麼合理</li>
+                                <li>警惕聲稱在國外工作或遇到緊急情況需要財務協助的用戶</li>
+                                <li>若有用戶堅持將對話轉移到其他平台，請謹慎行事</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="terms-section safety-section">
+                        <h2>二、線下見面安全</h2>
+                        
+                        <div class="safety-item">
+                            <h3><i class="fas fa-map-marker-alt me-2"></i>公共場所見面</h3>
+                            <ul class="terms-list">
+                                <li>首次見面請選擇公共場所，如咖啡廳、餐廳或購物中心</li>
+                                <li>儘量在白天或人多的時間安排見面</li>
+                                <li>避免在偏僻或陌生的地點見面</li>
+                                <li>建議使用我們合作的店家，這些地點都經過安全評估</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="safety-item">
+                            <h3><i class="fas fa-car me-2"></i>交通與住宿安全</h3>
+                            <ul class="terms-list">
+                                <li>安排自己的交通工具往返見面地點，避免依賴對方接送</li>
+                                <li>若使用計程車，請使用正規的叫車服務</li>
+                                <li>不要接受對方邀請立即前往私人住所</li>
+                                <li>不要留在讓您感到不舒服的場所，隨時準備離開</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="safety-item">
+                            <h3><i class="fas fa-users me-2"></i>告知親友</h3>
+                            <ul class="terms-list">
+                                <li>在見面前告知朋友或家人您的行程，包括見面地點和預計返回時間</li>
+                                <li>考慮使用位置共享功能，與信任的朋友分享您的實時位置</li>
+                                <li>設定安全確認，約定時間向朋友報平安</li>
+                                <li>若可能，考慮首次約會帶上朋友，進行群體活動</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="terms-section safety-section">
+                        <h2>三、飲食安全</h2>
+                        
+                        <div class="safety-item">
+                            <h3><i class="fas fa-glass-cheers me-2"></i>飲料與食物安全</h3>
+                            <ul class="terms-list">
+                                <li>全程留意您的飲料，不要接受來歷不明的飲品</li>
+                                <li>若您離開座位（如上洗手間），回來後請重新點一杯飲料</li>
+                                <li>保持清醒，控制酒精攝入量</li>
+                                <li>若感到不適或頭暈，請立即尋求幫助</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="safety-item">
+                            <h3><i class="fas fa-allergies me-2"></i>過敏與飲食偏好</h3>
+                            <ul class="terms-list">
+                                <li>事先告知對方您的食物過敏或飲食限制</li>
+                                <li>選擇您熟悉且信任的食物類型</li>
+                                <li>若有特殊飲食需求，建議提前選好適合的餐廳</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="terms-section safety-section">
+                        <h2>四、遭遇不當行為</h2>
+                        
+                        <div class="safety-item">
+                            <h3><i class="fas fa-exclamation-triangle me-2"></i>應對騷擾或不適情況</h3>
+                            <ul class="terms-list">
+                                <li>明確表達您的界限，如果對方行為讓您不舒服，請直接表明</li>
+                                <li>信任您的直覺，若感到不安全，請立即離開</li>
+                                <li>不要擔心禮貌問題，您的安全比禮節更重要</li>
+                                <li>準備好離開的藉口或理由，如朋友的緊急電話</li>
+                                <li>若情況嚴重，不要猶豫，立即聯繫現場工作人員或報警</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="safety-item">
+                            <h3><i class="fas fa-flag me-2"></i>舉報不當行為</h3>
+                            <ul class="terms-list">
+                                <li>使用BrewDate應用程式內的舉報功能報告可疑或不當行為</li>
+                                <li>提供具體資訊，幫助我們採取適當行動</li>
+                                <li>若遇到違法行為，請聯繫當地執法機關</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="terms-section">
+                        <h2>五、安全資源</h2>
+                        
+                        <div class="safety-resources mb-4">
+                            <h3><i class="fas fa-phone-alt me-2"></i>緊急聯繫資訊</h3>
+                            <ul class="terms-list">
+                                <li><strong>緊急救援：</strong>110 (警察) / 119 (救護)</li>
+                                <li><strong>婦幼保護專線：</strong>113</li>
+                                <li><strong>BrewDate客服：</strong>qwe123w321@gmail.com</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="safety-message text-center mt-5">
+                            <div class="safety-icon mb-3">
+                                <i class="fas fa-heart fa-2x text-danger"></i>
+                            </div>
+                            <p class="lead">記住，真正尊重您的人會尊重您的界限和舒適度。</p>
+                            <p>祝您擁有安全、愉快的BrewDate約會體驗！</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+            </div>
+        </div>
+    </div>
+</div>
