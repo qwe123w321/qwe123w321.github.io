@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://www.google.com/recaptcha/api.js?render=6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G" 
+     async 
+     onload="console.log('reCAPTCHA 腳本加載成功', new Date().toISOString())" 
+     onerror="console.error('reCAPTCHA 腳本加載失敗', new Date().toISOString())"></script>
     <title>店家註冊 - BrewDate</title>
     <!-- SEO 優化 meta 標籤 -->
     <meta name="description" content="BREWDATE 商家合作平台 - 註冊您的店家帳戶，增加曝光度，吸引更多顧客。">
@@ -15,6 +19,142 @@
     <link rel="stylesheet" href="base.css">
     <!-- Favicon -->
     <link rel="icon" href="logo_s.png" type="image/png">
+
+    <script type="module">
+        // 先導入 Firebase 配置
+        import './firebase-config.js';
+        
+        // 導入統一的 App Check 模組
+        import { addDiagnosticsPanel, checkAppCheckStatus, installXHRInterceptor } from './app-check-module.js';
+        
+        // 添加診斷按鈕
+        document.addEventListener('DOMContentLoaded', () => {
+            // 創建診斷按鈕
+            const diagnosticsBtn = document.createElement('button');
+            diagnosticsBtn.id = 'appCheckDiagnosticsBtn';
+            diagnosticsBtn.innerHTML = '🔍';
+            diagnosticsBtn.title = 'App Check 診斷';
+            diagnosticsBtn.style.position = 'fixed';
+            diagnosticsBtn.style.bottom = '20px';
+            diagnosticsBtn.style.right = '20px';
+            diagnosticsBtn.style.width = '50px';
+            diagnosticsBtn.style.height = '50px';
+            diagnosticsBtn.style.borderRadius = '50%';
+            diagnosticsBtn.style.backgroundColor = '#007bff';
+            diagnosticsBtn.style.color = 'white';
+            diagnosticsBtn.style.border = 'none';
+            diagnosticsBtn.style.fontSize = '20px';
+            diagnosticsBtn.style.display = 'flex';
+            diagnosticsBtn.style.alignItems = 'center';
+            diagnosticsBtn.style.justifyContent = 'center';
+            diagnosticsBtn.style.cursor = 'pointer';
+            diagnosticsBtn.style.zIndex = '9999';
+            diagnosticsBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+            
+            // 添加點擊事件
+            diagnosticsBtn.addEventListener('click', () => {
+                addDiagnosticsPanel();
+                diagnosticsBtn.style.display = 'none';
+            });
+            
+            // 添加到頁面
+            document.body.appendChild(diagnosticsBtn);
+            
+            // 檢查 App Check 狀態並顯示指示器
+            setTimeout(async () => {
+                console.log('註冊頁面正在檢查 App Check 狀態...');
+                try {
+                    const result = await checkAppCheckStatus();
+                    if (result.success) {
+                        console.log('App Check 驗證成功！註冊流程可以正常進行');
+                        // 安裝 XHR 攔截器
+                        installXHRInterceptor();
+                    } else {
+                        console.error('App Check 驗證失敗，可能導致註冊過程中出現錯誤');
+                        // 顯示錯誤提示
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-warning alert-dismissible fade show mt-3';
+                        alertDiv.innerHTML = `
+                            <strong>注意:</strong> App Check 驗證未完成，這可能導致註冊請求被拒絕。
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-warning" id="retryAppCheck">重試 App Check 驗證</button>
+                            </div>
+                        `;
+                        
+                        const registerForm = document.getElementById('businessRegisterForm');
+                        if (registerForm) {
+                            registerForm.parentNode.insertBefore(alertDiv, registerForm);
+                            
+                            // 添加重試按鈕事件
+                            setTimeout(() => {
+                                const retryBtn = document.getElementById('retryAppCheck');
+                                if (retryBtn) {
+                                    retryBtn.addEventListener('click', async function() {
+                                        this.disabled = true;
+                                        this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 驗證中...';
+                                        
+                                        const result = await checkAppCheckStatus();
+                                        if (result.success) {
+                                            // 移除警告並顯示成功訊息
+                                            alertDiv.remove();
+                                            const successAlert = document.createElement('div');
+                                            successAlert.className = 'alert alert-success mt-3';
+                                            successAlert.textContent = 'App Check 驗證成功！您現在可以繼續註冊。';
+                                            registerForm.parentNode.insertBefore(successAlert, registerForm);
+                                            
+                                            setTimeout(() => {
+                                                successAlert.remove();
+                                            }, 5000);
+                                        } else {
+                                            // 更新警告
+                                            this.disabled = false;
+                                            this.textContent = '重試 App Check 驗證';
+                                            alert('App Check 驗證仍然失敗，請刷新頁面或檢查網絡連接。');
+                                        }
+                                    });
+                                }
+                            }, 100);
+                        }
+                    }
+                } catch (error) {
+                    console.error('檢查 App Check 狀態時發生錯誤:', error);
+                }
+            }, 1500);
+        });
+    </script>
+    
+    <!-- 添加 App Check 狀態指示器的樣式 -->
+    <style>
+        #appCheckStatus {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 9999;
+            display: none;
+        }
+        
+        #appCheckStatus.initializing {
+            background-color: #ffeeba;
+            color: #856404;
+            display: block;
+        }
+        
+        #appCheckStatus.success {
+            background-color: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        
+        #appCheckStatus.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+    </style>
 
     <!-- 添加Firebase ES 模組 script 標籤 -->
     <script type="module" src="firebase-register.js"></script>
@@ -1007,6 +1147,7 @@
     </style>
 </head>
 <body>
+    <div id="appCheckStatus" class="initializing">App Check: 初始化中...</div>
     <!-- 導航欄 -->
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
         <div class="container">
