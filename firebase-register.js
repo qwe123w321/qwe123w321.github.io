@@ -81,12 +81,136 @@ const checkEmailAvailability = httpsCallable(functions, 'checkEmailAvailability'
 
 // 檢查電子郵件是否可用（未被註冊）
 async function validateEmail(email) {
+    // 參數驗證
+    if (!email || email.trim() === '') {
+        console.error('嘗試檢查空的電子郵件');
+        return { available: false }; // 空的電子郵件被視為不可用
+    }
+
     try {
-        const result = await checkEmailAvailability({ data: { email } });
-        return result.data;
+        // 清理並規範化電子郵件
+        const normalizedEmail = email.trim().toLowerCase();
+        console.log('開始檢查電子郵件可用性:', normalizedEmail);
+        
+        // 準備參數 - 使用與 Firebase Function 預期的結構
+        const params = { email: normalizedEmail };
+        
+        // 調用 Firebase 函數 - 使用 { data: ... } 結構
+        const result = await checkEmailAvailability({ data: params });
+        
+        // 記錄完整的回應
+        console.log('電子郵件可用性檢查完整回應:', result.data);
+        
+        // 檢查回應格式
+        if (result.data && typeof result.data === 'object' && 'available' in result.data) {
+            return {
+                available: result.data.available || false,
+                timestamp: result.data.timestamp
+            };
+        } else {
+            console.warn('回應格式異常:', result.data);
+            return { available: false }; // 出於安全考量，回應異常時假設電子郵件不可用
+        }
     } catch (error) {
-        console.error('檢查電子郵件可用性時發生錯誤:', error);
-        throw error;
+        // 處理 Firebase Functions 異常
+        if (error.code) {
+            console.error(`Firebase 函數異常: [${error.code}] ${error.message}`, error);
+            if (error.details) {
+                console.error('詳細錯誤信息:', error.details);
+            }
+        } else {
+            // 處理所有其他異常
+            console.error('檢查電子郵件可用性時發生錯誤:', error);
+        }
+        
+        // 返回錯誤結果
+        return { 
+            available: false,
+            error: error.message
+        };
+    }
+}
+
+// 密碼強度測量函數
+function measurePasswordStrength(password) {
+    let strength = 0;
+    
+    // 檢查長度
+    if (password.length >= 8 && password.length <= 20) strength += 2;
+    else if (password.length > 0) strength += 1;
+    
+    // 檢查複雜性
+    if (/[a-z]/.test(password)) strength += 1; // 小寫字母
+    if (/[A-Z]/.test(password)) strength += 1; // 大寫字母
+    if (/[0-9]/.test(password)) strength += 1; // 數字
+    
+    if (strength < 3) return { strength: 'weak', class: 'bg-danger' };
+    if (strength < 5) return { strength: 'medium', class: 'bg-warning' };
+    return { strength: 'strong', class: 'bg-success' };
+}
+
+// 更新密碼強度視覺顯示
+function updatePasswordStrength() {
+    const password = document.getElementById('password').value;
+    const strengthResult = measurePasswordStrength(password);
+    
+    // 更新強度指示條
+    const strengthBar = document.getElementById('password-strength-bar');
+    strengthBar.className = `progress-bar ${strengthResult.class}`;
+    
+    // 根據密碼長度和強度設置寬度
+    if (password.length === 0) {
+        strengthBar.style.width = '0%';
+    } else {
+        let percentage;
+        if (password.length <= 20) {
+            percentage = Math.min(100, (password.length / 20) * 100);
+        } else {
+            // 如果超過20字符，將進度條設為100%但顏色可能不是綠色(依據複雜度)
+            percentage = 100;
+        }
+        strengthBar.style.width = `${percentage}%`;
+    }
+    
+    // 更新強度標籤
+    const strengthLabel = document.getElementById('password-strength-text');
+    if (password.length === 0) {
+        strengthLabel.textContent = '';
+    } else {
+        strengthLabel.textContent = `密碼強度: ${strengthResult.strength === 'weak' ? '弱' : strengthResult.strength === 'medium' ? '中' : '強'}`;
+    }
+    
+    // 更新密碼規則檢查
+    updatePasswordRulesCheck(password);
+}
+
+// 更新密碼規則檢查
+function updatePasswordRulesCheck(password) {
+    // 檢查各項規則
+    const lengthCheck = password.length >= 8 && password.length <= 20;
+    const lowercaseCheck = /[a-z]/.test(password);
+    const uppercaseCheck = /[A-Z]/.test(password);
+    const numberCheck = /[0-9]/.test(password);
+    
+    // 更新規則顯示
+    document.getElementById('rule-length').className = lengthCheck ? 'text-success' : 'text-danger';
+    document.getElementById('rule-lowercase').className = lowercaseCheck ? 'text-success' : 'text-danger';
+    document.getElementById('rule-uppercase').className = uppercaseCheck ? 'text-success' : 'text-danger';
+    document.getElementById('rule-number').className = numberCheck ? 'text-success' : 'text-danger';
+    
+    // 更新圖標
+    document.getElementById('rule-length-icon').className = lengthCheck ? 'fas fa-check' : 'fas fa-times';
+    document.getElementById('rule-lowercase-icon').className = lowercaseCheck ? 'fas fa-check' : 'fas fa-times';
+    document.getElementById('rule-uppercase-icon').className = uppercaseCheck ? 'fas fa-check' : 'fas fa-times';
+    document.getElementById('rule-number-icon').className = numberCheck ? 'fas fa-check' : 'fas fa-times';
+    
+    // 更新確認密碼檢查
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    const matchCheck = password === confirmPassword && password !== '';
+    
+    if (confirmPassword !== '') {
+        document.getElementById('rule-match').className = matchCheck ? 'text-success' : 'text-danger';
+        document.getElementById('rule-match-icon').className = matchCheck ? 'fas fa-check' : 'fas fa-times';
     }
 }
 
@@ -116,14 +240,24 @@ async function validateStep(stepNumber) {
                 nextButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 檢查中...';
                 nextButton.disabled = true;
                 
+                // 使用更新的 validateEmail 函數
                 const result = await validateEmail(email.value);
                 
+                // 恢復按鈕狀態
                 nextButton.textContent = originalText;
                 nextButton.disabled = false;
                 
                 if (!result.available) {
-                    showFieldError(email, '此電子郵件已被註冊，請使用其他電子郵件');
+                    // 如果有特定錯誤訊息顯示它
+                    const errorMessage = result.error ? 
+                        `電子郵件檢查失敗: ${result.error}` : 
+                        '此電子郵件已被註冊，請使用其他電子郵件';
+                    
+                    showFieldError(email, errorMessage);
                     isValid = false;
+                    
+                    // 在控制台中記錄詳細資訊
+                    console.warn('電子郵件驗證失敗:', result);
                 }
             } catch (error) {
                 console.error('驗證電子郵件時發生錯誤:', error);
@@ -136,26 +270,6 @@ async function validateStep(stepNumber) {
                 showFieldError(email, '驗證電子郵件時發生錯誤，請稍後再試');
                 isValid = false;
             }
-        }
-        
-        if (!password.value) {
-            showFieldError(password, '請輸入密碼');
-            isValid = false;
-        } else if (!isStrongPassword(password.value)) {
-            showFieldError(password, '密碼長度至少需要8個字元，且包含數字和字母');
-            isValid = false;
-        } else {
-            clearFieldError(password);
-        }
-        
-        if (!confirmPassword.value) {
-            showFieldError(confirmPassword, '請再次輸入密碼');
-            isValid = false;
-        } else if (password.value !== confirmPassword.value) {
-            showFieldError(confirmPassword, '兩次輸入的密碼不一致');
-            isValid = false;
-        } else {
-            clearFieldError(confirmPassword);
         }
     } else if (stepNumber === 2) {
         // 驗證第二步：店家資訊
