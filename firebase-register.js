@@ -96,7 +96,7 @@ async function validateEmail(email) {
         const params = { email: normalizedEmail };
         
         // 調用 Firebase 函數 - 使用 { data: ... } 結構
-        const result = await checkEmailAvailability({ data: params });
+        const result = await checkEmailAvailability(params);
         
         // 記錄完整的回應
         console.log('電子郵件可用性檢查完整回應:', result.data);
