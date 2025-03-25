@@ -5,22 +5,42 @@ import { setDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/fire
 import { ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-storage.js';
 
 // 導入 App Check 模組的功能
-import { checkAppCheckStatus, getAppCheckToken, installXHRInterceptor } from './app-check-module.js';
+import { 
+    checkAppCheckStatus, 
+    getAppCheckToken, 
+    installXHRInterceptor,
+    installFetchInterceptor
+} from './app-check-module.js';
 
 document.addEventListener('DOMContentLoaded', function() {
     // 獲取註冊表單
     const registerForm = document.getElementById('businessRegisterForm');
     
     if (registerForm) {
-        // 優先安裝 XHR 攔截器以確保所有請求都帶有 App Check 令牌
-        installXHRInterceptor();
+        console.log('註冊頁面正在檢查 App Check 狀態...');
+        
+        // 優先檢查 App Check 狀態
+        checkAppCheckStatus().then(result => {
+            if (result.success) {
+                console.log('App Check 驗證成功！註冊流程可以正常進行');
+                
+                // 優先安裝 XHR 和 fetch 攔截器以確保所有請求都帶有 App Check 令牌
+                installXHRInterceptor();
+                installFetchInterceptor();
+            } else {
+                console.warn('App Check 驗證失敗，註冊可能會被拒絕', result.error);
+            }
+        }).catch(error => {
+            console.error('檢查 App Check 狀態時發生錯誤:', error);
+        });
         
         // 為表單添加提交事件監聽器
         registerForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            // 使用外部定義的 validateStep 函數，避免重新定義導致無限遞迴
             // 檢查第三步的必填字段是否已填寫
-            if (!validateStep(3)) {
+            if (typeof window.validateStep === 'function' && !window.validateStep(3)) {
                 // 如果未驗證通過，切換到第三步
                 document.querySelectorAll('.form-step').forEach(step => step.classList.remove('active'));
                 document.getElementById('step-3-content').classList.add('active');
@@ -36,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             try {
                 // 先檢查 App Check 狀態
-                console.log('註冊前檢查 App Check 狀態...');
+                console.log('註冊前再次檢查 App Check 狀態...');
                 const appCheckResult = await checkAppCheckStatus();
                 
                 if (!appCheckResult.success) {
@@ -51,6 +71,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.querySelector('.register-form-header').after(warningDiv);
                 } else {
                     console.log('App Check 驗證成功，繼續註冊流程');
+                    
+                    // 確保攔截器已安裝
+                    installXHRInterceptor();
+                    installFetchInterceptor();
                 }
                 
                 // 獲取表單數據
@@ -64,6 +88,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 const contactPhone = document.getElementById('contactPhone').value;
                 
                 console.log("提交表單資料:", {email, businessName, businessType});
+                
+                // 等待 App Check 令牌取得後再繼續 - 關鍵改進
+                const appCheckToken = await getAppCheckToken();
+                if (!appCheckToken) {
+                    console.warn('未能獲取有效的 App Check 令牌，但仍嘗試繼續');
+                } else {
+                    console.log('成功獲取 App Check 令牌，繼續註冊流程');
+                }
                 
                 // 1. 創建 Firebase 用戶 (使用模組化 API)
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -97,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 
                 // 5. 處理營業執照上傳
-                const uploadedFiles = window.getUploadedBusinessLicenseFiles();
+                const uploadedFiles = window.getUploadedBusinessLicenseFiles ? window.getUploadedBusinessLicenseFiles() : [];
                 console.log('提交表單處理上傳檔案:', uploadedFiles);
 
                 let licenseUrls = [];
@@ -212,26 +244,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// 暴露 validateStep 函數給全局使用，以避免找不到該函數的錯誤
-window.validateStep = function(stepNumber) {
-    // 這裡假設 business-register.html 中已經定義了 validateStep 函數
-    if (typeof validateStep === 'function') {
-        return validateStep(stepNumber);
-    }
+// 注意：不要在這裡重新定義 validateStep 函數，以避免無限遞迴
+// 僅在需要時提供一個簡單檢查
+if (typeof window.validateStep !== 'function') {
+    console.log('找不到 validateStep 函數，將提供一個基本實現');
     
-    // 如果找不到函數，使用一個簡單的回退實現
-    console.warn('找不到 validateStep 函數，使用回退版本');
-    
-    // 第三步的簡單驗證
-    if (stepNumber === 3) {
-        const contactName = document.getElementById('contactName');
-        const contactPhone = document.getElementById('contactPhone');
-        const termsCheck = document.getElementById('termsCheck');
-        
-        return contactName && contactName.value && 
-               contactPhone && contactPhone.value && 
-               termsCheck && termsCheck.checked;
-    }
-    
-    return true;
-};
+    window.validateStep = function(stepNumber) {
+        if (stepNumber === 3) {
+            const contactName = document.getElementById('contactName');
+            const contactPhone = document.getElementById('contactPhone');
+            const termsCheck = document.getElementById('termsCheck');
+            
+            return contactName && contactName.value && 
+                   contactPhone && contactPhone.value && 
+                   termsCheck && termsCheck.checked;
+        }
+        return true;
+    };
+}
