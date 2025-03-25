@@ -1,3 +1,4 @@
+import { setupSessionManager } from './session-manager.js';
 // 全域變數
 let currentUser = null;
 let businessData = null;
@@ -33,6 +34,8 @@ document.addEventListener('DOMContentLoaded', function() {
             showAlert('加載錯誤，請重新整理頁面', 'danger');
         }
     });
+    // 初始化會話管理器
+    const sessionManager = setupSessionManager();
 });
 
 // 處理認證狀態變更
