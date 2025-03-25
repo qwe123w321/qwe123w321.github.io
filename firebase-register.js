@@ -740,13 +740,14 @@ function improvedFileUploadHandler(e) {
                 const fileExt = getFileExtension(processedFile.name);
                 
                 let previewUrl;
-                if (fileType === 'application/pdf') {
-                    // PDF 使用自定義預覽圖示
-                    previewUrl = 'pdf-icon.png'; // 替換為您的PDF圖示URL
-                } else {
-                    // 圖片使用實際預覽
-                    previewUrl = URL.createObjectURL(processedFile);
-                }
+                // if (fileType === 'application/pdf') {
+                //     // PDF 使用自定義預覽圖示
+                //     previewUrl = 'pdf-icon.png'; // 替換為您的PDF圖示URL
+                // } else {
+                //     // 圖片使用實際預覽
+                //     previewUrl = URL.createObjectURL(processedFile);
+                // }
+                previewUrl = URL.createObjectURL(processedFile);
                 
                 uploadedFiles.push({
                     id: fileId,
