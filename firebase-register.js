@@ -808,6 +808,74 @@ async function processFile(file) {
     });
 }
 
+// 創建一個統一的文件預覽渲染函數，可供多處使用
+function renderFilePreview(file, index, showDeleteButton = true) {
+    const isPDF = file.file.type === 'application/pdf';
+    const colDiv = document.createElement('div');
+    colDiv.className = 'col-md-6 col-lg-4 mb-3';
+    
+    // 創建卡片容器
+    const cardDiv = document.createElement('div');
+    cardDiv.className = 'card h-100 file-preview-card';
+    cardDiv.style.borderRadius = '8px';
+    cardDiv.style.overflow = 'hidden';
+    cardDiv.style.boxShadow = '0 3px 8px rgba(0,0,0,0.1)';
+    
+    // 創建卡片內容
+    let cardContent = '';
+    
+    // 預覽區域 - PDF或圖片
+    if (isPDF) {
+        cardContent += `
+            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 160px;">
+                <i class="fas fa-file-pdf text-danger" style="font-size: 3rem;"></i>
+            </div>
+        `;
+    } else {
+        cardContent += `
+            <div class="card-img-top" style="height: 160px; background-image: url('${file.preview}'); background-size: cover; background-position: center;"></div>
+        `;
+    }
+    
+    // 文件信息區域
+    cardContent += `
+        <div class="card-body p-3">
+            <h6 class="card-title text-truncate mb-1" title="${file.fileName}">${file.fileName}</h6>
+            <p class="card-text text-muted small mb-0">${formatFileSize(file.file.size)}</p>
+        </div>
+    `;
+    
+    cardDiv.innerHTML = cardContent;
+    
+    // 如果需要，添加刪除按鈕
+    if (showDeleteButton && typeof removeUploadedFile === 'function') {
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'position-absolute btn btn-sm btn-danger rounded-circle';
+        deleteButton.style.top = '8px';
+        deleteButton.style.right = '8px';
+        deleteButton.style.width = '28px';
+        deleteButton.style.height = '28px';
+        deleteButton.style.padding = '0';
+        deleteButton.style.display = 'flex';
+        deleteButton.style.alignItems = 'center';
+        deleteButton.style.justifyContent = 'center';
+        deleteButton.style.fontSize = '12px';
+        deleteButton.style.zIndex = '10';
+        deleteButton.innerHTML = '<i class="fas fa-times"></i>';
+        
+        // 為刪除按鈕添加點擊事件
+        deleteButton.addEventListener('click', function(e) {
+            e.stopPropagation(); // 阻止事件冒泡
+            removeUploadedFile(index);
+        });
+        
+        cardDiv.appendChild(deleteButton);
+    }
+    
+    colDiv.appendChild(cardDiv);
+    return colDiv;
+}
+
 // 更新檔案預覽顯示
 function enhancedUploadPreview() {
     const uploadPreview = document.getElementById('photoPreviewContainer');
@@ -834,101 +902,15 @@ function enhancedUploadPreview() {
     const previewGrid = document.createElement('div');
     previewGrid.className = 'row g-3';
     
-    // 為每個上傳檔案創建預覽
+    // 使用統一函數渲染每個文件預覽
     uploadedFiles.forEach((uploadedFile, index) => {
-        const isPDF = uploadedFile.file.type === 'application/pdf';
-        const colDiv = document.createElement('div');
-        colDiv.className = 'col-md-6 col-lg-4';
-        
-        // 創建更簡潔的預覽卡片
-        const previewCard = document.createElement('div');
-        previewCard.className = 'position-relative file-preview-item';
-        previewCard.style.borderRadius = '8px';
-        previewCard.style.overflow = 'hidden';
-        previewCard.style.boxShadow = '0 3px 8px rgba(0,0,0,0.1)';
-        previewCard.style.marginBottom = '15px';
-        previewCard.style.cursor = 'pointer';
-        
-        // 為整個卡片添加點擊事件，打開檔案預覽
-        previewCard.addEventListener('click', function(e) {
-            // 防止點擊刪除按鈕時觸發預覽
-            if (e.target.closest('.delete-file-btn')) {
-                return;
-            }
-            
-            // 創建一個臨時URL用於打開檔案
-            const fileURL = URL.createObjectURL(uploadedFile.file);
-            
-            // 在新視窗打開檔案
-            window.open(fileURL, '_blank');
-            
-            // 使用完後釋放URL資源
-            setTimeout(() => URL.revokeObjectURL(fileURL), 100);
-        });
-        
-        if (isPDF) {
-            // PDF 檔案顯示 - 使用PDF內嵌預覽
-            previewCard.innerHTML = `
-                <div style="height: 160px; position: relative; background-color: #f8f9fa; display: flex; justify-content: center; align-items: center;">
-                    <object data="${URL.createObjectURL(uploadedFile.file)}" type="application/pdf" width="100%" height="100%" style="opacity: 0.8;">
-                        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                            <i class="fas fa-file-pdf text-danger" style="font-size: 3rem;"></i>
-                            <span class="mt-2" style="font-size: 12px; color: #666;">點擊預覽PDF</span>
-                        </div>
-                    </object>
-                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none;">
-                        <i class="fas fa-file-pdf text-danger" style="font-size: 3rem;"></i>
-                        <span class="mt-2" style="font-size: 12px; color: #666;">點擊預覽PDF</span>
-                    </div>
-                </div>
-                <div style="padding: 10px; background-color: white;">
-                    <div class="file-name" title="${uploadedFile.file.name}">${uploadedFile.file.name}</div>
-                    <div class="file-size">${formatFileSize(uploadedFile.file.size)}</div>
-                </div>
-            `;
-        } else {
-            // 圖片檔案顯示
-            previewCard.innerHTML = `
-                <div style="height: 160px; position: relative;">
-                    <img src="${uploadedFile.preview}" alt="預覽" style="width: 100%; height: 100%; object-fit: cover;">
-                    <div style="position: absolute; bottom: 0; right: 0; background-color: rgba(0,0,0,0.5); color: white; font-size: 12px; padding: 2px 8px; border-top-left-radius: 5px;">
-                        點擊放大
-                    </div>
-                </div>
-                <div style="padding: 10px; background-color: white;">
-                    <div class="file-name" title="${uploadedFile.file.name}">${uploadedFile.file.name}</div>
-                    <div class="file-size">${formatFileSize(uploadedFile.file.size)}</div>
-                </div>
-            `;
-        }
-        
-        // 添加刪除按鈕
-        const deleteButton = document.createElement('button');
-        deleteButton.className = 'position-absolute btn btn-sm btn-danger rounded-circle delete-file-btn';
-        deleteButton.style.top = '8px';
-        deleteButton.style.right = '8px';
-        deleteButton.style.width = '28px';
-        deleteButton.style.height = '28px';
-        deleteButton.style.padding = '0';
-        deleteButton.style.display = 'flex';
-        deleteButton.style.alignItems = 'center';
-        deleteButton.style.justifyContent = 'center';
-        deleteButton.style.fontSize = '12px';
-        deleteButton.style.zIndex = '10';
-        deleteButton.innerHTML = '<i class="fas fa-times"></i>';
-        deleteButton.setAttribute('data-index', index);
-        deleteButton.addEventListener('click', function(e) {
-            e.stopPropagation(); // 阻止冒泡，避免觸發卡片的點擊事件
-            removeUploadedFile(index);
-        });
-        
-        previewCard.appendChild(deleteButton);
-        colDiv.appendChild(previewCard);
-        previewGrid.appendChild(colDiv);
+        const filePreviewEl = renderFilePreview(uploadedFile, index, true);
+        previewGrid.appendChild(filePreviewEl);
     });
     
     uploadPreview.appendChild(previewGrid);
 }
+
 
 // 3. 添加第四步摘要信息功能
 function updateSummaryInfo() {
@@ -961,7 +943,7 @@ function updateSummaryInfo() {
         { label: '上傳證明文件', value: `${uploadedFilesCount}個檔案` }
     ];
     
-    // 使用改進的佈局顯示摘要信息
+    // 顯示基本信息
     summaryItems.forEach(item => {
         const col = document.createElement('div');
         col.className = 'col-md-12 mb-2';
@@ -974,26 +956,28 @@ function updateSummaryInfo() {
         summaryContainer.appendChild(col);
     });
     
-    // 顯示上傳的文件預覽（如果有）
+    // 添加文件預覽區域（如果有上傳文件）
     if (uploadedFilesCount > 0) {
-        const filesPreviewCol = document.createElement('div');
-        filesPreviewCol.className = 'col-12 mt-3';
-        filesPreviewCol.innerHTML = `
-            <div class="fw-bold mb-2">已上傳檔案預覽:</div>
-            <div class="d-flex flex-wrap file-summary-previews">
-                ${uploadedFiles.map((file, idx) => `
-                    <div class="me-2 mb-2 position-relative" style="width: 60px; height: 60px;">
-                        ${file.file.type === 'application/pdf' 
-                            ? `<div class="d-flex align-items-center justify-content-center bg-light h-100 w-100 rounded">
-                                 <i class="fas fa-file-pdf text-danger"></i>
-                               </div>`
-                            : `<img src="${file.preview}" class="img-thumbnail" style="width: 60px; height: 60px; object-fit: cover;" alt="預覽">`
-                        }
-                    </div>
-                `).join('')}
-            </div>
-        `;
-        summaryContainer.appendChild(filesPreviewCol);
+        // 創建標題行
+        const titleRow = document.createElement('div');
+        titleRow.className = 'col-12 mt-4 mb-2';
+        titleRow.innerHTML = '<h6 class="fw-bold">已上傳檔案:</h6>';
+        summaryContainer.appendChild(titleRow);
+        
+        // 創建預覽區域
+        const filesGrid = document.createElement('div');
+        filesGrid.className = 'row g-3';
+        
+        // 使用統一函數渲染預覽，但不顯示刪除按鈕
+        uploadedFiles.forEach((file, index) => {
+            const filePreviewEl = renderFilePreview(file, index, false);
+            filesGrid.appendChild(filePreviewEl);
+        });
+        
+        const filesContainer = document.createElement('div');
+        filesContainer.className = 'col-12';
+        filesContainer.appendChild(filesGrid);
+        summaryContainer.appendChild(filesContainer);
     }
 }
 
