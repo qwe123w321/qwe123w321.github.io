@@ -128,7 +128,10 @@
         }
         
         .password-strength {
-            margin-top: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            margin-top: 8px;
         }
 
         .password-strength-bar {
@@ -240,12 +243,14 @@
             display: flex;
             justify-content: space-between;
             margin-bottom: 30px;
+            padding: 10px 0;
         }
         
         .step {
             flex: 1;
             text-align: center;
             position: relative;
+            transition: all 0.3s ease;
         }
         
         .step:not(:last-child):after {
@@ -272,10 +277,13 @@
             position: relative;
             z-index: 2;
             margin-bottom: 8px;
+            transition: all 0.3s ease;
         }
         
         .step.active .step-number {
             background-color: var(--primary-color);
+            transform: scale(1.1);
+            box-shadow: 0 0 0 5px rgba(157, 127, 134, 0.2);
         }
         
         .step.completed .step-number {
@@ -303,6 +311,8 @@
         
         .form-step.active {
             display: block;
+            opacity: 1;
+            transform: translateX(0);
         }
         
         .form-group {
@@ -310,9 +320,15 @@
         }
         
         .form-group label {
+            font-size: 0.95rem;
             font-weight: 500;
-            margin-bottom: 8px;
-            display: block;
+            margin-bottom: 0.5rem;
+            color: #444;
+        }
+
+        .form-control::placeholder {
+            opacity: 0.5;
+            font-size: 0.9rem;
         }
         
         .form-control {
@@ -347,10 +363,13 @@
             color: #777;
             cursor: pointer;
             transition: all 0.3s ease;
+            opacity: 0.6;
+            transition: all 0.3s ease;
         }
         
         .password-toggle:hover {
             color: var(--primary-color);
+            opacity: 1;
         }
         
         .form-check-input {
@@ -538,6 +557,7 @@
         .custom-file-upload.highlight {
             border-color: var(--primary-color);
             background-color: rgba(157, 127, 134, 0.1);
+            transform: translateY(-2px);
         }
 
         .custom-file-upload i {
@@ -648,6 +668,143 @@
             width: 14px;
         }
 
+        /* 設定表單步驟的最大高度和滾動 */
+        .form-step {
+            max-height: 70vh; /* 視窗高度的70% */
+            overflow-y: auto;
+            padding-right: 15px; /* 為滾動條預留空間 */
+            opacity: 0;
+            transform: translateX(20px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        /* 美化滾動條樣式 */
+        .form-step::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .form-step::-webkit-scrollbar-track {
+            background-color: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .form-step::-webkit-scrollbar-thumb {
+            background-color: #ccc;
+            border-radius: 10px;
+        }
+
+        .form-step::-webkit-scrollbar-thumb:hover {
+            background-color: #aaa;
+        }
+
+        /* 確保按鈕位於底部且不會滾動 */
+        .form-btn-group {
+            position: sticky;
+            bottom: 0;
+            background-color: white;
+            padding-top: 15px;
+            margin-top: 20px;
+            z-index: 5;
+        }
+
+        /* 添加表單加載動畫 */
+        .form-loading {
+            position: relative;
+        }
+
+        .form-loading::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .form-loading::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--primary-color);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            z-index: 1001;
+        }
+
+        @keyframes spin {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* 訊息提示優化 */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        .toast {
+            background: white;
+            color: #333;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            animation: toastIn 0.3s ease forwards;
+        }
+
+        .toast.success {
+            border-left: 4px solid #28a745;
+        }
+
+        .toast.error {
+            border-left: 4px solid #dc3545;
+        }
+
+        .toast.warning {
+            border-left: 4px solid #ffc107;
+        }
+
+        .toast i {
+            margin-right: 10px;
+            font-size: 20px;
+        }
+
+        .toast.success i {
+            color: #28a745;
+        }
+
+        .toast.error i {
+            color: #dc3545;
+        }
+
+        .toast.warning i {
+            color: #ffc107;
+        }
+
+        @keyframes toastIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
         /* 響應式調整 */
         @media (max-width: 991px) {
             .register-image {
@@ -681,7 +838,15 @@
                 flex-direction: column;
                 gap: 10px;
             }
-            
+
+            .btn {
+                transition: all 0.3s ease;
+            }
+
+            .btn:active {
+                transform: scale(0.98);
+            }
+
             .btn-prev, .btn-next, .btn-submit {
                 width: 100%;
             }
