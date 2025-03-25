@@ -361,47 +361,8 @@ async function validateStep(stepNumber) {
 
 // ===== 檔案上傳相關 =====
 
-// 存儲上傳的檔案
+// 全局變量存儲上傳的檔案
 let uploadedFiles = [];
-
-// 上傳營業執照檔案
-function uploadBusinessLicense() {
-    const fileInput = document.getElementById('businessLicense');
-    const uploadPreview = document.getElementById('uploadPreview');
-    
-    if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        
-        // 檢查檔案類型
-        if (!file.type.match('image.*')) {
-            alert('請上傳圖片格式的檔案！');
-            return;
-        }
-        
-        // 檢查檔案大小 (限制為 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            alert('檔案大小不能超過 5MB！');
-            return;
-        }
-        
-        // 建立唯一的檔案名稱
-        const timestamp = new Date().getTime();
-        const fileName = `license_${timestamp}_${file.name}`;
-        
-        // 加入到上傳檔案列表
-        uploadedFiles.push({
-            file: file,
-            fileName: fileName,
-            preview: URL.createObjectURL(file)
-        });
-        
-        // 更新預覽區域
-        updateUploadPreview();
-        
-        // 重置檔案輸入框
-        fileInput.value = '';
-    }
-}
 
 // 更新上傳預覽區域
 function updateUploadPreview() {
@@ -458,12 +419,10 @@ function removeUploadedFile(index) {
         
         // 更新預覽
         updateUploadPreview();
+        
+        // 更新上傳計數
+        updateUploadCount();
     }
-}
-
-// 獲取已上傳的檔案
-function getUploadedBusinessLicenseFiles() {
-    return uploadedFiles;
 }
 
 // 格式化檔案大小
@@ -471,6 +430,202 @@ function formatFileSize(bytes) {
     if (bytes < 1024) return bytes + ' Bytes';
     else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
     else return (bytes / 1048576).toFixed(2) + ' MB';
+}
+
+// 壓縮圖片
+async function compressImage(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = function(event) {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // 計算新的尺寸，保持寬高比
+                let width = img.width;
+                let height = img.height;
+                const maxDimension = 1024; // 最大寬度/高度
+                
+                if (width > height && width > maxDimension) {
+                    height = Math.round((height * maxDimension) / width);
+                    width = maxDimension;
+                } else if (height > maxDimension) {
+                    width = Math.round((width * maxDimension) / height);
+                    height = maxDimension;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // 轉換為 Blob
+                canvas.toBlob(
+                    (blob) => {
+                        // 創建新文件對象
+                        const compressedFile = new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        resolve(compressedFile);
+                    },
+                    'image/jpeg',
+                    0.7 // 設置壓縮質量 (0.7 = 70% 質量)
+                );
+            };
+            img.onerror = function(error) {
+                reject(error);
+            };
+        };
+        reader.onerror = function(error) {
+            reject(error);
+        };
+    });
+}
+
+// 更新上傳計數
+function updateUploadCount() {
+    const uploadCountElement = document.getElementById('uploadCount');
+    const uploadLabel = document.getElementById('uploadLabel');
+    const MAX_UPLOAD_COUNT = 5; // 最大上傳張數
+    
+    if (uploadCountElement) {
+        uploadCountElement.textContent = uploadedFiles.length;
+    }
+    
+    if (uploadLabel) {
+        if (uploadedFiles.length >= MAX_UPLOAD_COUNT) {
+            uploadLabel.style.display = 'none';
+        } else {
+            uploadLabel.style.display = 'block';
+        }
+    }
+}
+
+// 獲取上傳的文件列表
+function getUploadedBusinessLicenseFiles() {
+    return uploadedFiles;
+}
+
+// 初始化文件上傳功能
+function initializeFileUpload() {
+    const businessLicenseFile = document.getElementById('businessLicenseFile');
+    const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+    const uploadProgress = document.getElementById('uploadProgress');
+    
+    if (!businessLicenseFile || !photoPreviewContainer) {
+        console.warn('找不到上傳或預覽元素');
+        return;
+    }
+    
+    const MAX_UPLOAD_COUNT = 5; // 最大上傳張數
+    const MAX_FILE_SIZE_MB = 5; // 每個文件最大 5MB
+    
+    // 處理文件上傳
+    businessLicenseFile.addEventListener('change', async function(e) {
+        const files = Array.from(e.target.files);
+        
+        if (uploadedFiles.length + files.length > MAX_UPLOAD_COUNT) {
+            alert(`最多只能上傳 ${MAX_UPLOAD_COUNT} 張照片`);
+            return;
+        }
+        
+        for (const file of files) {
+            if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+                alert(`文件 ${file.name} 超過大小限制（${MAX_FILE_SIZE_MB}MB）`);
+                continue;
+            }
+            
+            try {
+                // 顯示上傳進度
+                if (uploadProgress) {
+                    uploadProgress.style.display = 'block';
+                }
+                
+                // 壓縮圖片（如果是圖片類型）
+                let processedFile = file;
+                if (file.type.startsWith('image/')) {
+                    processedFile = await compressImage(file);
+                }
+                
+                // 添加到上傳文件列表
+                const fileId = `file-${Date.now()}-${uploadedFiles.length}`;
+                uploadedFiles.push({
+                    id: fileId,
+                    file: processedFile,
+                    fileName: file.name,
+                    preview: URL.createObjectURL(processedFile)
+                });
+                
+                // 更新上傳計數和預覽
+                updateUploadCount();
+                updateUploadPreview();
+                
+                // 隱藏上傳進度
+                if (uploadProgress) {
+                    uploadProgress.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('處理文件錯誤:', error);
+                alert(`處理文件 ${file.name} 時發生錯誤`);
+                if (uploadProgress) {
+                    uploadProgress.style.display = 'none';
+                }
+            }
+        }
+        
+        // 重置文件輸入，以便可以重新選擇相同的文件
+        businessLicenseFile.value = '';
+    });
+    
+    // 使用 DnD (Drag and Drop) 上傳
+    const uploadArea = document.querySelector('.custom-file-upload');
+    
+    if (uploadArea) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            uploadArea.classList.add('highlight');
+        }
+        
+        function unhighlight() {
+            uploadArea.classList.remove('highlight');
+        }
+        
+        uploadArea.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            businessLicenseFile.files = files;
+            
+            // 觸發 change 事件
+            const event = new Event('change', { bubbles: true });
+            businessLicenseFile.dispatchEvent(event);
+        }
+    }
+    
+    // 初始更新預覽
+    updateUploadPreview();
+    // 初始更新計數
+    updateUploadCount();
 }
 
 // ===== 表單步驟控制 =====
@@ -831,6 +986,9 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('檢查 App Check 狀態時發生錯誤:', error);
         }
     }, 1000);
+
+    // 初始化文件上傳功能
+    initializeFileUpload();
     
     // 獲取註冊表單
     const registerForm = document.getElementById('businessRegisterForm');
