@@ -79,6 +79,9 @@ function initAfterAuth() {
     
     // 綁定各個保存按鈕
     bindSaveButtons();
+
+    // 綁定帳號設定表單
+    bindAccountSettingsForm();
 }
 
 // 綁定保存按鈕
@@ -787,6 +790,9 @@ function updateAllUI() {
     
     // 更新地理位置
     updateLocationFields();
+
+    // 更新帳號設定UI
+    updateAccountSettingsUI();
     
     console.log("所有 UI 元素已更新");
 }
@@ -3615,6 +3621,90 @@ function showPageLoading(message = '處理中，請稍候...') {
             messageEl.textContent = message;
         }
         overlay.classList.remove('d-none');
+    }
+}
+
+// 自動填充帳號設定欄位
+function updateAccountSettingsUI() {
+    console.log("正在更新帳號設定欄位...");
+    try {
+        // 確保已載入用戶資料
+        if (!currentUser || !businessData) {
+            console.warn("用戶資料尚未載入，無法更新帳號設定");
+            return;
+        }
+
+        // 獲取DOM元素
+        const accountEmailField = document.getElementById("accountEmail");
+        const accountNameField = document.getElementById("accountName");
+        const accountPhoneField = document.getElementById("accountPhone");
+
+        // 設置電子郵件 (使用用戶註冊時的Email)
+        if (accountEmailField && currentUser.email) {
+            accountEmailField.value = currentUser.email;
+            // 確保是禁用狀態
+            accountEmailField.disabled = true;
+        }
+
+        // 設置聯絡人姓名
+        if (accountNameField) {
+            accountNameField.value = businessData.contactName || businessData.ownerName || "";
+        }
+
+        // 設置聯絡人電話
+        if (accountPhoneField) {
+            accountPhoneField.value = businessData.contactPhone || businessData.phoneNumber || businessData.businessPhone || "";
+        }
+
+        console.log("帳號設定欄位已更新");
+    } catch (error) {
+        console.error("更新帳號設定欄位時發生錯誤:", error);
+    }
+}
+
+// 綁定帳號設定表單提交事件
+function bindAccountSettingsForm() {
+    const accountForm = document.querySelector('#settings-section form');
+    if (accountForm) {
+        accountForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveAccountSettings();
+        });
+        console.log("已綁定帳號設定表單提交事件");
+    }
+}
+
+// 保存帳號設定
+async function saveAccountSettings() {
+    try {
+        // 獲取表單數據
+        const accountName = document.getElementById("accountName").value;
+        const accountPhone = document.getElementById("accountPhone").value;
+        
+        // 顯示加載狀態
+        showPageLoading("正在保存帳號設定...");
+        
+        // 構建更新數據
+        const updateData = {
+            contactName: accountName,
+            contactPhone: accountPhone,
+            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // 更新數據庫
+        await window.db.collection("businesses").doc(currentUser.uid).update(updateData);
+        
+        // 更新本地數據
+        if (!businessData) businessData = {};
+        businessData.contactName = accountName;
+        businessData.contactPhone = accountPhone;
+        
+        hidePageLoading();
+        showAlert("帳號設定已成功更新", "success");
+    } catch (error) {
+        console.error("保存帳號設定出錯:", error);
+        hidePageLoading();
+        showAlert("保存帳號設定失敗: " + error.message, "danger");
     }
 }
 
