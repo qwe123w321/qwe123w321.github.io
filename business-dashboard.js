@@ -3118,6 +3118,7 @@ async function initMap() {
     
     // 處理位置資料 - 優先使用資料庫中的座標
     if (businessData && businessData.position && businessData.position.geopoint) {
+        console.log("資料完善進行地圖定位");
         // 如果有座標資料，使用它設置地圖
         const position = {
             lat: businessData.position.geopoint.latitude,
@@ -3153,6 +3154,7 @@ async function initMap() {
         console.log("使用資料庫中的地址資料進行地圖定位");
         
         // 先顯示已有地址
+        const formattedAddressField = document.getElementById('formattedAddress');
         if (formattedAddressField) {
             formattedAddressField.value = businessData.address;
         }
@@ -3173,10 +3175,12 @@ async function initMap() {
                 marker.setPosition(position);
                 
                 // 更新座標欄位
+                const latitudeField = document.getElementById('latitude');
+                const longitudeField = document.getElementById('longitude');
                 if (latitudeField) latitudeField.value = position.lat().toFixed(6);
                 if (longitudeField) longitudeField.value = position.lng().toFixed(6);
                 
-                // 可選：更新地址為更標準的格式
+                // 更新地址為更標準的格式
                 if (formattedAddressField) {
                     formattedAddressField.value = results[0].formatted_address;
                 }
@@ -3186,6 +3190,9 @@ async function initMap() {
                 showAlert('無法根據已有地址定位，請手動設定位置', 'warning');
             }
         });
+    }
+    else{
+        console.log("資料庫中無任何地址資料");
     }
     
     // 搜尋地址按鈕事件
