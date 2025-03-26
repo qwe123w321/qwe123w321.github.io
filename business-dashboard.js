@@ -3026,7 +3026,8 @@ function loadGoogleMapsAPI() {
     
     const script = document.createElement('script');
     script.id = 'google-maps-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyByRzxE7olx04Q_-ckYIKNyI9uJnZ_p_-Y&libraries=places&callback=initMap`;
+    // 使用新版 API，支援 importLibrary
+    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyByRzxE7olx04Q_-ckYIKNyI9uJnZ_p_-Y&libraries=places&callback=initMap&v=weekly`;
     script.defer = true;
     script.async = true;
     script.onerror = function() {
@@ -3036,14 +3037,13 @@ function loadGoogleMapsAPI() {
 }
 
 // 初始化地圖
-function initMap() {
+async function initMap() {
     // 在初始化地圖前檢查位置資料
     try {
         // 正確的判斷順序：先檢查businessData是否存在，再檢查position
         if (!businessData || !businessData.position) {
             // 顯示提醒訊息，要求店家設定位置
             showAlert("請設定店家位置資訊以提升在APP中的曝光度", "warning", 6000);
-            console.warn("未設置地圖");
         }
     } catch (error) {
         console.warn("檢查位置資料時出錯:", error);
@@ -3056,32 +3056,103 @@ function initMap() {
     // 初始化地圖 - 暫時使用預設位置，稍後會更新
     const defaultPosition = { lat: 25.033964, lng: 121.564468 }; // 台北市
     
-    map = new google.maps.Map(mapContainer, {
-        center: defaultPosition, // 先使用預設中心，後面會更新
-        zoom: 15,
-        mapTypeId: google.maps.MapTypeId.ROADMAP,
-        mapTypeControl: false,
-        styles: [
-            {
-                "featureType": "poi",
-                "elementType": "labels",
-                "stylers": [
-                    { "visibility": "off" }
-                ]
+    // 載入進階標記庫
+    try {
+        // 使用 importLibrary 加載進階標記功能
+        await google.maps.importLibrary("maps");
+        const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+        
+        map = new google.maps.Map(mapContainer, {
+            center: defaultPosition, // 先使用預設中心，後面會更新
+            zoom: 15,
+            mapTypeId: google.maps.MapTypeId.ROADMAP,
+            mapTypeControl: false,
+            styles: [
+                {
+                    "featureType": "poi",
+                    "elementType": "labels",
+                    "stylers": [
+                        { "visibility": "off" }
+                    ]
+                }
+            ]
+        });
+        
+        // 使用進階標記
+        marker = new AdvancedMarkerElement({
+            map: map,
+            position: defaultPosition,
+            title: "店家位置",
+            draggable: true
+        });
+        
+        // 為進階標記添加拖動結束事件
+        marker.addListener('dragend', () => {
+            const position = marker.position;
+            updateLocationFields(position);
+            
+            // 根據經緯度取得地址
+            const formattedAddressField = document.getElementById('formattedAddress');
+            if (geocoder && formattedAddressField) {
+                geocoder.geocode({ 
+                    location: position,
+                    language: 'zh-TW' // 確保返回繁體中文
+                }, function(results, status) {
+                    if (status === 'OK' && results[0]) {
+                        formattedAddressField.value = results[0].formatted_address;
+                    }
+                });
             }
-        ]
-    });
-    
-    // 初始化地標標記 - 繼續使用標準 Marker
-    marker = new google.maps.Marker({
-        position: defaultPosition, // 先使用預設位置，後面會更新
-        map: map,
-        draggable: true,
-        animation: google.maps.Animation.DROP,
-        icon: {
-            url: 'https://maps.google.com/mapfiles/ms/icons/pink-dot.png'
-        }
-    });
+        });
+    } catch (error) {
+        console.warn("加載進階標記功能失敗，回退到標準標記:", error);
+        
+        // 回退到使用標準 Marker
+        map = new google.maps.Map(mapContainer, {
+            center: defaultPosition,
+            zoom: 15,
+            mapTypeId: google.maps.MapTypeId.ROADMAP,
+            mapTypeControl: false,
+            styles: [
+                {
+                    "featureType": "poi",
+                    "elementType": "labels",
+                    "stylers": [
+                        { "visibility": "off" }
+                    ]
+                }
+            ]
+        });
+        
+        marker = new google.maps.Marker({
+            position: defaultPosition,
+            map: map,
+            draggable: true,
+            animation: google.maps.Animation.DROP,
+            icon: {
+                url: 'https://maps.google.com/mapfiles/ms/icons/pink-dot.png'
+            }
+        });
+        
+        // 獲取地標拖動後的位置
+        google.maps.event.addListener(marker, 'dragend', function() {
+            const position = marker.getPosition();
+            updateLocationFields(position);
+            
+            // 根據經緯度取得地址
+            const formattedAddressField = document.getElementById('formattedAddress');
+            if (geocoder && formattedAddressField) {
+                geocoder.geocode({ 
+                    location: position,
+                    language: 'zh-TW' // 確保返回繁體中文
+                }, function(results, status) {
+                    if (status === 'OK' && results[0]) {
+                        formattedAddressField.value = results[0].formatted_address;
+                    }
+                });
+            }
+        });
+    }
     
     // 初始化地理編碼器
     geocoder = new google.maps.Geocoder();
@@ -3101,7 +3172,14 @@ function initMap() {
         
         // 更新地圖和標記位置
         map.setCenter(position);
-        marker.setPosition(position);
+        
+        // 根據標記類型設定位置
+        if (marker instanceof google.maps.Marker) {
+            marker.setPosition(position);
+        } else {
+            // 進階標記設定位置的方式
+            marker.position = position;
+        }
         
         // 更新座標欄位
         updateLocationFields(position);
@@ -3145,7 +3223,14 @@ function initMap() {
                 
                 // 更新地圖和標記
                 map.setCenter(position);
-                marker.setPosition(position);
+                
+                // 根據標記類型設定位置
+                if (marker instanceof google.maps.Marker) {
+                    marker.setPosition(position);
+                } else {
+                    // 進階標記設定位置的方式
+                    marker.position = position;
+                }
                 
                 // 更新座標欄位
                 if (latitudeField) latitudeField.value = position.lat().toFixed(6);
@@ -3162,24 +3247,6 @@ function initMap() {
             }
         });
     }
-    
-    // 獲取地標拖動後的位置
-    google.maps.event.addListener(marker, 'dragend', function() {
-        const position = marker.getPosition();
-        updateLocationFields(position);
-        
-        // 根據經緯度取得地址
-        if (geocoder && formattedAddressField) {
-            geocoder.geocode({ 
-                location: position,
-                language: 'zh-TW' // 確保返回繁體中文
-            }, function(results, status) {
-                if (status === 'OK' && results[0]) {
-                    formattedAddressField.value = results[0].formatted_address;
-                }
-            });
-        }
-    });
     
     // 搜尋地址按鈕事件
     const searchLocationBtn = document.getElementById('searchLocationBtn');
@@ -3274,9 +3341,16 @@ function searchLocation() {
         if (status === 'OK' && results[0]) {
             const position = results[0].geometry.location;
             
-            // 更新地圖中心和標記位置
+            // 更新地圖中心
             map.setCenter(position);
-            marker.setPosition(position);
+            
+            // 根據標記類型設定位置
+            if (marker instanceof google.maps.Marker) {
+                marker.setPosition(position);
+            } else {
+                // 進階標記設定位置的方式
+                marker.position = position;
+            }
             
             // 更新顯示欄位
             updateLocationFields(position);
@@ -3303,8 +3377,21 @@ function updateLocationFields(position) {
     const longitudeField = document.getElementById('longitude');
     
     if (latitudeField && longitudeField) {
-        const lat = position.lat();
-        const lng = position.lng();
+        let lat, lng;
+        
+        // 處理不同類型的位置物件
+        if (position.lat && typeof position.lat === 'function') {
+            // 傳統的 google.maps.LatLng 物件
+            lat = position.lat();
+            lng = position.lng();
+        } else if (position.lat !== undefined && position.lng !== undefined) {
+            // 普通的 {lat, lng} 物件
+            lat = position.lat;
+            lng = position.lng;
+        } else {
+            console.error("無法識別的位置物件格式", position);
+            return;
+        }
         
         latitudeField.value = lat.toFixed(6);
         longitudeField.value = lng.toFixed(6);
@@ -3366,21 +3453,23 @@ async function compressImage(file, maxWidth, maxHeight) {
     });
 }
 
-// 顯示提示訊息
+// 顯示提示訊息 - 修改為堆疊式顯示
 function showAlert(message, type = "success", duration = 3000) {
-    // 檢查是否已有提示，避免重複
+    // 找出當前頁面中的所有提示訊息
     const existingAlerts = document.querySelectorAll('.alert-floating');
-    existingAlerts.forEach(alert => alert.remove());
+    const alertCount = existingAlerts.length;
     
+    // 創建新的提示訊息元素
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type} alert-dismissible fade show alert-floating`;
     alertDiv.style.position = 'fixed';
-    alertDiv.style.top = '15px';
+    alertDiv.style.top = `${15 + alertCount * 70}px`; // 每個訊息垂直間隔70px
     alertDiv.style.left = '50%';
     alertDiv.style.transform = 'translateX(-50%)';
     alertDiv.style.zIndex = '9999';
     alertDiv.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
     alertDiv.style.minWidth = '300px';
+    alertDiv.style.maxWidth = '80%';
     alertDiv.role = 'alert';
     
     alertDiv.innerHTML = `
@@ -3390,13 +3479,42 @@ function showAlert(message, type = "success", duration = 3000) {
     
     document.body.appendChild(alertDiv);
     
+    // 為關閉按鈕添加事件監聽器
+    const closeButton = alertDiv.querySelector('.btn-close');
+    if (closeButton) {
+        closeButton.addEventListener('click', function() {
+            removeAlert(alertDiv);
+            // 重新調整其他提示訊息的位置
+            repositionAlerts();
+        });
+    }
+    
     // 自動關閉
     setTimeout(() => {
-        alertDiv.classList.remove('show');
-        setTimeout(() => alertDiv.remove(), 300);
+        removeAlert(alertDiv);
+        // 重新調整其他提示訊息的位置
+        repositionAlerts();
     }, duration);
     
     return alertDiv;
+}
+
+// 移除提示訊息
+function removeAlert(alertDiv) {
+    alertDiv.classList.remove('show');
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 300);
+}
+
+// 重新調整其他提示訊息的位置
+function repositionAlerts() {
+    const alerts = document.querySelectorAll('.alert-floating');
+    alerts.forEach((alert, index) => {
+        alert.style.top = `${15 + index * 70}px`;
+    });
 }
 
 // 全頁面加載中顯示
