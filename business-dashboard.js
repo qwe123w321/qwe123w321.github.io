@@ -3142,14 +3142,42 @@ function initMap() {
     } 
     // 如果沒有座標但有地址，使用地址定位
     else if (businessData && businessData.address) {
-        // 顯示地址
-        const formattedAddressField = document.getElementById('formattedAddress');
+        console.log("使用資料庫中的地址資料進行地圖定位");
+        
+        // 先顯示已有地址
         if (formattedAddressField) {
             formattedAddressField.value = businessData.address;
         }
         
-        // 使用地址獲取座標並更新地圖
-        geocodeAddress(businessData.address);
+        // 使用地址查詢經緯度並更新地圖
+        const geocodingOptions = {
+            address: businessData.address,
+            region: 'tw',
+            language: 'zh-TW'
+        };
+        
+        geocoder.geocode(geocodingOptions, function(results, status) {
+            if (status === 'OK' && results[0]) {
+                const position = results[0].geometry.location;
+                
+                // 更新地圖和標記
+                map.setCenter(position);
+                marker.setPosition(position);
+                
+                // 更新座標欄位
+                if (latitudeField) latitudeField.value = position.lat().toFixed(6);
+                if (longitudeField) longitudeField.value = position.lng().toFixed(6);
+                
+                // 可選：更新地址為更標準的格式
+                if (formattedAddressField) {
+                    formattedAddressField.value = results[0].formatted_address;
+                }
+                
+                showAlert("已根據店家地址自動定位地圖，請確認位置是否正確並點擊「儲存位置」按鈕", "info", 6000);
+            } else {
+                showAlert('無法根據已有地址定位，請手動設定位置', 'warning');
+            }
+        });
     }
     
     // 獲取地標拖動後的位置
@@ -3231,7 +3259,7 @@ function geocodeAddress(address) {
 // 檢查位置資料，如有需要則提示用戶
 function checkLocationData() {
     // 檢查是否缺少位置資料
-    if (!businessData || !businessData.position || !businessData.position.geopoint) {
+    if (!businessData && !businessData.position && !businessData.position.geopoint) {
         // 顯示提醒訊息，要求店家設定位置
         showAlert("請設定店家位置資訊以提升在APP中的曝光度", "warning", 6000);
     }
