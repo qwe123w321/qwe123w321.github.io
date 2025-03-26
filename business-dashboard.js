@@ -3030,6 +3030,7 @@ function loadGoogleMapsAPI() {
     script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyByRzxE7olx04Q_-ckYIKNyI9uJnZ_p_-Y&libraries=places&callback=initMap`;
     script.defer = true;
     script.async = true;
+    script.loading = "async";
     script.onerror = function() {
         showAlert('無法載入 Google Maps API，請檢查您的網絡連接', 'warning');
     };
@@ -3150,7 +3151,7 @@ async function initMap() {
         }
     } 
     // 如果沒有座標但有地址，使用地址定位
-    else if (businessData && businessData.address) {
+    else if (businessData && businessData.get('address')) {
         console.log("使用資料庫中的地址資料進行地圖定位");
         
         // 先顯示已有地址
