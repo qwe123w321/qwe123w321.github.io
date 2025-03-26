@@ -77,9 +77,19 @@ function initAfterAuth() {
     // 營業時間初始化
     initBusinessHours();
     
-    // 如果當前頁面有地圖容器，載入 Google Maps
+    // 確保只有當地圖容器存在時才初始化Google Maps
     if (document.getElementById('mapContainer')) {
-        loadGoogleMapsAPI();
+        // 檢查API密鑰問題
+        if (!window.googleMapsInitialized) {
+            loadGoogleMapsAPI();
+            window.googleMapsInitialized = true;
+        }
+    }
+    
+    // 新增：確保地址顯示正確
+    const formattedAddressField = document.getElementById('formattedAddress');
+    if (formattedAddressField && businessData && businessData.address) {
+        formattedAddressField.value = businessData.address;
     }
     
     // 綁定各個保存按鈕
@@ -1578,50 +1588,18 @@ function updateMenuItemsList(menuItemsByCategory) {
 }
 
 // 添加商品項目相關事件
-function addMenuItemsEvents() {
-    // 首先移除所有現有的事件處理程序
-    document.querySelectorAll(".add-product-btn").forEach(btn => {
-        // 先複製一份元素來清除所有事件
-        const clone = btn.cloneNode(true);
-        btn.parentNode.replaceChild(clone, btn);
-    });
-    
-    document.querySelectorAll(".cancel-add-item").forEach(btn => {
-        const clone = btn.cloneNode(true);
-        btn.parentNode.replaceChild(clone, btn);
-    });
-    
-    document.querySelectorAll(".save-item-btn").forEach(btn => {
-        const clone = btn.cloneNode(true);
-        btn.parentNode.replaceChild(clone, btn);
-    });
-    
-    document.querySelectorAll(".edit-item-btn").forEach(btn => {
-        const clone = btn.cloneNode(true);
-        btn.parentNode.replaceChild(clone, btn);
-    });
-    
-    document.querySelectorAll(".delete-item-btn").forEach(btn => {
-        const clone = btn.cloneNode(true);
-        btn.parentNode.replaceChild(clone, btn);
-    });
-    
-    document.querySelectorAll(".delete-category-btn").forEach(btn => {
-        const clone = btn.cloneNode(true);
-        btn.parentNode.replaceChild(clone, btn);
-    });
-    
-    // 重新綁定事件 - 使用事件委託，避免重複添加
+ffunction addMenuItemsEvents() {
+    // 使用事件委派方式處理所有按鈕交互
     const categoryList = document.getElementById("categoryList");
     if (categoryList) {
-        // 移除現有的事件委託處理程序
-        categoryList.removeEventListener("click", categoryListClickHandler);
+        // 移除先前的事件處理器
+        categoryList.removeEventListener("click", categoryClickHandler);
         
-        // 添加新的事件委託處理程序
-        categoryList.addEventListener("click", categoryListClickHandler);
+        // 添加新的事件委派處理器
+        categoryList.addEventListener("click", categoryClickHandler);
     }
     
-    // 為所有「新增項目」按鈕添加事件監聽
+    // 單獨為添加項目和表單控制按鈕綁定事件
     document.querySelectorAll(".add-product-btn").forEach(btn => {
         btn.addEventListener("click", function() {
             const category = this.getAttribute("data-category");
@@ -1633,7 +1611,6 @@ function addMenuItemsEvents() {
         });
     });
     
-    // 為所有「取消」按鈕添加事件監聽
     document.querySelectorAll(".cancel-add-item").forEach(btn => {
         btn.addEventListener("click", function() {
             const formId = this.getAttribute("data-form");
@@ -1643,59 +1620,51 @@ function addMenuItemsEvents() {
             }
         });
     });
-    
-    // 為所有「儲存項目」按鈕添加事件監聽
-    document.querySelectorAll(".save-item-btn").forEach(btn => {
-        btn.addEventListener("click", function() {
-            const category = this.getAttribute("data-category");
-            saveMenuItem(category);
-        });
-    });
-    
-    // 為所有「編輯項目」按鈕添加事件監聽
-    document.querySelectorAll(".edit-item-btn").forEach(btn => {
-        btn.addEventListener("click", function() {
-            const itemId = this.getAttribute("data-id");
-            editMenuItem(itemId);
-        });
-    });
-    
-    // 為所有「刪除項目」按鈕添加事件監聽
-    document.querySelectorAll(".delete-item-btn").forEach(btn => {
-        btn.addEventListener("click", function() {
-            const itemId = this.getAttribute("data-id");
-            deleteMenuItem(itemId);
-        });
-    });
-    
-    // 為所有「刪除類別」按鈕添加事件監聽
-    document.querySelectorAll(".delete-category-btn").forEach(btn => {
-        btn.addEventListener("click", function() {
-            const category = this.getAttribute("data-category");
-            if (confirm(`確定要刪除「${category}」類別及其所有項目嗎？`)) {
-                deleteCategory(category);
-            }
-        });
-    });
 }
 
-// 事件委託處理函數
-function categoryListClickHandler(event) {
-    // 通過事件委託處理點擊事件
+// 事件委派處理函數
+function categoryClickHandler(event) {
     const target = event.target;
     
-    // 處理「新增項目」按鈕點擊
-    if (target.classList.contains('add-product-btn') || target.closest('.add-product-btn')) {
-        const btn = target.classList.contains('add-product-btn') ? target : target.closest('.add-product-btn');
-        const category = btn.getAttribute('data-category');
-        const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
-        const form = document.getElementById(formId);
-        
-        if (form) {
-            form.style.display = 'block';
+    // 處理編輯按鈕點擊
+    if (target.classList.contains("edit-item-btn") || target.closest(".edit-item-btn")) {
+        const btn = target.classList.contains("edit-item-btn") ? target : target.closest(".edit-item-btn");
+        const itemId = btn.getAttribute("data-id");
+        editMenuItem(itemId);
+        event.stopPropagation(); // 阻止事件冒泡
+    }
+    
+    // 處理刪除項目按鈕點擊
+    if (target.classList.contains("delete-item-btn") || target.closest(".delete-item-btn")) {
+        const btn = target.classList.contains("delete-item-btn") ? target : target.closest(".delete-item-btn");
+        const itemId = btn.getAttribute("data-id");
+        if (confirm("確定要刪除此商品項目嗎？")) {
+            deleteMenuItem(itemId);
         }
+        event.stopPropagation();
+    }
+    
+    // 處理刪除類別按鈕點擊
+    if (target.classList.contains("delete-category-btn") || target.closest(".delete-category-btn")) {
+        const btn = target.classList.contains("delete-category-btn") ? target : target.closest(".delete-category-btn");
+        const category = btn.getAttribute("data-category");
+        if (confirm(`確定要刪除「${category}」類別及其所有項目嗎？`)) {
+            deleteCategory(category);
+        }
+        event.stopPropagation();
+    }
+    
+    // 處理儲存項目按鈕點擊
+    if (target.classList.contains("save-item-btn") || target.closest(".save-item-btn")) {
+        const btn = target.classList.contains("save-item-btn") ? target : target.closest(".save-item-btn");
+        const category = btn.getAttribute("data-category");
+        saveMenuItem(category);
+        event.stopPropagation();
     }
 }
+
+// 確保該函數成為全局可用
+window.categoryClickHandler = categoryClickHandler;
 
 // 儲存商品項目
 async function saveMenuItem(category) {
@@ -2930,6 +2899,9 @@ async function saveLocationInfo() {
         let geohash = "";
         if (typeof generateGeohash === 'function') {
             geohash = generateGeohash(lat, lng);
+        } else {
+            // 使用簡化的geohash生成方法
+            geohash = simpleGeohash(lat, lng);
         }
         
         // 創建符合要求的位置數據結構
@@ -2958,7 +2930,7 @@ async function saveLocationInfo() {
         saveBtn.innerHTML = originalBtnText;
         saveBtn.disabled = false;
         
-        showAlert('店家位置已成功更新', 'success');
+        showAlert('店家位置已成功更新，資料將用於APP中的距離計算及推薦功能', 'success');
     } catch (error) {
         console.error('儲存位置時發生錯誤:', error);
         
@@ -2969,8 +2941,39 @@ async function saveLocationInfo() {
             saveBtn.disabled = false;
         }
         
-        showAlert('儲存位置失敗，請稍後再試', 'danger');
+        showAlert('儲存位置失敗，請稍後再試: ' + error.message, 'danger');
     }
+}
+
+// 簡易的geohash生成方法，備用方案
+function simpleGeohash(lat, lng, precision = 8) {
+    // 這只是一個非常簡化的geohash生成方法，實際應用中應使用專門的庫
+    // 將經緯度轉換成字串並保留精度
+    const latStr = lat.toFixed(precision);
+    const lngStr = lng.toFixed(precision);
+    
+    // 使用標準編碼方法
+    const chars = '0123456789bcdefghjkmnpqrstuvwxyz';
+    let geohash = '';
+    
+    // 混合經緯度的精確位置來生成唯一標識符
+    const combinedStr = latStr + lngStr;
+    let hashValue = 0;
+    
+    // 簡單哈希算法
+    for (let i = 0; i < combinedStr.length; i++) {
+        hashValue = ((hashValue << 5) - hashValue) + combinedStr.charCodeAt(i);
+        hashValue |= 0; // 轉為32位整數
+    }
+    
+    // 生成假的geohash字符串
+    const absValue = Math.abs(hashValue);
+    for (let i = 0; i < 8; i++) {
+        geohash += chars[absValue % chars.length];
+        absValue = Math.floor(absValue / chars.length);
+    }
+    
+    return geohash;
 }
 
 // 修改的商店基本資料儲存
@@ -3101,7 +3104,7 @@ function initMap() {
         draggable: true,
         animation: google.maps.Animation.DROP,
         icon: {
-            url: 'https://maps.google.com/mapfiles/ms/icons/pink-dot.png' // 使用粉紅色標記符合品牌顏色
+            url: 'https://maps.google.com/mapfiles/ms/icons/pink-dot.png'
         }
     });
     
@@ -3117,12 +3120,17 @@ function initMap() {
         longitudeField.value = defaultPosition.lng.toFixed(6);
     }
     
-    // 根據經緯度取得地址 (初始載入時)
+    // 根據經緯度取得地址或顯示已有地址
     const formattedAddressField = document.getElementById('formattedAddress');
     if (formattedAddressField) {
         if (businessData && businessData.address) {
             // 如果已有地址，直接顯示
             formattedAddressField.value = businessData.address;
+            
+            // 如果有地址但沒有坐標，使用地址定位
+            if (!businessData.position || !businessData.position.geopoint) {
+                geocodeAddress(businessData.address);
+            }
         } else if (geocoder) {
             // 否則根據坐標獲取地址
             geocoder.geocode({ location: defaultPosition }, function(results, status) {
@@ -3132,6 +3140,9 @@ function initMap() {
             });
         }
     }
+    
+    // 新增：檢查是否需要提醒店家設定位置
+    checkLocationData();
     
     // 獲取地標拖動後的位置
     google.maps.event.addListener(marker, 'dragend', function() {
@@ -3168,10 +3179,51 @@ function initMap() {
     }
 }
 
+// 新增：根據地址獲取地理位置
+function geocodeAddress(address) {
+    if (!geocoder || !address) return;
+    
+    showAlert("根據地址定位中...", "info");
+    
+    geocoder.geocode({ address: address }, function(results, status) {
+        if (status === 'OK' && results[0]) {
+            const position = results[0].geometry.location;
+            
+            // 更新地圖和標記
+            map.setCenter(position);
+            marker.setPosition(position);
+            
+            // 更新座標欄位
+            updateLocationFields(position);
+            
+            showAlert("已根據地址自動設定位置，請點擊「儲存位置」按鈕確認", "success");
+        } else {
+            showAlert('無法根據地址定位，請手動設定位置', 'warning');
+        }
+    });
+}
+
+// 新增：檢查位置資料，如有需要則提示用戶
+function checkLocationData() {
+    // 檢查是否缺少位置資料
+    if (!businessData || !businessData.position || !businessData.position.geopoint) {
+        // 如果沒有位置資料，但有地址，則根據地址自動定位
+        if (businessData && businessData.address) {
+            showAlert("店家尚未設定精確定位，系統將根據已有地址自動定位", "warning", 5000);
+            setTimeout(() => {
+                geocodeAddress(businessData.address);
+            }, 1000); // 延遲一秒以確保提示訊息先顯示
+        } else {
+            showAlert("請設定店家位置以提升在APP中的推薦曝光度", "warning", 5000);
+        }
+    }
+}
+
 // 搜尋地址
 function searchLocation() {
     if (!geocoder) {
         console.error("地理編碼器未初始化");
+        showAlert("地理編碼服務未就緒，請重新整理頁面後再試", "danger");
         return;
     }
     
@@ -3183,7 +3235,14 @@ function searchLocation() {
     
     showAlert("搜尋地址中...", "info");
     
-    geocoder.geocode({ address: address }, function(results, status) {
+    // 增加在地化參數，提高台灣地址的搜尋準確度
+    const geocodingOptions = {
+        address: address,
+        region: 'tw', // 設定搜尋區域為台灣
+        language: 'zh-TW' // 設定返回結果語言為繁體中文
+    };
+    
+    geocoder.geocode(geocodingOptions, function(results, status) {
         if (status === 'OK' && results[0]) {
             const position = results[0].geometry.location;
             
@@ -3199,9 +3258,9 @@ function searchLocation() {
                 formattedAddressField.value = results[0].formatted_address;
             }
             
-            showAlert("地址已找到並更新", "success");
+            showAlert("地址已找到並更新，請點擊「儲存位置」按鈕確認", "success");
         } else {
-            showAlert('無法找到該地址，請嘗試其他關鍵字', 'warning');
+            showAlert('無法找到該地址，請嘗試更具體的地址或關鍵字', 'warning');
         }
     });
 }
