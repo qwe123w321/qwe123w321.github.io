@@ -3107,6 +3107,11 @@ function initMap() {
     // 初始化地理編碼器
     geocoder = new google.maps.Geocoder();
     
+    // 獲取座標和地址欄位
+    const latitudeField = document.getElementById('latitude');
+    const longitudeField = document.getElementById('longitude');
+    const formattedAddressField = document.getElementById('formattedAddress');
+    
     // 處理位置資料 - 優先使用資料庫中的座標
     if (businessData && businessData.position && businessData.position.geopoint) {
         // 如果有座標資料，使用它設置地圖
@@ -3123,7 +3128,6 @@ function initMap() {
         updateLocationFields(position);
         
         // 顯示已有地址，或根據座標獲取地址
-        const formattedAddressField = document.getElementById('formattedAddress');
         if (formattedAddressField) {
             if (businessData.address) {
                 formattedAddressField.value = businessData.address;
@@ -3186,7 +3190,6 @@ function initMap() {
         updateLocationFields(position);
         
         // 根據經緯度取得地址
-        const formattedAddressField = document.getElementById('formattedAddress');
         if (geocoder && formattedAddressField) {
             geocoder.geocode({ 
                 location: position,
