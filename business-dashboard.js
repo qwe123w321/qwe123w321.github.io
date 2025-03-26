@@ -3029,6 +3029,7 @@ function loadGoogleMapsAPI() {
     script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyByRzxE7olx04Q_-ckYIKNyI9uJnZ_p_-Y&libraries=places&callback=initMap`;
     script.defer = true;
     script.async = true;
+    script.loading = "async";
     script.onerror = function() {
         showAlert('無法載入 Google Maps API，請檢查您的網絡連接', 'warning');
     };
@@ -3064,14 +3065,11 @@ function initMap() {
     });
     
     // 初始化地標標記
-    marker = new google.maps.Marker({
-        position: defaultPosition, // 先使用預設位置，後面會更新
+    const markerView = new google.maps.marker.AdvancedMarkerElement({
+        position: defaultPosition,
         map: map,
         draggable: true,
-        animation: google.maps.Animation.DROP,
-        icon: {
-            url: 'https://maps.google.com/mapfiles/ms/icons/pink-dot.png'
-        }
+        title: '店家位置'
     });
     
     // 初始化地理編碼器
