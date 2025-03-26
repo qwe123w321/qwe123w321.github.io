@@ -3026,8 +3026,8 @@ function loadGoogleMapsAPI() {
     
     const script = document.createElement('script');
     script.id = 'google-maps-script';
-    // 使用新版 API，支援 importLibrary
-    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyByRzxE7olx04Q_-ckYIKNyI9uJnZ_p_-Y&libraries=places&callback=initMap&v=weekly`;
+    // 使用標準版本
+    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyByRzxE7olx04Q_-ckYIKNyI9uJnZ_p_-Y&libraries=places&callback=initMap`;
     script.defer = true;
     script.async = true;
     script.onerror = function() {
@@ -3056,58 +3056,8 @@ async function initMap() {
     // 初始化地圖 - 暫時使用預設位置，稍後會更新
     const defaultPosition = { lat: 25.033964, lng: 121.564468 }; // 台北市
     
-    // 載入進階標記庫
+    // 使用標準標記方式，避免進階標記警告
     try {
-        // 使用 importLibrary 加載進階標記功能
-        await google.maps.importLibrary("maps");
-        const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
-        
-        map = new google.maps.Map(mapContainer, {
-            center: defaultPosition, // 先使用預設中心，後面會更新
-            zoom: 15,
-            mapTypeId: google.maps.MapTypeId.ROADMAP,
-            mapTypeControl: false,
-            styles: [
-                {
-                    "featureType": "poi",
-                    "elementType": "labels",
-                    "stylers": [
-                        { "visibility": "off" }
-                    ]
-                }
-            ]
-        });
-        
-        // 使用進階標記
-        marker = new AdvancedMarkerElement({
-            map: map,
-            position: defaultPosition,
-            title: "店家位置",
-            draggable: true
-        });
-        
-        // 為進階標記添加拖動結束事件
-        marker.addListener('dragend', () => {
-            const position = marker.position;
-            updateLocationFields(position);
-            
-            // 根據經緯度取得地址
-            const formattedAddressField = document.getElementById('formattedAddress');
-            if (geocoder && formattedAddressField) {
-                geocoder.geocode({ 
-                    location: position,
-                    language: 'zh-TW' // 確保返回繁體中文
-                }, function(results, status) {
-                    if (status === 'OK' && results[0]) {
-                        formattedAddressField.value = results[0].formatted_address;
-                    }
-                });
-            }
-        });
-    } catch (error) {
-        console.warn("加載進階標記功能失敗，回退到標準標記:", error);
-        
-        // 回退到使用標準 Marker
         map = new google.maps.Map(mapContainer, {
             center: defaultPosition,
             zoom: 15,
@@ -3152,6 +3102,10 @@ async function initMap() {
                 });
             }
         });
+    } catch (error) {
+        console.error("初始化地圖失敗:", error);
+        showAlert("地圖初始化失敗，請重新整理頁面", "danger");
+        return;
     }
     
     // 初始化地理編碼器
@@ -3172,14 +3126,7 @@ async function initMap() {
         
         // 更新地圖和標記位置
         map.setCenter(position);
-        
-        // 根據標記類型設定位置
-        if (marker instanceof google.maps.Marker) {
-            marker.setPosition(position);
-        } else {
-            // 進階標記設定位置的方式
-            marker.position = position;
-        }
+        marker.setPosition(position);
         
         // 更新座標欄位
         updateLocationFields(position);
@@ -3223,14 +3170,7 @@ async function initMap() {
                 
                 // 更新地圖和標記
                 map.setCenter(position);
-                
-                // 根據標記類型設定位置
-                if (marker instanceof google.maps.Marker) {
-                    marker.setPosition(position);
-                } else {
-                    // 進階標記設定位置的方式
-                    marker.position = position;
-                }
+                marker.setPosition(position);
                 
                 // 更新座標欄位
                 if (latitudeField) latitudeField.value = position.lat().toFixed(6);
