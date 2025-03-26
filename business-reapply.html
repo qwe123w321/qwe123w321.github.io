@@ -122,6 +122,35 @@
         text-align: center;
     }
     </style>
+
+    <style>
+        /* 隱藏狀態指示器 */
+        #appCheckStatus {
+            display: none !important;
+        }
+
+        /* 隱藏診斷按鈕 */
+        #appCheckDiagnosticsBtn {
+            display: none !important;
+        }
+
+        /* 隱藏診斷面板 */
+        #appCheckDiagnostics {
+            display: none !important;
+        }
+
+        /* 隱藏警告消息 */
+        .alert-warning[id*="appCheck"],
+        div.alert:contains("App Check") {
+            display: none !important;
+        }
+
+        /* 隱藏與 App Check 相關的按鈕 */
+        #retryAppCheck,
+        button[id*="appCheck"] {
+            display: none !important;
+        }
+    </style>
     
     <!-- 錯誤處理 -->
     <script src="error-handler.js"></script>
