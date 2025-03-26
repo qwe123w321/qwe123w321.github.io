@@ -97,33 +97,6 @@
        // 導入其他需要的模組
        import './business-login.js';
    </script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // 隱藏狀態指示器
-            const statusElement = document.getElementById('appCheckStatus');
-            if (statusElement) statusElement.style.display = 'none';
-            
-            // 移除診斷按鈕
-            const removeAppCheckButtons = function() {
-                // 隱藏診斷按鈕
-                const diagButtons = document.querySelectorAll('#appCheckDiagnosticsBtn');
-                diagButtons.forEach(btn => {
-                    if (btn) btn.style.display = 'none';
-                });
-                
-                // 隱藏診斷面板
-                const diagPanel = document.getElementById('appCheckDiagnostics');
-                if (diagPanel) diagPanel.style.display = 'none';
-            };
-            
-            // 立即執行一次
-            removeAppCheckButtons();
-            
-            // 設置定時任務，持續檢查並隱藏
-            setInterval(removeAppCheckButtons, 1000);
-        });
-    </script>
    
    <!-- 添加 App Check 狀態指示器的樣式 -->
    <style>
@@ -501,6 +474,32 @@
             console.log('頁面加載 5 秒後自動檢查 reCAPTCHA 狀態');
             checkRecaptchaStatus();
         }, 5000);
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 隱藏狀態指示器
+            const statusElement = document.getElementById('appCheckStatus');
+            if (statusElement) statusElement.style.display = 'none';
+            
+            // 移除診斷按鈕
+            const removeAppCheckButtons = function() {
+                // 隱藏診斷按鈕
+                const diagButtons = document.querySelectorAll('#appCheckDiagnosticsBtn');
+                diagButtons.forEach(btn => {
+                    if (btn) btn.style.display = 'none';
+                });
+                
+                // 隱藏診斷面板
+                const diagPanel = document.getElementById('appCheckDiagnostics');
+                if (diagPanel) diagPanel.style.display = 'none';
+            };
+            
+            // 立即執行一次
+            removeAppCheckButtons();
+            
+            // 設置定時任務，持續檢查並隱藏
+            setInterval(removeAppCheckButtons, 1000);
+        });
     </script>
 </body>
 </html>
