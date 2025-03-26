@@ -1592,34 +1592,15 @@ function addMenuItemsEvents() {
     // 使用事件委派方式處理所有按鈕交互
     const categoryList = document.getElementById("categoryList");
     if (categoryList) {
-        // 移除先前的事件處理器
+        // 移除先前的事件處理器，防止重複綁定
         categoryList.removeEventListener("click", categoryClickHandler);
         
         // 添加新的事件委派處理器
         categoryList.addEventListener("click", categoryClickHandler);
     }
     
-    // 單獨為添加項目和表單控制按鈕綁定事件
-    document.querySelectorAll(".add-product-btn").forEach(btn => {
-        btn.addEventListener("click", function() {
-            const category = this.getAttribute("data-category");
-            const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
-            const form = document.getElementById(formId);
-            if (form) {
-                form.style.display = "block";
-            }
-        });
-    });
-    
-    document.querySelectorAll(".cancel-add-item").forEach(btn => {
-        btn.addEventListener("click", function() {
-            const formId = this.getAttribute("data-form");
-            const form = document.getElementById(formId);
-            if (form) {
-                form.style.display = "none";
-            }
-        });
-    });
+    // 綁定添加項目按鈕 - 這部分交由事件委派處理
+    // 綁定取消按鈕 - 這部分交由事件委派處理
 }
 
 // 事件委派處理函數
@@ -1630,8 +1611,10 @@ function categoryClickHandler(event) {
     if (target.classList.contains("edit-item-btn") || target.closest(".edit-item-btn")) {
         const btn = target.classList.contains("edit-item-btn") ? target : target.closest(".edit-item-btn");
         const itemId = btn.getAttribute("data-id");
+        console.log("編輯按鈕被點擊，項目ID:", itemId);
         editMenuItem(itemId);
         event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
     }
     
     // 處理刪除項目按鈕點擊
@@ -1641,7 +1624,8 @@ function categoryClickHandler(event) {
         if (confirm("確定要刪除此商品項目嗎？")) {
             deleteMenuItem(itemId);
         }
-        event.stopPropagation();
+        event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
     }
     
     // 處理刪除類別按鈕點擊
@@ -1651,7 +1635,8 @@ function categoryClickHandler(event) {
         if (confirm(`確定要刪除「${category}」類別及其所有項目嗎？`)) {
             deleteCategory(category);
         }
-        event.stopPropagation();
+        event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
     }
     
     // 處理儲存項目按鈕點擊
@@ -1659,7 +1644,37 @@ function categoryClickHandler(event) {
         const btn = target.classList.contains("save-item-btn") ? target : target.closest(".save-item-btn");
         const category = btn.getAttribute("data-category");
         saveMenuItem(category);
-        event.stopPropagation();
+        event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
+    }
+    
+    // 處理添加項目按鈕點擊
+    if (target.classList.contains("add-product-btn") || target.closest(".add-product-btn")) {
+        const btn = target.classList.contains("add-product-btn") ? target : target.closest(".add-product-btn");
+        const category = btn.getAttribute("data-category");
+        const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
+        const form = document.getElementById(formId);
+        
+        if (form) {
+            form.style.display = 'block';
+        }
+        event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
+    }
+    
+    // 處理取消按鈕點擊
+    if (target.classList.contains("cancel-add-item") || target.closest(".cancel-add-item")) {
+        const btn = target.classList.contains("cancel-add-item") ? target : target.closest(".cancel-add-item");
+        const formId = btn.getAttribute("data-form");
+        
+        if (formId) {
+            const form = document.getElementById(formId);
+            if (form) {
+                form.style.display = 'none';
+            }
+        }
+        event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
     }
 }
 
@@ -1736,6 +1751,7 @@ async function saveMenuItem(category) {
 // 編輯商品項目
 async function editMenuItem(itemId) {
     try {
+        console.log("開始編輯商品項目:", itemId);
         // 獲取項目數據
         const doc = await window.db.collection("menuItems").doc(itemId).get();
         if (!doc.exists) {
@@ -1744,6 +1760,7 @@ async function editMenuItem(itemId) {
         }
         
         const item = doc.data();
+        console.log("獲取到商品項目資料:", item);
         
         // 建立編輯表單
         const productItem = document.querySelector(`.product-subitem[data-id="${itemId}"]`);
@@ -1767,19 +1784,20 @@ async function editMenuItem(itemId) {
         // 創建編輯表單
         const editForm = document.createElement('div');
         editForm.className = 'menu-item-form mt-3 edit-form';
+        editForm.style.display = 'block'; // 確保表單顯示
         editForm.innerHTML = `
             <h6>編輯 ${item.name}</h6>
             <div class="row">
                 <div class="col-md-6">
                     <div class="mb-3">
                         <label class="form-label">商品名稱</label>
-                        <input type="text" class="form-control" id="edit-name-${itemId}" value="${item.name}">
+                        <input type="text" class="form-control" id="edit-name-${itemId}" value="${item.name || ''}">
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="mb-3">
                         <label class="form-label">價格</label>
-                        <input type="number" class="form-control" id="edit-price-${itemId}" value="${item.price}">
+                        <input type="number" class="form-control" id="edit-price-${itemId}" value="${item.price || ''}">
                     </div>
                 </div>
             </div>
@@ -1863,8 +1881,6 @@ function cancelEdit(btn) {
 
 // 刪除商品項目
 async function deleteMenuItem(itemId) {
-    if (!confirm("確定要刪除此商品項目嗎？")) return;
-    
     try {
         showAlert("刪除中...", "info");
         
@@ -1880,6 +1896,7 @@ async function deleteMenuItem(itemId) {
         showAlert("刪除商品項目失敗，請稍後再試", "danger");
     }
 }
+
 
 // 刪除類別
 async function deleteCategory(categoryName) {
@@ -2098,53 +2115,6 @@ function initCategoryManagement() {
     if (saveCategoryBtn) {
         saveCategoryBtn.addEventListener('click', saveCategory);
     }
-    
-    // 綁定商品項目新增和表單顯示隱藏功能
-    document.addEventListener('click', function(e) {
-        // 處理「新增項目」按鈕點擊
-        if (e.target.classList.contains('add-product-btn') || e.target.closest('.add-product-btn')) {
-            const btn = e.target.classList.contains('add-product-btn') ? e.target : e.target.closest('.add-product-btn');
-            const category = btn.getAttribute('data-category');
-            const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
-            const form = document.getElementById(formId);
-            
-            if (form) {
-                form.style.display = 'block';
-            } else {
-                // 如果沒有對應的表單，使用通用的咖啡項目表單
-                const coffeeForm = document.getElementById('coffeeItemForm');
-                if (coffeeForm) {
-                    coffeeForm.style.display = 'block';
-                }
-            }
-        }
-        
-        // 處理「取消」按鈕點擊
-        if (e.target.classList.contains('cancel-add-item') || e.target.closest('.cancel-add-item')) {
-            const btn = e.target.classList.contains('cancel-add-item') ? e.target : e.target.closest('.cancel-add-item');
-            const formId = btn.getAttribute('data-form');
-            
-            if (formId) {
-                const form = document.getElementById(formId);
-                if (form) {
-                    form.style.display = 'none';
-                }
-            } else {
-                // 隱藏所有商品表單
-                document.querySelectorAll('.menu-item-form').forEach(form => {
-                    if (form.id !== 'addCategoryForm') {
-                        form.style.display = 'none';
-                    }
-                });
-            }
-        }
-        
-        // 處理「儲存項目」按鈕點擊
-        if (e.target.classList.contains('save-item-btn') || e.target.closest('.save-item-btn')) {
-            const btn = e.target.classList.contains('save-item-btn') ? e.target : e.target.closest('.save-item-btn');
-            const category = btn.getAttribute('data-category');
-        }
-    });
 }
 
 // 標籤輸入系統初始化
@@ -3262,7 +3232,7 @@ function geocodeAddress(address) {
 // 檢查位置資料，如有需要則提示用戶
 function checkLocationData() {
     // 檢查是否缺少位置資料
-    if (!businessData && !businessData.position && !businessData.position.geopoint) {
+    if (!businessData || !businessData.position || !businessData.position.geopoint) {
         // 顯示提醒訊息，要求店家設定位置
         showAlert("請設定店家位置資訊以提升在APP中的曝光度", "warning", 6000);
     }
