@@ -51,6 +51,32 @@
             display: none !important;
         }
     </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 隱藏狀態指示器
+            const statusElement = document.getElementById('appCheckStatus');
+            if (statusElement) statusElement.style.display = 'none';
+            
+            // 移除診斷按鈕
+            const removeAppCheckButtons = function() {
+                // 隱藏診斷按鈕
+                const diagButtons = document.querySelectorAll('#appCheckDiagnosticsBtn');
+                diagButtons.forEach(btn => {
+                    if (btn) btn.style.display = 'none';
+                });
+                
+                // 隱藏診斷面板
+                const diagPanel = document.getElementById('appCheckDiagnostics');
+                if (diagPanel) diagPanel.style.display = 'none';
+            };
+            
+            // 立即執行一次
+            removeAppCheckButtons();
+            
+            // 設置定時任務，持續檢查並隱藏
+            setInterval(removeAppCheckButtons, 1000);
+        });
+    </script>
 
    <!-- 2. 然後加載 Firebase 和 App Check 模組 -->
    <script type="module">
