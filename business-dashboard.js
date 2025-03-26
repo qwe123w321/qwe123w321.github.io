@@ -3067,22 +3067,18 @@ function loadGoogleMapsAPI() {
 
 // 初始化地圖
 function initMap() {
-    // 預設位置 (台北市中心)
-    const defaultPosition = { lat: 25.033964, lng: 121.564468 };
-    
-    // 從Firestore中獲取店家位置（如果有）
-    if (businessData && businessData.position && businessData.position.geopoint) {
-        defaultPosition.lat = businessData.position.geopoint.latitude;
-        defaultPosition.lng = businessData.position.geopoint.longitude;
-    }
+    // 在初始化地圖前檢查位置資料
+    checkLocationData();
     
     // 檢查地圖容器是否存在
     const mapContainer = document.getElementById('mapContainer');
     if (!mapContainer) return;
     
-    // 初始化地圖
+    // 初始化地圖 - 暫時使用預設位置，稍後會更新
+    const defaultPosition = { lat: 25.033964, lng: 121.564468 }; // 台北市
+    
     map = new google.maps.Map(mapContainer, {
-        center: defaultPosition,
+        center: defaultPosition, // 先使用預設中心，後面會更新
         zoom: 15,
         mapTypeId: google.maps.MapTypeId.ROADMAP,
         mapTypeControl: false,
@@ -3099,7 +3095,7 @@ function initMap() {
     
     // 初始化地標標記
     marker = new google.maps.Marker({
-        position: defaultPosition,
+        position: defaultPosition, // 先使用預設位置，後面會更新
         map: map,
         draggable: true,
         animation: google.maps.Animation.DROP,
@@ -3111,38 +3107,50 @@ function initMap() {
     // 初始化地理編碼器
     geocoder = new google.maps.Geocoder();
     
-    // 更新座標顯示
-    const latitudeField = document.getElementById('latitude');
-    const longitudeField = document.getElementById('longitude');
-    
-    if (latitudeField && longitudeField) {
-        latitudeField.value = defaultPosition.lat.toFixed(6);
-        longitudeField.value = defaultPosition.lng.toFixed(6);
-    }
-    
-    // 根據經緯度取得地址或顯示已有地址
-    const formattedAddressField = document.getElementById('formattedAddress');
-    if (formattedAddressField) {
-        if (businessData && businessData.address) {
-            // 如果已有地址，直接顯示
-            formattedAddressField.value = businessData.address;
-            
-            // 如果有地址但沒有坐標，使用地址定位
-            if (!businessData.position || !businessData.position.geopoint) {
-                geocodeAddress(businessData.address);
+    // 處理位置資料 - 優先使用資料庫中的座標
+    if (businessData && businessData.position && businessData.position.geopoint) {
+        // 如果有座標資料，使用它設置地圖
+        const position = {
+            lat: businessData.position.geopoint.latitude,
+            lng: businessData.position.geopoint.longitude
+        };
+        
+        // 更新地圖和標記位置
+        map.setCenter(position);
+        marker.setPosition(position);
+        
+        // 更新座標欄位
+        updateLocationFields(position);
+        
+        // 顯示已有地址，或根據座標獲取地址
+        const formattedAddressField = document.getElementById('formattedAddress');
+        if (formattedAddressField) {
+            if (businessData.address) {
+                formattedAddressField.value = businessData.address;
+            } else {
+                // 根據座標獲取地址
+                geocoder.geocode({ 
+                    location: position,
+                    language: 'zh-TW' // 確保返回繁體中文
+                }, function(results, status) {
+                    if (status === 'OK' && results[0]) {
+                        formattedAddressField.value = results[0].formatted_address;
+                    }
+                });
             }
-        } else if (geocoder) {
-            // 否則根據坐標獲取地址
-            geocoder.geocode({ location: defaultPosition }, function(results, status) {
-                if (status === 'OK' && results[0]) {
-                    formattedAddressField.value = results[0].formatted_address;
-                }
-            });
         }
+    } 
+    // 如果沒有座標但有地址，使用地址定位
+    else if (businessData && businessData.address) {
+        // 顯示地址
+        const formattedAddressField = document.getElementById('formattedAddress');
+        if (formattedAddressField) {
+            formattedAddressField.value = businessData.address;
+        }
+        
+        // 使用地址獲取座標並更新地圖
+        geocodeAddress(businessData.address);
     }
-    
-    // 新增：檢查是否需要提醒店家設定位置
-    checkLocationData();
     
     // 獲取地標拖動後的位置
     google.maps.event.addListener(marker, 'dragend', function() {
@@ -3150,8 +3158,12 @@ function initMap() {
         updateLocationFields(position);
         
         // 根據經緯度取得地址
+        const formattedAddressField = document.getElementById('formattedAddress');
         if (geocoder && formattedAddressField) {
-            geocoder.geocode({ location: position }, function(results, status) {
+            geocoder.geocode({ 
+                location: position,
+                language: 'zh-TW' // 確保返回繁體中文
+            }, function(results, status) {
                 if (status === 'OK' && results[0]) {
                     formattedAddressField.value = results[0].formatted_address;
                 }
@@ -3179,13 +3191,20 @@ function initMap() {
     }
 }
 
-// 新增：根據地址獲取地理位置
+// 根據地址獲取地理位置
 function geocodeAddress(address) {
     if (!geocoder || !address) return;
     
     showAlert("根據地址定位中...", "info");
     
-    geocoder.geocode({ address: address }, function(results, status) {
+    // 設定 geocoding 選項，確保返回繁體中文
+    const geocodingOptions = {
+        address: address,
+        region: 'tw',     // 地區設為台灣
+        language: 'zh-TW' // 語言設為繁體中文
+    };
+    
+    geocoder.geocode(geocodingOptions, function(results, status) {
         if (status === 'OK' && results[0]) {
             const position = results[0].geometry.location;
             
@@ -3196,26 +3215,25 @@ function geocodeAddress(address) {
             // 更新座標欄位
             updateLocationFields(position);
             
+            // 使用返回的繁體中文地址更新地址欄位
+            const formattedAddressField = document.getElementById('formattedAddress');
+            if (formattedAddressField) {
+                formattedAddressField.value = results[0].formatted_address;
+            }
+            
             showAlert("已根據地址自動設定位置，請點擊「儲存位置」按鈕確認", "success");
         } else {
-            showAlert('無法根據地址定位，請手動設定位置', 'warning');
+            showAlert('無法根據地址定位，請手動設定位置或嘗試更詳細的地址', 'warning');
         }
     });
 }
 
-// 新增：檢查位置資料，如有需要則提示用戶
+// 檢查位置資料，如有需要則提示用戶
 function checkLocationData() {
     // 檢查是否缺少位置資料
     if (!businessData || !businessData.position || !businessData.position.geopoint) {
-        // 如果沒有位置資料，但有地址，則根據地址自動定位
-        if (businessData && businessData.address) {
-            showAlert("店家尚未設定精確定位，系統將根據已有地址自動定位", "warning", 5000);
-            setTimeout(() => {
-                geocodeAddress(businessData.address);
-            }, 1000); // 延遲一秒以確保提示訊息先顯示
-        } else {
-            showAlert("請設定店家位置以提升在APP中的推薦曝光度", "warning", 5000);
-        }
+        // 顯示提醒訊息，要求店家設定位置
+        showAlert("請設定店家位置資訊以提升在APP中的曝光度", "warning", 6000);
     }
 }
 
@@ -3235,10 +3253,10 @@ function searchLocation() {
     
     showAlert("搜尋地址中...", "info");
     
-    // 增加在地化參數，提高台灣地址的搜尋準確度
+    // 增加在地化參數，提高台灣地址的搜尋準確度並確保繁體中文
     const geocodingOptions = {
         address: address,
-        region: 'tw', // 設定搜尋區域為台灣
+        region: 'tw',     // 設定搜尋區域為台灣
         language: 'zh-TW' // 設定返回結果語言為繁體中文
     };
     
@@ -3255,6 +3273,7 @@ function searchLocation() {
             
             const formattedAddressField = document.getElementById('formattedAddress');
             if (formattedAddressField) {
+                // 使用繁體中文地址
                 formattedAddressField.value = results[0].formatted_address;
             }
             
