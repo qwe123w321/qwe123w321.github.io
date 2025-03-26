@@ -5,7 +5,7 @@ import { auth, signOut } from './firebase-config.js';
 
 // 會話配置
 const SESSION_CONFIG = {
-  TIMEOUT: 1 * 60 * 1000, // 60分鐘 (可依需求調整)
+  TIMEOUT: 60 * 60 * 1000, // 60分鐘 (可依需求調整)
   ACTIVITY_EVENTS: ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart']
 };
 
