@@ -3194,7 +3194,8 @@ async function initMap() {
     }
     else{
         console.log("資料庫中無任何地址資料");
-        console.log("businessData");
+        console.log(businessData);
+        console.log(businessData.type);
     }
     
     // 搜尋地址按鈕事件
