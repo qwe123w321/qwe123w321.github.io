@@ -1588,7 +1588,7 @@ function updateMenuItemsList(menuItemsByCategory) {
 }
 
 // 添加商品項目相關事件
-ffunction addMenuItemsEvents() {
+function addMenuItemsEvents() {
     // 使用事件委派方式處理所有按鈕交互
     const categoryList = document.getElementById("categoryList");
     if (categoryList) {
