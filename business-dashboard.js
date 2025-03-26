@@ -77,21 +77,6 @@ function initAfterAuth() {
     // 營業時間初始化
     initBusinessHours();
     
-    // 確保只有當地圖容器存在時才初始化Google Maps
-    if (document.getElementById('mapContainer')) {
-        // 檢查API密鑰問題
-        if (!window.googleMapsInitialized) {
-            loadGoogleMapsAPI();
-            window.googleMapsInitialized = true;
-        }
-    }
-    
-    // 新增：確保地址顯示正確
-    const formattedAddressField = document.getElementById('formattedAddress');
-    if (formattedAddressField && businessData && businessData.address) {
-        formattedAddressField.value = businessData.address;
-    }
-    
     // 綁定各個保存按鈕
     bindSaveButtons();
 }
@@ -328,6 +313,21 @@ async function loadBusinessData(force = false) {
         console.error("載入店家資料錯誤:", error);
         showAlert("載入資料時發生錯誤，請稍後再試", "danger");
         hidePageLoading();
+    }
+
+    // 確保只有當地圖容器存在時才初始化Google Maps
+    if (document.getElementById('mapContainer')) {
+        // 檢查API密鑰問題
+        if (!window.googleMapsInitialized) {
+            loadGoogleMapsAPI();
+            window.googleMapsInitialized = true;
+        }
+    }
+    
+    // 新增：確保地址顯示正確
+    const formattedAddressField = document.getElementById('formattedAddress');
+    if (formattedAddressField && businessData && businessData.address) {
+        formattedAddressField.value = businessData.address;
     }
 }
 
