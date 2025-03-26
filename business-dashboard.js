@@ -3539,7 +3539,7 @@ function showAlert(message, type = "success", duration = 3000) {
     alertDiv.style.left = '50%';
     alertDiv.style.transform = 'translateX(-50%)';
     alertDiv.style.zIndex = '9999';
-    alertDiv.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+    alertDiv.style.boxShadow = '0 4px 8px rgba(0,0,0,0.6)';
     alertDiv.style.minWidth = '300px';
     alertDiv.style.maxWidth = '80%';
     alertDiv.role = 'alert';
