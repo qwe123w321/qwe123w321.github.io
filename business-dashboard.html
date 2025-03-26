@@ -1445,18 +1445,34 @@
                             </div>
                             
                             <div class="mb-3">
-                                <label for="promotionCode" class="form-label">優惠代碼 <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="promotionCode" placeholder="例如：COFFEE50" required>
-                                    <button class="btn btn-outline-secondary" type="button" id="generateCodeBtn">
-                                        <i class="fas fa-sync-alt"></i> 產生隨機代碼
-                                    </button>
+                                <label class="form-label">適用對象</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="targetAudience" id="allUsers" value="all" checked>
+                                    <label class="form-check-label" for="allUsers">
+                                        目前店內活動（所有顧客）
+                                    </label>
                                 </div>
-                                <div class="form-text">優惠代碼用於顧客兌換優惠，建議使用好記的代碼</div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="targetAudience" id="brewdateUsers" value="brewdate">
+                                    <label class="form-check-label" for="brewdateUsers">
+                                        <strong>僅限BREWDATE用戶</strong>
+                                        <span class="badge bg-primary ms-2">推薦</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="statsEnabled" checked>
+                                    <label class="form-check-label" for="statsEnabled">
+                                        啟用優惠使用統計和分析
+                                    </label>
+                                </div>
+                                <div class="form-text">收集優惠使用數據，了解優惠的效果和吸引客戶的表現</div>
                             </div>
                             
                             <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-primary" id="createPromotionBtn">建立優惠</button>
+                                <button type="submit" class="btn btn-primary">建立優惠</button>
                                 <button type="button" class="btn btn-outline-secondary" id="resetPromotionForm">取消</button>
                             </div>
                         </form>
@@ -1465,7 +1481,7 @@
                 
                 <!-- 現有優惠列表 -->
                 <div class="dashboard-card mt-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="card-header">
                         <h5>現有優惠</h5>
                         <div>
                             <span class="badge bg-success promotion-active-count">0 個進行中</span>
@@ -1493,16 +1509,18 @@
                                     <tr>
                                         <th>名稱</th>
                                         <th>類型</th>
-                                        <th>優惠代碼</th>
+                                        <th>適用對象</th>
                                         <th>有效期</th>
                                         <th>狀態</th>
+                                        <th>瀏覽次數</th>
+                                        <th>使用次數</th>
                                         <th>操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="promotionsTableBody">
                                     <!-- 優惠列表將由JavaScript填充 -->
                                     <tr class="text-center">
-                                        <td colspan="6" class="py-4">
+                                        <td colspan="8" class="py-4">
                                             <div class="spinner-border text-primary" role="status">
                                                 <span class="visually-hidden">載入中...</span>
                                             </div>
@@ -1511,6 +1529,50 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 優惠數據分析 -->
+                <div class="dashboard-card mt-4">
+                    <div class="card-header">
+                        <h5>優惠效益分析</h5>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-secondary active" data-period="7">7天</button>
+                            <button class="btn btn-sm btn-outline-secondary" data-period="30">30天</button>
+                            <button class="btn btn-sm btn-outline-secondary" data-period="90">3個月</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div id="promotionUsageChart" style="height: 300px;"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="card-title">優惠使用統計</h6>
+                                        <ul class="list-group list-group-flush">
+                                            <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent border-0">
+                                                總優惠使用次數
+                                                <span class="badge bg-primary rounded-pill" id="totalPromotionUsage">0</span>
+                                            </li>
+                                            <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent border-0">
+                                                平均每日使用次數
+                                                <span class="badge bg-info rounded-pill" id="avgDailyUsage">0</span>
+                                            </li>
+                                            <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent border-0">
+                                                通過APP帶來的顧客
+                                                <span class="badge bg-success rounded-pill" id="appGeneratedCustomers">0</span>
+                                            </li>
+                                            <li class="list-group-item d-flex justify-content-between align-items-center bg-transparent border-0">
+                                                最熱門優惠
+                                                <span class="text-primary" id="mostPopularPromotion">-</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1600,52 +1662,6 @@
                         
                         <button type="submit" class="btn btn-primary">儲存通知設定</button>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 優惠券 QR Code 模態框 -->
-    <div class="modal fade" id="qrCodeModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">優惠兌換碼</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body text-center">
-                    <h6 class="mb-3" id="qrPromotionTitle"></h6>
-                    <div class="mb-3">
-                        <div id="qrcode" class="d-inline-block border p-2 rounded"></div>
-                    </div>
-                    <div class="mb-3">
-                        <p class="mb-1 text-muted small">優惠碼</p>
-                        <div class="d-flex align-items-center justify-content-center">
-                            <h4 class="text-monospace mb-0 me-2" id="qrPromotionCode"></h4>
-                            <button class="btn btn-sm btn-outline-primary copy-code-btn">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <p class="mb-1 text-muted small">短連結</p>
-                        <div class="d-flex align-items-center justify-content-center">
-                            <div class="form-control-plaintext text-center me-2" id="qrPromotionLink"></div>
-                            <button class="btn btn-sm btn-outline-primary copy-link-btn">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="alert alert-info mt-3">
-                        <i class="fas fa-info-circle me-2"></i>
-                        客戶可通過APP掃描此QR碼或輸入優惠碼來獲取此優惠
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
-                    <button type="button" class="btn btn-primary" id="downloadQRBtn">
-                        <i class="fas fa-download me-2"></i>下載QR碼
-                    </button>
                 </div>
             </div>
         </div>
