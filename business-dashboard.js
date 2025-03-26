@@ -3151,7 +3151,7 @@ async function initMap() {
         }
     } 
     // 如果沒有座標但有地址，使用地址定位
-    else if (businessData && businessData.get('address')) {
+    else if (businessData && businessData.address) {
         console.log("使用資料庫中的地址資料進行地圖定位");
         
         // 先顯示已有地址
@@ -3194,6 +3194,7 @@ async function initMap() {
     }
     else{
         console.log("資料庫中無任何地址資料");
+        console.log("businessData");
     }
     
     // 搜尋地址按鈕事件
