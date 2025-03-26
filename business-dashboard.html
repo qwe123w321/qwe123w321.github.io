@@ -31,7 +31,7 @@
         import firebaseCompat from './firebase-compat.js';
         // 導入 App Check 攔截器
         import { installXHRInterceptor, installFetchInterceptor } from './app-check-module.js';
-        
+
         import { setupSessionManager } from './session-manager.js';
         // 等待頁面加載完成後初始化會話管理器
         document.addEventListener('DOMContentLoaded', function() {
@@ -1025,7 +1025,7 @@
                     <a href="#promotions"><i class="fas fa-ticket-alt"></i> 優惠管理</a>
                 </li>
                 <li>
-                    <a href="#settings"><i class="fas fa-cog"></i> 設定</a>
+                    <a href="#settings"><i class="fas fa-cog"></i> 帳戶設定</a>
                 </li>
                 <li>
                     <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> 登出</a>
@@ -1047,7 +1047,7 @@
                         <span id="businessName">載入中... <i class="fas fa-chevron-down"></i></span>
                     </button>
                     <ul class="dropdown-menu" aria-labelledby="userDropdown">
-                        <li><a class="dropdown-item" href="#profile"><i class="fas fa-user"></i> 店家資料</a></li>
+                        <li><a class="dropdown-item" href="#profile"><i class="fas fa-user"></i> 店家資訊</a></li>
                         <li><a class="dropdown-item" href="#settings"><i class="fas fa-cog"></i> 帳戶設定</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> 登出</a></li>
@@ -1626,7 +1626,8 @@
                                 <div class="col-md-6">
                                     <div class="mb-3">
                                         <label for="accountEmail" class="form-label">電子郵件</label>
-                                        <input type="email" class="form-control" id="accountEmail" disabled placeholder="電子郵件會自動載入">
+                                        <input type="email" class="form-control" id="accountEmail" disabled>
+                                        <div class="form-text text-muted">註冊時使用的電子郵件地址</div>
                                     </div>
                                     <div class="mb-3">
                                         <label for="accountName" class="form-label">管理者姓名</label>
@@ -1636,39 +1637,10 @@
                                         <label for="accountPhone" class="form-label">管理者電話</label>
                                         <input type="tel" class="form-control" id="accountPhone" placeholder="請輸入管理者電話">
                                     </div>
-                                    <div class="mb-3">
-                                        <label for="accountPosition" class="form-label">職位</label>
-                                        <input type="text" class="form-control" id="accountPosition" placeholder="請輸入職位">
-                                    </div>
                                 </div>
                             </div>
                             
                             <button type="submit" class="btn btn-primary">更新帳戶資料</button>
-                        </form>
-                    </div>
-                </div>
-                
-                <!-- 密碼變更 -->
-                <div class="dashboard-card mt-4">
-                    <div class="card-header">
-                        <h5>變更密碼</h5>
-                    </div>
-                    <div class="card-body">
-                        <form>
-                            <div class="mb-3">
-                                <label for="currentPassword" class="form-label">目前密碼</label>
-                                <input type="password" class="form-control" id="currentPassword">
-                            </div>
-                            <div class="mb-3">
-                                <label for="newPassword" class="form-label">新密碼</label>
-                                <input type="password" class="form-control" id="newPassword">
-                                <div class="form-text">密碼長度至少8個字符，必須包含數字和字母</div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="confirmPassword" class="form-label">確認新密碼</label>
-                                <input type="password" class="form-control" id="confirmPassword">
-                            </div>
-                            <button type="submit" class="btn btn-primary">更新密碼</button>
                         </form>
                     </div>
                 </div>
