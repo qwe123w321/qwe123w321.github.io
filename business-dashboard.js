@@ -32,12 +32,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Firebase Auth 未正確初始化');
             showAlert('加載錯誤，請重新整理頁面', 'danger');
         }
-        // 在認證完成後初始化優惠管理模塊
-        document.addEventListener('user-authenticated', function() {
-            setTimeout(() => {
-                initPromotionsModule();
-            }, 1000);
-        });
     });
     setupSessionTimeoutHandler();
 });
@@ -88,6 +82,9 @@ function initAfterAuth() {
 
     // 綁定帳號設定表單
     bindAccountSettingsForm();
+
+    // 初始化優惠表單
+    initPromotionForm()
 }
 
 // 綁定保存按鈕
