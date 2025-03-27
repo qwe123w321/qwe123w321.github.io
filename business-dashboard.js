@@ -1142,13 +1142,13 @@ function showViewPromotionModal(promotionId, promotion) {
                             <div class="col-6">
                                 <div class="card text-center p-3">
                                     <h3 class="mb-0">${promotion.viewCount || 0}</h3>
-                                    <p class="text-muted mb-0">瀏覽次數</p>
+                                    <p class="text-muted mb-0">瀏覽次數(此為模擬)</p>
                                 </div>
                             </div>
                             <div class="col-6">
                                 <div class="card text-center p-3">
                                     <h3 class="mb-0">${promotion.usageCount || 0}</h3>
-                                    <p class="text-muted mb-0">使用次數</p>
+                                    <p class="text-muted mb-0">使用次數(此為模擬)</p>
                                 </div>
                             </div>
                         </div>
