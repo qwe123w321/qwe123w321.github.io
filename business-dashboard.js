@@ -344,6 +344,9 @@ async function loadBusinessData(force = false) {
 function initPromotionForm() {
     const promotionForm = document.getElementById('promotionForm');
     if (promotionForm) {
+        // 確保表單不會自動提交
+        promotionForm.setAttribute('onsubmit', 'return false;');
+        
         // 設置當前日期為默認開始日期
         const promotionStart = document.getElementById('promotionStart');
         const today = new Date();
@@ -354,12 +357,12 @@ function initPromotionForm() {
         const endDate = new Date();
         endDate.setDate(today.getDate() + 30);
         promotionEnd.value = formatDateForInput(endDate);
-        
-        // 按鈕點擊事件
-        const createPromotionBtn = document.getElementById('createPromotionBtn');
-        if (createPromotionBtn) {
-            createPromotionBtn.addEventListener('click', async function() {
-                await createPromotion();
+     
+        // 改用按鈕點擊事件
+        const createBtn = document.getElementById('createPromotionBtn');
+        if (createBtn) {
+            createBtn.addEventListener('click', function() {
+                createPromotion();  // 注意：沒有使用 await
             });
         }
         
@@ -414,6 +417,12 @@ function formatDateForInput(date) {
 
 // 建立新優惠
 async function createPromotion() {
+    // 先防止表單提交引起的頁面重新加載
+    const form = document.getElementById('promotionForm');
+    if (form) {
+        form.onsubmit = function() { return false; };
+    }
+    
     try {
         showPageLoading("正在建立優惠...");
         
@@ -430,8 +439,10 @@ async function createPromotion() {
         const description = document.getElementById('promotionDesc').value;
         const startDateStr = document.getElementById('promotionStart').value;
         const endDateStr = document.getElementById('promotionEnd').value;
-        const targetAudience = document.querySelector('input[name="targetAudience"]:checked').value;
-        const statsEnabled = document.getElementById('statsEnabled').checked;
+        const targetAudienceEl = document.querySelector('input[name="targetAudience"]:checked');
+        const targetAudience = targetAudienceEl ? targetAudienceEl.value : 'all';
+        const statsEnabledEl = document.getElementById('statsEnabled');
+        const statsEnabled = statsEnabledEl ? statsEnabledEl.checked : false;
         
         // 驗證必填字段
         if (!title || !type || !description || !startDateStr || !endDateStr) {
@@ -469,18 +480,35 @@ async function createPromotion() {
             updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        // 保存到Firestore
-        const docRef = await window.db.collection("promotions").add(promotionData);
-        console.log("優惠已創建，ID:", docRef.id);
-        
-        // 重置表單
-        document.getElementById('promotionForm').reset();
-        
-        // 重新載入優惠列表
-        await loadPromotions();
-        
-        hidePageLoading();
-        showAlert("優惠已成功創建", "success");
+        // 保存到Firestore - 使用 try-catch 單獨捕獲這一步的錯誤
+        try {
+            const docRef = await window.db.collection("promotions").add(promotionData);
+            console.log("優惠已創建，ID:", docRef.id);
+            
+            // 重置表單
+            if (form) form.reset();
+            
+            // 重新設置日期欄位
+            if (document.getElementById('promotionStart')) {
+                document.getElementById('promotionStart').value = formatDateForInput(new Date());
+            }
+            
+            if (document.getElementById('promotionEnd')) {
+                const newEndDate = new Date();
+                newEndDate.setDate(new Date().getDate() + 30);
+                document.getElementById('promotionEnd').value = formatDateForInput(newEndDate);
+            }
+            
+            // 重新載入優惠列表
+            await loadPromotions();
+            
+            hidePageLoading();
+            showAlert("優惠已成功創建", "success");
+        } catch (firebaseError) {
+            console.error("Firebase 錯誤:", firebaseError);
+            hidePageLoading();
+            showAlert("寫入資料庫時發生錯誤: " + firebaseError.message, "danger");
+        }
     } catch (error) {
         console.error("創建優惠失敗:", error);
         hidePageLoading();
