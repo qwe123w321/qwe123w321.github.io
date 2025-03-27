@@ -32,6 +32,12 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Firebase Auth 未正確初始化');
             showAlert('加載錯誤，請重新整理頁面', 'danger');
         }
+        // 在認證完成後初始化優惠管理模塊
+        document.addEventListener('user-authenticated', function() {
+            setTimeout(() => {
+                initPromotionsModule();
+            }, 1000);
+        });
     });
     setupSessionTimeoutHandler();
 });
@@ -334,6 +340,238 @@ async function loadBusinessData(force = false) {
     }
 }
 
+// 初始化優惠表單
+function initPromotionForm() {
+    const promotionForm = document.getElementById('promotionForm');
+    if (promotionForm) {
+        // 設置當前日期為默認開始日期
+        const promotionStart = document.getElementById('promotionStart');
+        const today = new Date();
+        promotionStart.value = formatDateForInput(today);
+        
+        // 設置默認結束日期為30天後
+        const promotionEnd = document.getElementById('promotionEnd');
+        const endDate = new Date();
+        endDate.setDate(today.getDate() + 30);
+        promotionEnd.value = formatDateForInput(endDate);
+        
+        // 綁定表單提交事件
+        promotionForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            await createPromotion();
+        });
+        
+        // 綁定重置按鈕
+        const resetBtn = document.getElementById('resetPromotionForm');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function() {
+                promotionForm.reset();
+                promotionStart.value = formatDateForInput(new Date());
+                
+                const newEndDate = new Date();
+                newEndDate.setDate(new Date().getDate() + 30);
+                promotionEnd.value = formatDateForInput(newEndDate);
+            });
+        }
+    }
+    
+    // 綁定搜索按鈕
+    const searchBtn = document.getElementById('searchPromotionBtn');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', function() {
+            searchPromotions();
+        });
+    }
+    
+    // 綁定過濾下拉框
+    const filterSelect = document.getElementById('promotionFilter');
+    if (filterSelect) {
+        filterSelect.addEventListener('change', function() {
+            searchPromotions();
+        });
+    }
+    
+    // 綁定搜索框
+    const searchInput = document.getElementById('promotionSearch');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                searchPromotions();
+            }
+        });
+    }
+}
+
+// 格式化日期為input[type=date]接受的格式
+function formatDateForInput(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+
+// 如果認證已完成，直接初始化優惠管理模塊
+if (currentUser) {
+    setTimeout(() => {
+        initPromotionsModule();
+    }, 1000);
+}
+
+// 建立新優惠
+async function createPromotion() {
+    try {
+        showPageLoading("正在建立優惠...");
+        
+        // 驗證用戶是否登入
+        if (!currentUser || !currentUser.uid) {
+            hidePageLoading();
+            showAlert("請先登入", "danger");
+            return;
+        }
+        
+        // 收集表單數據
+        const title = document.getElementById('promotionTitle').value;
+        const type = document.getElementById('promotionType').value;
+        const description = document.getElementById('promotionDesc').value;
+        const startDateStr = document.getElementById('promotionStart').value;
+        const endDateStr = document.getElementById('promotionEnd').value;
+        const targetAudience = document.querySelector('input[name="targetAudience"]:checked').value;
+        const statsEnabled = document.getElementById('statsEnabled').checked;
+        
+        // 驗證必填字段
+        if (!title || !type || !description || !startDateStr || !endDateStr) {
+            hidePageLoading();
+            showAlert("請填寫所有必填字段", "warning");
+            return;
+        }
+        
+        // 解析日期
+        const startDate = new Date(startDateStr);
+        const endDate = new Date(endDateStr);
+        endDate.setHours(23, 59, 59, 999); // 設置結束日期為當天結束
+        
+        // 驗證日期
+        if (startDate > endDate) {
+            hidePageLoading();
+            showAlert("結束日期必須晚於開始日期", "warning");
+            return;
+        }
+        
+        // 準備優惠數據
+        const promotionData = {
+            businessId: currentUser.uid,
+            title: title,
+            type: type,
+            description: description,
+            startDate: window.firebase.firestore.Timestamp.fromDate(startDate),
+            endDate: window.firebase.firestore.Timestamp.fromDate(endDate),
+            targetAudience: targetAudience,
+            isActive: true,
+            viewCount: 0,
+            usageCount: 0,
+            statsEnabled: statsEnabled,
+            createdAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // 獲取店家資訊，添加到優惠數據中
+        if (businessData) {
+            promotionData.businessName = businessData.businessName || businessData.name || "未命名店家";
+            
+            // 添加位置信息（如果有）
+            if (businessData.position && businessData.position.geopoint) {
+                promotionData.location = {
+                    geopoint: businessData.position.geopoint
+                };
+                
+                if (businessData.position.geohash) {
+                    promotionData.location.geohash = businessData.position.geohash;
+                }
+            }
+            
+            // 添加地址
+            if (businessData.address) {
+                promotionData.address = businessData.address;
+            }
+            
+            // 添加店家圖片
+            if (businessData.imageUrl) {
+                promotionData.businessImageUrl = businessData.imageUrl;
+            }
+            
+            // 添加店家類型
+            if (businessData.businessType) {
+                promotionData.businessType = businessData.businessType;
+            }
+        }
+        
+        // 保存到Firestore
+        const docRef = await window.db.collection("promotions").add(promotionData);
+        console.log("優惠已創建，ID:", docRef.id);
+        
+        // 重置表單
+        document.getElementById('promotionForm').reset();
+        
+        // 重新載入優惠列表
+        await loadPromotions();
+        
+        hidePageLoading();
+        showAlert("優惠已成功創建", "success");
+    } catch (error) {
+        console.error("創建優惠失敗:", error);
+        hidePageLoading();
+        showAlert("創建優惠失敗: " + error.message, "danger");
+    }
+}
+
+// 搜索優惠
+async function searchPromotions() {
+    try {
+        const searchText = document.getElementById('promotionSearch').value.trim().toLowerCase();
+        const filterValue = document.getElementById('promotionFilter').value;
+        
+        // 獲取所有優惠
+        const promotionsSnapshot = await window.db.collection("promotions")
+            .where("businessId", "==", currentUser.uid)
+            .orderBy("createdAt", "desc")
+            .get();
+        
+        const allPromotions = [];
+        promotionsSnapshot.forEach(doc => {
+            allPromotions.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+        
+        // 根據搜索文本和過濾條件過濾優惠
+        const filteredPromotions = allPromotions.filter(promotion => {
+            // 首先過濾搜索文本
+            const matchesSearchText = searchText === '' || 
+                promotion.title.toLowerCase().includes(searchText) ||
+                promotion.description.toLowerCase().includes(searchText);
+            
+            // 然後過濾狀態
+            const isActive = isPromotionActive(promotion);
+            const matchesFilter = 
+                filterValue === 'all' || 
+                (filterValue === 'active' && isActive) || 
+                (filterValue === 'inactive' && !isActive);
+            
+            return matchesSearchText && matchesFilter;
+        });
+        
+        // 更新UI
+        updatePromotionsList(filteredPromotions);
+    } catch (error) {
+        console.error("搜索優惠失敗:", error);
+        showAlert("搜索優惠失敗: " + error.message, "danger");
+    }
+}
+
+
+// 加載所有優惠
 async function loadPromotions() {
     try {
         console.log("開始加載優惠列表");
@@ -354,20 +592,28 @@ async function loadPromotions() {
                 promotionsTableBody.innerHTML = `
                     <tr class="text-center">
                         <td colspan="8" class="py-4">
-                            <div class="text-center">
-                                <i class="fas fa-ticket-alt fa-3x mb-3 text-muted"></i>
-                                <p class="text-muted">尚無優惠活動，請點擊「建立優惠」按鈕創建您的第一個優惠活動</p>
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">載入中...</span>
                             </div>
+                            <p class="mt-2 text-muted">載入優惠列表...</p>
                         </td>
                     </tr>
                 `;
             }
             
             // 初始化统计数据
-            document.getElementById('totalPromotionUsage').textContent = "0";
-            document.getElementById('avgDailyUsage').textContent = "0";
-            document.getElementById('appGeneratedCustomers').textContent = "0";
-            document.getElementById('mostPopularPromotion').textContent = "-";
+            if (document.getElementById('totalPromotionUsage')) {
+                document.getElementById('totalPromotionUsage').textContent = "0";
+            }
+            if (document.getElementById('avgDailyUsage')) {
+                document.getElementById('avgDailyUsage').textContent = "0";
+            }
+            if (document.getElementById('appGeneratedCustomers')) {
+                document.getElementById('appGeneratedCustomers').textContent = "0";
+            }
+            if (document.getElementById('mostPopularPromotion')) {
+                document.getElementById('mostPopularPromotion').textContent = "-";
+            }
             
             // 初始化使用图表
             initEmptyPromotionChart();
@@ -395,6 +641,8 @@ async function loadPromotions() {
             updatePromotionsList(promotions);
         } else {
             console.log("沒有找到優惠活動");
+            // 顯示空列表
+            updatePromotionsList([]);
         }
     } catch (error) {
         console.error("載入優惠活動錯誤:", error);
@@ -455,6 +703,520 @@ function initEmptyPromotionChart() {
         });
         
         window.promotionChart.render();
+    }
+}
+
+// 更新優惠
+async function updatePromotion(promotionId, updatedData) {
+    try {
+        showPageLoading("更新優惠中...");
+        
+        // 添加更新時間
+        updatedData.updatedAt = window.firebase.firestore.FieldValue.serverTimestamp();
+        
+        // 更新Firestore
+        await window.db.collection("promotions").doc(promotionId).update(updatedData);
+        
+        // 重新載入優惠列表
+        await loadPromotions();
+        
+        hidePageLoading();
+        showAlert("優惠已成功更新", "success");
+    } catch (error) {
+        console.error("更新優惠失敗:", error);
+        hidePageLoading();
+        showAlert("更新優惠失敗: " + error.message, "danger");
+    }
+}
+
+// 編輯優惠
+function editPromotion(promotionId) {
+    // 獲取優惠數據
+    window.db.collection("promotions").doc(promotionId).get()
+        .then(doc => {
+            if (!doc.exists) {
+                showAlert("找不到此優惠", "warning");
+                return;
+            }
+            
+            const promotion = doc.data();
+            
+            // 創建編輯模態框
+            showEditPromotionModal(promotionId, promotion);
+        })
+        .catch(error => {
+            console.error("獲取優惠數據失敗:", error);
+            showAlert("獲取優惠數據失敗", "danger");
+        });
+}
+
+// 顯示編輯優惠模態框
+function showEditPromotionModal(promotionId, promotion) {
+    // 檢查是否已存在相同ID的模態框
+    let modalElement = document.getElementById(`editModal-${promotionId}`);
+    if (modalElement) {
+        // 如果存在，直接顯示
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        return;
+    }
+    
+    // 格式化日期
+    const startDate = promotion.startDate instanceof Date ? 
+        promotion.startDate : 
+        new Date(promotion.startDate.seconds * 1000);
+    
+    const endDate = promotion.endDate instanceof Date ? 
+        promotion.endDate : 
+        new Date(promotion.endDate.seconds * 1000);
+    
+    // 創建模態框HTML
+    const modalHTML = `
+        <div class="modal fade" id="editModal-${promotionId}" tabindex="-1" aria-labelledby="editModalLabel-${promotionId}" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editModalLabel-${promotionId}">編輯優惠</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editForm-${promotionId}">
+                            <div class="mb-3">
+                                <label for="editTitle-${promotionId}" class="form-label">優惠標題</label>
+                                <input type="text" class="form-control" id="editTitle-${promotionId}" value="${promotion.title || ''}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editType-${promotionId}" class="form-label">優惠類型</label>
+                                <select class="form-select" id="editType-${promotionId}" required>
+                                    <option value="discount" ${promotion.type === 'discount' ? 'selected' : ''}>折扣</option>
+                                    <option value="gift" ${promotion.type === 'gift' ? 'selected' : ''}>招待</option>
+                                    <option value="combo" ${promotion.type === 'combo' ? 'selected' : ''}>套餐</option>
+                                    <option value="special" ${promotion.type === 'special' ? 'selected' : ''}>特別優惠</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editDesc-${promotionId}" class="form-label">優惠描述</label>
+                                <textarea class="form-control" id="editDesc-${promotionId}" rows="3" required>${promotion.description || ''}</textarea>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="editStart-${promotionId}" class="form-label">開始日期</label>
+                                        <input type="date" class="form-control" id="editStart-${promotionId}" value="${formatDateForInput(startDate)}" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="editEnd-${promotionId}" class="form-label">結束日期</label>
+                                        <input type="date" class="form-control" id="editEnd-${promotionId}" value="${formatDateForInput(endDate)}" required>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">適用對象</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="editTargetAudience-${promotionId}" id="editAllUsers-${promotionId}" value="all" ${promotion.targetAudience === 'all' ? 'checked' : ''}>
+                                    <label class="form-check-label" for="editAllUsers-${promotionId}">
+                                        目前店內活動（所有顧客）
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="editTargetAudience-${promotionId}" id="editBrewdateUsers-${promotionId}" value="brewdate" ${promotion.targetAudience === 'brewdate' ? 'checked' : ''}>
+                                    <label class="form-check-label" for="editBrewdateUsers-${promotionId}">
+                                        <strong>僅限BREWDATE用戶</strong>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="editActive-${promotionId}" ${promotion.isActive ? 'checked' : ''}>
+                                    <label class="form-check-label" for="editActive-${promotionId}">
+                                        優惠狀態 (啟用/停用)
+                                    </label>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-primary" id="saveEditBtn-${promotionId}">儲存變更</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 添加模態框到頁面
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHTML;
+    document.body.appendChild(modalContainer);
+    
+    // 顯示模態框
+    modalElement = document.getElementById(`editModal-${promotionId}`);
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+    
+    // 綁定儲存按鈕
+    const saveBtn = document.getElementById(`saveEditBtn-${promotionId}`);
+    saveBtn.addEventListener('click', async function() {
+        try {
+            // 收集表單數據
+            const title = document.getElementById(`editTitle-${promotionId}`).value;
+            const type = document.getElementById(`editType-${promotionId}`).value;
+            const description = document.getElementById(`editDesc-${promotionId}`).value;
+            const startDateStr = document.getElementById(`editStart-${promotionId}`).value;
+            const endDateStr = document.getElementById(`editEnd-${promotionId}`).value;
+            const targetAudience = document.querySelector(`input[name="editTargetAudience-${promotionId}"]:checked`).value;
+            const isActive = document.getElementById(`editActive-${promotionId}`).checked;
+            
+            // 驗證必填字段
+            if (!title || !type || !description || !startDateStr || !endDateStr) {
+                showAlert("請填寫所有必填字段", "warning");
+                return;
+            }
+            
+            // 解析日期
+            const startDate = new Date(startDateStr);
+            const endDate = new Date(endDateStr);
+            endDate.setHours(23, 59, 59, 999); // 設置結束日期為當天結束
+            
+            // 準備更新數據
+            const updatedData = {
+                title: title,
+                type: type,
+                description: description,
+                startDate: window.firebase.firestore.Timestamp.fromDate(startDate),
+                endDate: window.firebase.firestore.Timestamp.fromDate(endDate),
+                targetAudience: targetAudience,
+                isActive: isActive
+            };
+            
+            // 更新優惠
+            await updatePromotion(promotionId, updatedData);
+            
+            // 關閉模態框
+            modal.hide();
+        } catch (error) {
+            console.error("儲存編輯失敗:", error);
+            showAlert("儲存編輯失敗: " + error.message, "danger");
+        }
+    });
+}
+
+// 判斷優惠是否進行中
+function isPromotionActive(promotion) {
+    // 檢查isActive屬性
+    if (promotion.isActive === false) {
+        return false;
+    }
+    
+    const now = new Date();
+    
+    // 如果沒有日期，假設結束
+    if (!promotion.startDate || !promotion.endDate) return false;
+    
+    // 轉換日期
+    let startDate, endDate;
+    
+    if (promotion.startDate instanceof Date) {
+        startDate = promotion.startDate;
+    } else if (promotion.startDate.seconds) {
+        // Firestore Timestamp
+        startDate = new Date(promotion.startDate.seconds * 1000);
+    } else {
+        startDate = new Date(promotion.startDate);
+    }
+    
+    if (promotion.endDate instanceof Date) {
+        endDate = promotion.endDate;
+    } else if (promotion.endDate.seconds) {
+        // Firestore Timestamp
+        endDate = new Date(promotion.endDate.seconds * 1000);
+    } else {
+        endDate = new Date(promotion.endDate);
+    }
+    
+    // 設置結束日期到當天結束
+    endDate.setHours(23, 59, 59, 999);
+    
+    return now >= startDate && now <= endDate;
+}
+
+// 格式化優惠類型
+function formatPromotionType(type) {
+    const types = {
+        "discount": "折扣",
+        "gift": "贈品",
+        "combo": "套餐",
+        "special": "特別優惠"
+    };
+    
+    return types[type] || type || "未指定";
+}
+
+// 格式化目標受眾
+function formatTargetAudience(audience) {
+    const audiences = {
+        "all": "目前店內活動",
+        "brewdate": "僅限BREWDATE用戶"
+    };
+    
+    return audiences[audience] || audience || "所有顧客";
+}
+
+// 格式化日期範圍
+function formatDateRange(start, end) {
+    if (!start || !end) return "未設定";
+    
+    // 解析開始日期
+    let startDate;
+    if (start instanceof Date) {
+        startDate = start;
+    } else if (start.seconds) {
+        // Firestore Timestamp
+        startDate = new Date(start.seconds * 1000);
+    } else {
+        startDate = new Date(start);
+    }
+    
+    // 解析結束日期
+    let endDate;
+    if (end instanceof Date) {
+        endDate = end;
+    } else if (end.seconds) {
+        // Firestore Timestamp
+        endDate = new Date(end.seconds * 1000);
+    } else {
+        endDate = new Date(end);
+    }
+    
+    // 格式化
+    const formatDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}/${month}/${day}`;
+    };
+    
+    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+}
+
+// 添加優惠事件監聽器
+function addPromotionEventListeners() {
+    // 查看優惠
+    document.querySelectorAll('.view-promotion').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const promotionId = this.getAttribute('data-id');
+            viewPromotion(promotionId);
+        });
+    });
+    
+    // 編輯優惠
+    document.querySelectorAll('.edit-promotion').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const promotionId = this.getAttribute('data-id');
+            editPromotion(promotionId);
+        });
+    });
+    
+    // 刪除優惠
+    document.querySelectorAll('.delete-promotion').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const promotionId = this.getAttribute('data-id');
+            if (confirm("確定要刪除此優惠嗎？")) {
+                deletePromotion(promotionId);
+            }
+        });
+    });
+}
+
+// 查看優惠詳情
+function viewPromotion(promotionId) {
+    // 獲取優惠數據
+    window.db.collection("promotions").doc(promotionId).get()
+        .then(doc => {
+            if (!doc.exists) {
+                showAlert("找不到此優惠", "warning");
+                return;
+            }
+            
+            const promotion = doc.data();
+            
+            // 創建查看模態框
+            showViewPromotionModal(promotionId, promotion);
+            
+            // 增加查看次數
+            incrementViewCount(promotionId);
+        })
+        .catch(error => {
+            console.error("獲取優惠數據失敗:", error);
+            showAlert("獲取優惠數據失敗", "danger");
+        });
+}
+
+// 顯示查看優惠模態框
+function showViewPromotionModal(promotionId, promotion) {
+    // 檢查是否已存在相同ID的模態框
+    let modalElement = document.getElementById(`viewModal-${promotionId}`);
+    if (modalElement) {
+        // 如果存在，直接顯示
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        return;
+    }
+    
+    // 格式化日期
+    const startDate = promotion.startDate instanceof Date ? 
+        promotion.startDate : 
+        new Date(promotion.startDate.seconds * 1000);
+    
+    const endDate = promotion.endDate instanceof Date ? 
+        promotion.endDate : 
+        new Date(promotion.endDate.seconds * 1000);
+    
+    const formatDate = (date) => {
+        return date.toLocaleDateString('zh-TW', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    };
+    
+    // 獲取狀態
+    const isActive = isPromotionActive(promotion);
+    const statusClass = isActive ? 'success' : 'secondary';
+    const statusText = isActive ? '進行中' : '已結束';
+    
+    // 創建模態框HTML
+    const modalHTML = `
+        <div class="modal fade" id="viewModal-${promotionId}" tabindex="-1" aria-labelledby="viewModalLabel-${promotionId}" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-light">
+                        <h5 class="modal-title" id="viewModalLabel-${promotionId}">
+                            <i class="fas fa-ticket-alt me-2 text-primary"></i>${promotion.title || '未命名優惠'}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <h6 class="text-muted mb-2">優惠類型</h6>
+                                    <p class="lead">${formatPromotionType(promotion.type)}</p>
+                                </div>
+                                <div class="mb-3">
+                                    <h6 class="text-muted mb-2">適用對象</h6>
+                                    <p class="lead">${formatTargetAudience(promotion.targetAudience)}</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <h6 class="text-muted mb-2">有效期間</h6>
+                                    <p class="lead">${formatDate(startDate)} - ${formatDate(endDate)}</p>
+                                </div>
+                                <div class="mb-3">
+                                    <h6 class="text-muted mb-2">狀態</h6>
+                                    <p><span class="badge bg-${statusClass} px-3 py-2">${statusText}</span></p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-2">優惠詳情</h6>
+                            <div class="p-3 bg-light rounded">
+                                <p>${promotion.description || '無優惠詳情'}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div class="card text-center p-3">
+                                    <h3 class="mb-0">${promotion.viewCount || 0}</h3>
+                                    <p class="text-muted mb-0">瀏覽次數</p>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card text-center p-3">
+                                    <h3 class="mb-0">${promotion.usageCount || 0}</h3>
+                                    <p class="text-muted mb-0">使用次數</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            此優惠在APP上向用戶顯示，無需掃描QR碼或輸入驗證碼。用戶直接到店時能直接使用此優惠。
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                        <button type="button" class="btn btn-primary" id="editBtn-${promotionId}">
+                            <i class="fas fa-edit me-1"></i>編輯優惠
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 添加模態框到頁面
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHTML;
+    document.body.appendChild(modalContainer);
+    
+    // 顯示模態框
+    modalElement = document.getElementById(`viewModal-${promotionId}`);
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+    
+    // 綁定編輯按鈕
+    const editBtn = document.getElementById(`editBtn-${promotionId}`);
+    editBtn.addEventListener('click', function() {
+        // 關閉查看模態框
+        modal.hide();
+        
+        // 打開編輯模態框
+        setTimeout(() => {
+            editPromotion(promotionId);
+        }, 500);
+    });
+}
+
+// 增加查看次數
+async function incrementViewCount(promotionId) {
+    try {
+        const promotionRef = window.db.collection("promotions").doc(promotionId);
+        
+        // 使用FieldValue.increment自動增加計數
+        await promotionRef.update({
+            viewCount: window.firebase.firestore.FieldValue.increment(1),
+            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        console.log("優惠查看次數已增加");
+    } catch (error) {
+        console.error("增加查看次數失敗:", error);
+    }
+}
+
+// 增加使用次數
+async function incrementUsageCount(promotionId) {
+    try {
+        const promotionRef = window.db.collection("promotions").doc(promotionId);
+        
+        // 使用FieldValue.increment自動增加計數
+        await promotionRef.update({
+            usageCount: window.firebase.firestore.FieldValue.increment(1),
+            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        console.log("優惠使用次數已增加");
+        
+        // 重新載入優惠列表
+        await loadPromotions();
+    } catch (error) {
+        console.error("增加使用次數失敗:", error);
     }
 }
 
@@ -520,8 +1282,8 @@ function updatePromotionsList(promotions) {
                         <button type="button" class="btn btn-sm btn-outline-primary view-promotion" data-id="${promotion.id}">
                             <i class="fas fa-eye"></i>
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary qr-promotion" data-id="${promotion.id}">
-                            <i class="fas fa-qrcode"></i>
+                        <button type="button" class="btn btn-sm btn-outline-secondary edit-promotion" data-id="${promotion.id}">
+                            <i class="fas fa-edit"></i>
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-danger delete-promotion" data-id="${promotion.id}">
                             <i class="fas fa-trash-alt"></i>
@@ -536,130 +1298,76 @@ function updatePromotionsList(promotions) {
     
     // 添加事件監聽器
     addPromotionEventListeners();
+    
+    // 更新優惠使用統計圖表
+    updatePromotionStatsChart(promotions);
 }
 
-// 判斷優惠是否進行中
-function isPromotionActive(promotion) {
-    const now = new Date();
-    
-    // 如果沒有日期，假設結束
-    if (!promotion.startDate || !promotion.endDate) return false;
-    
-    // 轉換日期
-    let startDate, endDate;
-    
-    if (promotion.startDate instanceof Date) {
-        startDate = promotion.startDate;
-    } else if (promotion.startDate.seconds) {
-        // Firestore Timestamp
-        startDate = new Date(promotion.startDate.seconds * 1000);
-    } else {
-        startDate = new Date(promotion.startDate);
-    }
-    
-    if (promotion.endDate instanceof Date) {
-        endDate = promotion.endDate;
-    } else if (promotion.endDate.seconds) {
-        // Firestore Timestamp
-        endDate = new Date(promotion.endDate.seconds * 1000);
-    } else {
-        endDate = new Date(promotion.endDate);
-    }
-    
-    // 設置結束日期到當天結束
-    endDate.setHours(23, 59, 59, 999);
-    
-    return now >= startDate && now <= endDate;
-}
-
-// 格式化優惠類型
-function formatPromotionType(type) {
-    const types = {
-        "discount": "折扣",
-        "gift": "贈品",
-        "combo": "套餐",
-        "special": "特別優惠"
-    };
-    
-    return types[type] || type || "未指定";
-}
-
-// 格式化目標受眾
-function formatTargetAudience(audience) {
-    const audiences = {
-        "all": "所有顧客",
-        "brewdate": "BREWDATE用戶",
-        "first_visit": "首次造訪顧客"
-    };
-    
-    return audiences[audience] || audience || "所有顧客";
-}
-
-// 格式化日期範圍
-function formatDateRange(start, end) {
-    if (!start || !end) return "未設定";
-    
-    // 解析開始日期
-    let startDate;
-    if (start instanceof Date) {
-        startDate = start;
-    } else if (start.seconds) {
-        // Firestore Timestamp
-        startDate = new Date(start.seconds * 1000);
-    } else {
-        startDate = new Date(start);
-    }
-    
-    // 解析結束日期
-    let endDate;
-    if (end instanceof Date) {
-        endDate = end;
-    } else if (end.seconds) {
-        // Firestore Timestamp
-        endDate = new Date(end.seconds * 1000);
-    } else {
-        endDate = new Date(end);
-    }
-    
-    // 格式化
-    const formatDate = (date) => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}/${month}/${day}`;
-    };
-    
-    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
-}
-
-// 添加優惠事件監聽器
-function addPromotionEventListeners() {
-    // 查看優惠
-    document.querySelectorAll('.view-promotion').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const promotionId = this.getAttribute('data-id');
-            // 實現查看優惠詳情功能
-            showAlert("正在開發此功能", "info");
-        });
-    });
-    
-    // 生成QR碼
-    document.querySelectorAll('.qr-promotion').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const promotionId = this.getAttribute('data-id');
-            openQRCodeModal(promotionId);
-        });
-    });
-    
-    // 刪除優惠
-    document.querySelectorAll('.delete-promotion').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const promotionId = this.getAttribute('data-id');
-            if (confirm("確定要刪除此優惠嗎？")) {
-                deletePromotion(promotionId);
+// 更新優惠統計圖表
+function updatePromotionStatsChart(promotions) {
+    // 更新圖表
+    if (window.promotionChart && typeof ApexCharts !== 'undefined') {
+        // 獲取當前日期
+        const now = new Date();
+        
+        // 計算過去7天日期
+        const dates = [];
+        const usageCounts = [];
+        
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(now.getDate() - i);
+            dates.push(formatShortDate(date));
+            usageCounts.push(0); // 初始化為0
+        }
+        
+        // 遍歷所有優惠，統計每天使用次數
+        let totalUsage = 0;
+        
+        // TODO: 這裡需要與實際資料結構相匹配
+        // 實際上應該從優惠的使用記錄中統計每天的使用次數
+        
+        // 暫時使用隨機數據展示
+        for (let i = 0; i < usageCounts.length; i++) {
+            usageCounts[i] = Math.floor(Math.random() * 5); // 隨機生成0-4的數字
+            totalUsage += usageCounts[i];
+        }
+        
+        // 更新圖表數據
+        window.promotionChart.updateOptions({
+            xaxis: {
+                categories: dates
             }
         });
-    });
+        
+        window.promotionChart.updateSeries([{
+            name: '使用次數',
+            data: usageCounts
+        }]);
+        
+        // 更新統計數據
+        document.getElementById('totalPromotionUsage').textContent = totalUsage;
+        document.getElementById('avgDailyUsage').textContent = (totalUsage / 7).toFixed(1);
+        document.getElementById('appGeneratedCustomers').textContent = totalUsage;
+        
+        // 找出最熱門優惠
+        let maxUsage = 0;
+        let popularPromotion = "-";
+        
+        promotions.forEach(promotion => {
+            if (promotion.usageCount > maxUsage) {
+                maxUsage = promotion.usageCount;
+                popularPromotion = promotion.title;
+            }
+        });
+        
+        document.getElementById('mostPopularPromotion').textContent = popularPromotion;
+    }
+}
+
+// 格式化簡短日期
+function formatShortDate(date) {
+    return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
 // 開啟QR碼模態框
@@ -723,6 +1431,39 @@ async function deletePromotion(promotionId) {
         hidePageLoading();
         showAlert("刪除優惠失敗: " + error.message, "danger");
     }
+}
+
+// 初始化優惠管理模塊
+function initPromotionsModule() {
+    console.log("初始化優惠管理模塊");
+    
+    // 初始化表單
+    initPromotionForm();
+    
+    // 載入優惠列表
+    loadPromotions();
+    
+    // 綁定圖表時間範圍按鈕
+    const periodButtons = document.querySelectorAll('.btn-group [data-period]');
+    periodButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // 移除其他按鈕的active類
+            periodButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // 添加當前按鈕的active類
+            this.classList.add('active');
+            
+            // 獲取時間範圍
+            const period = parseInt(this.getAttribute('data-period')) || 7;
+            
+            // 更新圖表
+            // TODO: 根據選擇的時間範圍更新圖表數據
+            console.log(`切換圖表時間範圍為 ${period} 天`);
+            
+            // 臨時顯示提示
+            showAlert(`已切換為${period}天數據統計`, "info");
+        });
+    });
 }
 
 function ensureBusinessHoursExist() {
