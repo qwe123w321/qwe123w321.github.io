@@ -355,11 +355,13 @@ function initPromotionForm() {
         endDate.setDate(today.getDate() + 30);
         promotionEnd.value = formatDateForInput(endDate);
         
-        // 綁定表單提交事件
-        promotionForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            await createPromotion();
-        });
+        // 按鈕點擊事件
+        const createPromotionBtn = document.getElementById('createPromotionBtn');
+        if (createPromotionBtn) {
+            createPromotionBtn.addEventListener('click', async function() {
+                await createPromotion();
+            });
+        }
         
         // 綁定重置按鈕
         const resetBtn = document.getElementById('resetPromotionForm');
