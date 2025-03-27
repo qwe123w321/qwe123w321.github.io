@@ -342,28 +342,48 @@ async function loadBusinessData(force = false) {
 
 // 初始化優惠表單
 function initPromotionForm() {
+    console.log("初始化優惠表單");
     const promotionForm = document.getElementById('promotionForm');
+    
+    // 清除所有現有的事件監聽器(如果有的話)
+    const createBtn = document.getElementById('createPromotionBtn');
+    if (createBtn) {
+        const newBtn = createBtn.cloneNode(true);
+        createBtn.parentNode.replaceChild(newBtn, createBtn);
+    }
+    
     if (promotionForm) {
+        // 重置表單以清除可能的狀態
+        promotionForm.reset();
+        
         // 確保表單不會自動提交
         promotionForm.setAttribute('onsubmit', 'return false;');
         
         // 設置當前日期為默認開始日期
         const promotionStart = document.getElementById('promotionStart');
         const today = new Date();
-        promotionStart.value = formatDateForInput(today);
+        if (promotionStart) {
+            promotionStart.value = formatDateForInput(today);
+        }
         
         // 設置默認結束日期為30天後
         const promotionEnd = document.getElementById('promotionEnd');
-        const endDate = new Date();
-        endDate.setDate(today.getDate() + 30);
-        promotionEnd.value = formatDateForInput(endDate);
-     
-        // 改用按鈕點擊事件
+        if (promotionEnd) {
+            const endDate = new Date();
+            endDate.setDate(today.getDate() + 30);
+            promotionEnd.value = formatDateForInput(endDate);
+        }
+        
+        // 獲取新的按鈕引用並重新添加事件
         const createBtn = document.getElementById('createPromotionBtn');
         if (createBtn) {
+            console.log("正在綁定建立優惠按鈕點擊事件");
             createBtn.addEventListener('click', function() {
-                createPromotion();  // 注意：沒有使用 await
+                console.log("點擊建立優惠按鈕");
+                createPromotion();
             });
+        } else {
+            console.error("找不到建立優惠按鈕 (ID: createPromotionBtn)");
         }
         
         // 綁定重置按鈕
@@ -371,13 +391,20 @@ function initPromotionForm() {
         if (resetBtn) {
             resetBtn.addEventListener('click', function() {
                 promotionForm.reset();
-                promotionStart.value = formatDateForInput(new Date());
                 
-                const newEndDate = new Date();
-                newEndDate.setDate(new Date().getDate() + 30);
-                promotionEnd.value = formatDateForInput(newEndDate);
+                if (promotionStart) {
+                    promotionStart.value = formatDateForInput(new Date());
+                }
+                
+                if (promotionEnd) {
+                    const newEndDate = new Date();
+                    newEndDate.setDate(new Date().getDate() + 30);
+                    promotionEnd.value = formatDateForInput(newEndDate);
+                }
             });
         }
+    } else {
+        console.error("找不到優惠表單 (ID: promotionForm)");
     }
     
     // 綁定搜索按鈕
@@ -434,6 +461,7 @@ async function createPromotion() {
         }
         
         // 收集表單數據
+        console.log("收集表單數據");
         const title = document.getElementById('promotionTitle').value;
         const type = document.getElementById('promotionType').value;
         const description = document.getElementById('promotionDesc').value;
@@ -480,37 +508,43 @@ async function createPromotion() {
             updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        // 保存到Firestore - 使用 try-catch 單獨捕獲這一步的錯誤
-        try {
-            const docRef = await window.db.collection("promotions").add(promotionData);
-            console.log("優惠已創建，ID:", docRef.id);
-            
-            // 重置表單
-            if (form) form.reset();
-            
-            // 重新設置日期欄位
-            if (document.getElementById('promotionStart')) {
-                document.getElementById('promotionStart').value = formatDateForInput(new Date());
-            }
-            
-            if (document.getElementById('promotionEnd')) {
-                const newEndDate = new Date();
-                newEndDate.setDate(new Date().getDate() + 30);
-                document.getElementById('promotionEnd').value = formatDateForInput(newEndDate);
-            }
-            
-            // 重新載入優惠列表
-            await loadPromotions();
-            
-            hidePageLoading();
-            showAlert("優惠已成功創建", "success");
-        } catch (firebaseError) {
-            console.error("Firebase 錯誤:", firebaseError);
-            hidePageLoading();
-            showAlert("寫入資料庫時發生錯誤: " + firebaseError.message, "danger");
+        // 保存到Firestore
+        console.log("保存資料到 Firestore");
+        const docRef = await window.db.collection("promotions").add(promotionData);
+        console.log("優惠已創建，ID:", docRef.id);
+        
+        // 重置表單
+        if (form) {
+            form.reset();
         }
+        
+        // 重新設置日期欄位
+        const promotionStart = document.getElementById('promotionStart');
+        if (promotionStart) {
+            promotionStart.value = formatDateForInput(new Date());
+        }
+        
+        const promotionEnd = document.getElementById('promotionEnd');
+        if (promotionEnd) {
+            const newEndDate = new Date();
+            newEndDate.setDate(new Date().getDate() + 30);
+            promotionEnd.value = formatDateForInput(newEndDate);
+        }
+        
+        // 重新載入優惠列表
+        await loadPromotions();
+        
+        hidePageLoading();
+        showAlert("優惠已成功創建", "success");
+        
+        // 重新初始化表單以確保事件處理器重新綁定
+        setTimeout(() => {
+            initPromotionForm();
+        }, 500);
+        
     } catch (error) {
         console.error("創建優惠失敗:", error);
+        console.error("錯誤詳情:", error.stack);
         hidePageLoading();
         showAlert("創建優惠失敗: " + error.message, "danger");
     }
@@ -1407,6 +1441,9 @@ function initPromotionsModule() {
     // 載入優惠列表
     loadPromotions();
     
+    // 添加調試日誌
+    console.log("優惠管理模塊初始化完成，表單和事件處理器已設置");
+
     // 綁定圖表時間範圍按鈕
     const periodButtons = document.querySelectorAll('.btn-group [data-period]');
     periodButtons.forEach(button => {
