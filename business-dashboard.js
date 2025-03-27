@@ -410,14 +410,6 @@ function formatDateForInput(date) {
     return `${year}-${month}-${day}`;
 }
 
-
-// 如果認證已完成，直接初始化優惠管理模塊
-if (currentUser) {
-    setTimeout(() => {
-        initPromotionsModule();
-    }, 1000);
-}
-
 // 建立新優惠
 async function createPromotion() {
     try {
@@ -581,8 +573,6 @@ async function loadPromotions() {
             return;
         }
         
-        const db = window.db;
-        
         // 確保優惠管理區域可見
         const promotionsSection = document.getElementById('promotions-section');
         if (promotionsSection) {
@@ -601,7 +591,7 @@ async function loadPromotions() {
                 `;
             }
             
-            // 初始化统计数据
+            // 初始化統計數據
             if (document.getElementById('totalPromotionUsage')) {
                 document.getElementById('totalPromotionUsage').textContent = "0";
             }
@@ -615,8 +605,11 @@ async function loadPromotions() {
                 document.getElementById('mostPopularPromotion').textContent = "-";
             }
             
-            // 初始化使用图表
-            initEmptyPromotionChart();
+            // 只有在必要時初始化圖表
+            const chartElement = document.getElementById('promotionUsageChart');
+            if (chartElement) {
+                initEmptyPromotionChart();
+            }
         }
         
         // 查詢優惠活動
@@ -626,7 +619,7 @@ async function loadPromotions() {
             .get();
         
         if (!promotionsSnapshot.empty) {
-            // 有优惠数据，更新表格
+            // 有優惠數據，更新表格
             const promotions = [];
             promotionsSnapshot.forEach(doc => {
                 promotions.push({
@@ -655,13 +648,22 @@ function initEmptyPromotionChart() {
     const chartElement = document.getElementById('promotionUsageChart');
     if (!chartElement) return;
     
-    // 檢查是否已存在圖表
-    if (window.promotionChart) {
+    // 檢查是否已存在圖表，使用更可靠的判斷方式
+    if (window.promotionChart && typeof window.promotionChart.dispose === 'function') {
         window.promotionChart.dispose();
+    } else {
+        // 如果不存在或者dispose不是函數，確保清空图表元素
+        chartElement.innerHTML = '';
     }
     
-    // 創建基本圖表
-    if (typeof ApexCharts !== 'undefined') {
+    // 確保 ApexCharts 庫已加載
+    if (typeof ApexCharts === 'undefined') {
+        console.warn("ApexCharts 庫未加載，跳過圖表初始化");
+        return;
+    }
+    
+    try {
+        // 創建基本圖表
         window.promotionChart = new ApexCharts(chartElement, {
             series: [{
                 name: '使用次數',
@@ -702,7 +704,14 @@ function initEmptyPromotionChart() {
             }
         });
         
-        window.promotionChart.render();
+        // 確保 render 方法存在
+        if (typeof window.promotionChart.render === 'function') {
+            window.promotionChart.render();
+        } else {
+            console.warn("ApexCharts 對象缺少 render 方法");
+        }
+    } catch (error) {
+        console.error("初始化圖表時出錯:", error);
     }
 }
 
@@ -1368,50 +1377,6 @@ function updatePromotionStatsChart(promotions) {
 // 格式化簡短日期
 function formatShortDate(date) {
     return `${date.getMonth() + 1}/${date.getDate()}`;
-}
-
-// 開啟QR碼模態框
-function openQRCodeModal(promotionId) {
-    if (typeof QRCode === 'undefined') {
-        showAlert("QR碼生成庫未載入", "warning");
-        return;
-    }
-    
-    // 查找對應的優惠
-    const promotionData = {
-        id: promotionId,
-        title: "測試優惠",
-        code: "TEST" + promotionId.substring(0, 6).toUpperCase()
-    };
-    
-    // 設置模態框內容
-    document.getElementById('qrPromotionTitle').textContent = promotionData.title;
-    document.getElementById('qrPromotionCode').textContent = promotionData.code;
-    document.getElementById('qrPromotionLink').textContent = `https://brewdate.app/p/${promotionData.code}`;
-    
-    // 生成QR碼
-    const qrContainer = document.getElementById('qrcode');
-    if (qrContainer) {
-        qrContainer.innerHTML = '';
-        
-        try {
-            new QRCode(qrContainer, {
-                text: `https://brewdate.app/p/${promotionData.code}`,
-                width: 180,
-                height: 180,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-            });
-        } catch (error) {
-            console.error("生成QR碼失敗:", error);
-            qrContainer.innerHTML = '<div class="alert alert-danger">QR碼生成失敗</div>';
-        }
-    }
-    
-    // 顯示模態框
-    const qrModal = new bootstrap.Modal(document.getElementById('qrCodeModal'));
-    qrModal.show();
 }
 
 // 刪除優惠
