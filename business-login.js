@@ -199,7 +199,7 @@ function addAppCheckWarning() {
     warningDiv.className = 'alert alert-warning alert-dismissible fade show mt-3';
     warningDiv.id = 'appCheckWarning';
     warningDiv.innerHTML = `
-        <strong>注意:</strong> App Check 驗證未完成，這可能導致請求被拒絕。
+        <strong>注意:</strong> App Check 驗證未完成，這可能導致請求被拒絕(請重新整理網頁)。
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="關閉"></button>
         <div class="mt-2">
             <button class="btn btn-sm btn-warning" id="retryAppCheck">重試 App Check 驗證</button>
