@@ -467,37 +467,6 @@ async function createPromotion() {
             updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        // 獲取店家資訊，添加到優惠數據中
-        if (businessData) {
-            promotionData.businessName = businessData.businessName || businessData.name || "未命名店家";
-            
-            // 添加位置信息（如果有）
-            if (businessData.position && businessData.position.geopoint) {
-                promotionData.location = {
-                    geopoint: businessData.position.geopoint
-                };
-                
-                if (businessData.position.geohash) {
-                    promotionData.location.geohash = businessData.position.geohash;
-                }
-            }
-            
-            // 添加地址
-            if (businessData.address) {
-                promotionData.address = businessData.address;
-            }
-            
-            // 添加店家圖片
-            if (businessData.imageUrl) {
-                promotionData.businessImageUrl = businessData.imageUrl;
-            }
-            
-            // 添加店家類型
-            if (businessData.businessType) {
-                promotionData.businessType = businessData.businessType;
-            }
-        }
-        
         // 保存到Firestore
         const docRef = await window.db.collection("promotions").add(promotionData);
         console.log("優惠已創建，ID:", docRef.id);
