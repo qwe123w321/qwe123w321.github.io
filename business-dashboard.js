@@ -2251,6 +2251,9 @@ function updateMenuItemsList(menuItemsByCategory) {
                     <button class="btn btn-sm btn-outline-primary add-product-btn" data-category="${category}">
                         <i class="fas fa-plus"></i> 新增項目
                     </button>
+                    <button class="btn btn-sm btn-outline-secondary edit-category-btn" data-category="${category}">
+                        <i class="fas fa-edit"></i> 修改類別
+                    </button>
                     <button class="btn btn-sm btn-outline-danger delete-category-btn" data-category="${category}">
                         <i class="fas fa-trash-alt"></i>
                     </button>
@@ -2351,10 +2354,50 @@ function addMenuItemsEvents() {
 }
 
 // 事件委派處理函數
+// 事件委派處理函數
 function categoryClickHandler(event) {
     const target = event.target;
     
-    // 處理編輯按鈕點擊
+    // ===== 類別相關操作 =====
+    
+    // 處理編輯類別按鈕點擊
+    if (target.classList.contains("edit-category-btn") || target.closest(".edit-category-btn")) {
+        const btn = target.classList.contains("edit-category-btn") ? target : target.closest(".edit-category-btn");
+        const categoryName = btn.getAttribute("data-category");
+        console.log("編輯類別按鈕被點擊，類別名稱:", categoryName);
+        editCategory(categoryName);
+        event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
+    }
+    
+    // 處理刪除類別按鈕點擊
+    if (target.classList.contains("delete-category-btn") || target.closest(".delete-category-btn")) {
+        const btn = target.classList.contains("delete-category-btn") ? target : target.closest(".delete-category-btn");
+        const category = btn.getAttribute("data-category");
+        if (confirm(`確定要刪除「${category}」類別及其所有項目嗎？`)) {
+            deleteCategory(category);
+        }
+        event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
+    }
+    
+    // 處理添加項目按鈕點擊
+    if (target.classList.contains("add-product-btn") || target.closest(".add-product-btn")) {
+        const btn = target.classList.contains("add-product-btn") ? target : target.closest(".add-product-btn");
+        const category = btn.getAttribute("data-category");
+        const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
+        const form = document.getElementById(formId);
+        
+        if (form) {
+            form.style.display = 'block';
+        }
+        event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
+    }
+    
+    // ===== 項目相關操作 =====
+    
+    // 處理編輯項目按鈕點擊
     if (target.classList.contains("edit-item-btn") || target.closest(".edit-item-btn")) {
         const btn = target.classList.contains("edit-item-btn") ? target : target.closest(".edit-item-btn");
         const itemId = btn.getAttribute("data-id");
@@ -2375,36 +2418,13 @@ function categoryClickHandler(event) {
         return; // 提早返回，防止其他處理邏輯執行
     }
     
-    // 處理刪除類別按鈕點擊
-    if (target.classList.contains("delete-category-btn") || target.closest(".delete-category-btn")) {
-        const btn = target.classList.contains("delete-category-btn") ? target : target.closest(".delete-category-btn");
-        const category = btn.getAttribute("data-category");
-        if (confirm(`確定要刪除「${category}」類別及其所有項目嗎？`)) {
-            deleteCategory(category);
-        }
-        event.stopPropagation(); // 阻止事件冒泡
-        return; // 提早返回，防止其他處理邏輯執行
-    }
+    // ===== 表單相關操作 =====
     
     // 處理儲存項目按鈕點擊
     if (target.classList.contains("save-item-btn") || target.closest(".save-item-btn")) {
         const btn = target.classList.contains("save-item-btn") ? target : target.closest(".save-item-btn");
         const category = btn.getAttribute("data-category");
         saveMenuItem(category);
-        event.stopPropagation(); // 阻止事件冒泡
-        return; // 提早返回，防止其他處理邏輯執行
-    }
-    
-    // 處理添加項目按鈕點擊
-    if (target.classList.contains("add-product-btn") || target.closest(".add-product-btn")) {
-        const btn = target.classList.contains("add-product-btn") ? target : target.closest(".add-product-btn");
-        const category = btn.getAttribute("data-category");
-        const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
-        const form = document.getElementById(formId);
-        
-        if (form) {
-            form.style.display = 'block';
-        }
         event.stopPropagation(); // 阻止事件冒泡
         return; // 提早返回，防止其他處理邏輯執行
     }
