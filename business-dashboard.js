@@ -2673,6 +2673,67 @@ async function editMenuItem(itemId) {
     }
 }
 
+// 更新類別
+async function updateCategory(categoryId) {
+    try {
+        // 獲取表單數據
+        const nameInput = document.getElementById(`edit-category-name-${categoryId}`);
+        const descInput = document.getElementById(`edit-category-desc-${categoryId}`);
+        
+        if (!nameInput) {
+            showAlert("編輯表單欄位不完整", "warning");
+            return;
+        }
+        
+        // 驗證類別名稱
+        if (!nameInput.value.trim()) {
+            showAlert("請填寫類別名稱", "warning");
+            return;
+        }
+        
+        const newCategoryName = nameInput.value.trim();
+        
+        // 檢查新名稱是否與其他類別重複
+        const categoriesSnapshot = await window.db.collection("categories")
+            .where("businessId", "==", currentUser.uid)
+            .get();
+            
+        let isDuplicate = false;
+        categoriesSnapshot.forEach(doc => {
+            // 跳過當前正在編輯的類別
+            if (doc.id !== categoryId && doc.data().name === newCategoryName) {
+                isDuplicate = true;
+            }
+        });
+        
+        if (isDuplicate) {
+            showAlert("已存在相同名稱的類別", "warning");
+            return;
+        }
+        
+        // 顯示載入提示
+        showAlert("更新中...", "info");
+        
+        // 準備更新數據
+        const updateData = {
+            name: newCategoryName,
+            description: descInput ? descInput.value : "",
+            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // 更新Firestore
+        await window.db.collection("categories").doc(categoryId).update(updateData);
+        
+        // 重新加載商品列表
+        await loadMenuItems();
+        
+        showAlert("類別已成功更新", "success");
+    } catch (error) {
+        console.error("更新類別失敗:", error);
+        showAlert("更新類別失敗，請稍後再試", "danger");
+    }
+}
+
 // 更新商品項目
 async function updateMenuItem(itemId) {
     try {
