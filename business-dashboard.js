@@ -2345,28 +2345,26 @@ window.updateCategory = updateCategory;
 async function editCategory(categoryName) {
     try {
         console.log("開始編輯類別:", categoryName);
-        // 獲取類別數據
+        
+        // 方案1: 使用單一 where 查詢，然後在 JavaScript 中篩選結果
         const categoriesSnapshot = await window.db.collection("categories")
             .where("businessId", "==", currentUser.uid)
-            .where("name", "==", categoryName)
             .get();
         
-        if (categoriesSnapshot.empty) {
-            showAlert("找不到此類別", "warning");
-            return;
-        }
-        
-        // 獲取類別文檔
+        // 手動在結果中查找對應名稱的類別
         let categoryDoc = null;
         let categoryId = null;
         
         categoriesSnapshot.forEach(doc => {
-            categoryDoc = doc.data();
-            categoryId = doc.id;
+            // 只處理名稱匹配的文檔
+            if (doc.data().name === categoryName) {
+                categoryDoc = doc.data();
+                categoryId = doc.id;
+            }
         });
         
         if (!categoryDoc) {
-            showAlert("無法獲取類別資料", "warning");
+            showAlert("找不到此類別", "warning");
             return;
         }
         
