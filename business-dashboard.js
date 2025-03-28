@@ -2400,25 +2400,26 @@ async function editCategory(categoryName) {
             <div class="mb-3">
                 <label class="form-label">類別名稱</label>
                 <input type="text" class="form-control" id="edit-category-name-${categoryId}" value="${categoryDoc.name || ''}">
+                <input type="hidden" id="edit-category-oldname-${categoryId}" value="${categoryName}">
             </div>
             <div class="mb-3">
                 <label class="form-label">類別描述</label>
                 <textarea class="form-control" id="edit-category-desc-${categoryId}" rows="2">${categoryDoc.description || ''}</textarea>
             </div>
             <div class="d-flex gap-2">
-                <button type="button" class="btn btn-primary" onclick="updateCategory('${categoryId}', '${categoryName}')">更新類別</button>
-                <button type="button" class="btn btn-outline-secondary cancel-btn">取消</button>
+                <button type="button" class="btn btn-primary" onclick="updateCategory('${categoryId}')">更新類別</button>
+                <button type="button" class="btn btn-outline-secondary cancel-edit-btn">取消</button>
             </div>
         `;
         
         // 插入表單到類別元素中
         categoryElement.appendChild(editForm);
         
-        // 為取消按鈕添加事件監聽器
-        const cancelBtn = editForm.querySelector('.cancel-btn');
+        // 為取消按鈕添加事件
+        const cancelBtn = editForm.querySelector('.cancel-edit-btn');
         if (cancelBtn) {
             cancelBtn.addEventListener('click', function() {
-                editForm.remove(); // 直接移除整個表單
+                editForm.remove();
             });
         }
         
@@ -2682,13 +2683,14 @@ async function editMenuItem(itemId) {
 }
 
 // 更新類別
-async function updateCategory(categoryId, oldCategoryName) {
+async function updateCategory(categoryId) {
     try {
         // 獲取表單數據
         const nameInput = document.getElementById(`edit-category-name-${categoryId}`);
         const descInput = document.getElementById(`edit-category-desc-${categoryId}`);
+        const oldNameInput = document.getElementById(`edit-category-oldname-${categoryId}`);
         
-        if (!nameInput) {
+        if (!nameInput || !oldNameInput) {
             showAlert("編輯表單欄位不完整", "warning");
             return;
         }
@@ -2700,12 +2702,23 @@ async function updateCategory(categoryId, oldCategoryName) {
         }
         
         const newCategoryName = nameInput.value.trim();
+        const oldCategoryName = oldNameInput.value.trim();
         
-        // 如果新舊名稱相同且沒有修改描述，則不進行任何操作
-        if (newCategoryName === oldCategoryName && (!descInput || descInput.value === (await window.db.collection("categories").doc(categoryId).get()).data().description)) {
-            // 移除編輯表單
-            const editForm = document.querySelector(`.edit-category-form`);
+        // 如果新名稱與舊名稱相同且描述沒變，不需要更新
+        const categoryDoc = await window.db.collection("categories").doc(categoryId).get();
+        if (!categoryDoc.exists) {
+            showAlert("找不到此類別", "warning");
+            return;
+        }
+        
+        const currentDesc = categoryDoc.data().description || "";
+        const newDesc = descInput ? descInput.value : "";
+        
+        if (newCategoryName === oldCategoryName && newDesc === currentDesc) {
+            // 關閉編輯表單
+            const editForm = document.querySelector('.edit-category-form');
             if (editForm) editForm.remove();
+            
             showAlert("未進行任何修改", "info");
             return;
         }
@@ -2734,42 +2747,64 @@ async function updateCategory(categoryId, oldCategoryName) {
         // 準備更新數據
         const updateData = {
             name: newCategoryName,
-            description: descInput ? descInput.value : "",
+            description: newDesc,
             updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        // 更新Firestore中的類別文檔
+        // 更新類別
         await window.db.collection("categories").doc(categoryId).update(updateData);
         
-        // 如果類別名稱有變更，還需要更新所有使用此類別的商品項目
+        // 如果類別名稱有變更，需要更新所有使用此類別的商品項目
         if (newCategoryName !== oldCategoryName) {
-            // 查詢使用舊類別名稱的商品項目
+            // 先獲取所有商品項目
             const menuItemsSnapshot = await window.db.collection("menuItems")
                 .where("businessId", "==", currentUser.uid)
-                .where("category", "==", oldCategoryName)
                 .get();
             
-            // 批量更新所有使用此類別的商品項目
-            const batch = window.db.batch();
-            let updatedCount = 0;
-            
+            // 篩選出使用舊類別名稱的項目
+            const itemsToUpdate = [];
             menuItemsSnapshot.forEach(doc => {
-                const itemRef = window.db.collection("menuItems").doc(doc.id);
-                batch.update(itemRef, { 
-                    category: newCategoryName,
-                    updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
-                });
-                updatedCount++;
+                if (doc.data().category === oldCategoryName) {
+                    itemsToUpdate.push({
+                        id: doc.id,
+                        data: doc.data()
+                    });
+                }
             });
             
-            if (updatedCount > 0) {
-                await batch.commit();
-                console.log(`已更新 ${updatedCount} 個商品項目的類別名稱`);
+            // 更新這些項目的類別名稱
+            if (itemsToUpdate.length > 0) {
+                console.log(`需要更新 ${itemsToUpdate.length} 個商品項目的類別名稱`);
+                
+                if (typeof window.db.batch === 'function') {
+                    // 使用批處理更新
+                    const batch = window.db.batch();
+                    
+                    itemsToUpdate.forEach(item => {
+                        const itemRef = window.db.collection("menuItems").doc(item.id);
+                        batch.update(itemRef, {
+                            category: newCategoryName,
+                            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    });
+                    
+                    await batch.commit();
+                } else {
+                    // 如果批處理不可用，逐個更新
+                    for (const item of itemsToUpdate) {
+                        await window.db.collection("menuItems").doc(item.id).update({
+                            category: newCategoryName,
+                            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+                }
+                
+                console.log(`已更新 ${itemsToUpdate.length} 個商品項目的類別名稱`);
             }
         }
         
-        // 移除編輯表單
-        const editForm = document.querySelector(`.edit-category-form`);
+        // 關閉編輯表單
+        const editForm = document.querySelector('.edit-category-form');
         if (editForm) editForm.remove();
         
         // 重新加載商品列表
@@ -2833,6 +2868,7 @@ async function updateMenuItem(itemId) {
 
 // 取消編輯
 function cancelEdit(btn) {
+    // 尋找最近的編輯表單（可能是項目或類別編輯表單）
     const editForm = btn.closest('.edit-form, .edit-category-form');
     if (editForm) {
         editForm.remove();
