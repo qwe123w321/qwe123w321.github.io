@@ -2337,6 +2337,93 @@ function updateMenuItemsList(menuItemsByCategory) {
     addMenuItemsEvents();
 }
 
+// 將函數暴露到全局範圍
+window.editCategory = editCategory;
+window.updateCategory = updateCategory;
+
+// 編輯類別功能
+async function editCategory(categoryName) {
+    try {
+        console.log("開始編輯類別:", categoryName);
+        // 獲取類別數據
+        const categoriesSnapshot = await window.db.collection("categories")
+            .where("businessId", "==", currentUser.uid)
+            .where("name", "==", categoryName)
+            .get();
+        
+        if (categoriesSnapshot.empty) {
+            showAlert("找不到此類別", "warning");
+            return;
+        }
+        
+        // 獲取類別文檔
+        let categoryDoc = null;
+        let categoryId = null;
+        
+        categoriesSnapshot.forEach(doc => {
+            categoryDoc = doc.data();
+            categoryId = doc.id;
+        });
+        
+        if (!categoryDoc) {
+            showAlert("無法獲取類別資料", "warning");
+            return;
+        }
+        
+        console.log("獲取到類別資料:", categoryDoc);
+        
+        // 找到此類別的HTML元素
+        let categoryElement = null;
+        const categoryHeaders = document.querySelectorAll('.product-category h5.mb-0');
+        for (const header of categoryHeaders) {
+            if (header.textContent === categoryName) {
+                categoryElement = header.closest('.product-item');
+                break;
+            }
+        }
+        
+        if (!categoryElement) {
+            showAlert("找不到類別元素", "warning");
+            return;
+        }
+        
+        // 如果已有編輯表單，先移除
+        const existingForm = categoryElement.querySelector('.edit-category-form');
+        if (existingForm) {
+            existingForm.remove();
+        }
+        
+        // 創建編輯表單
+        const editForm = document.createElement('div');
+        editForm.className = 'menu-item-form mt-3 edit-category-form';
+        editForm.style.display = 'block'; // 確保表單顯示
+        editForm.innerHTML = `
+            <h6>編輯「${categoryName}」類別</h6>
+            <div class="mb-3">
+                <label class="form-label">類別名稱</label>
+                <input type="text" class="form-control" id="edit-category-name-${categoryId}" value="${categoryDoc.name || ''}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">類別描述</label>
+                <textarea class="form-control" id="edit-category-desc-${categoryId}" rows="2">${categoryDoc.description || ''}</textarea>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary" onclick="updateCategory('${categoryId}')">更新類別</button>
+                <button type="button" class="btn btn-outline-secondary" onclick="cancelEdit(this)">取消</button>
+            </div>
+        `;
+        
+        // 插入表單到類別元素中
+        categoryElement.appendChild(editForm);
+        
+        // 滾動到表單位置
+        editForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (error) {
+        console.error("載入類別編輯失敗:", error);
+        showAlert("無法載入類別資料，請稍後再試", "danger");
+    }
+}
+
 // 添加商品項目相關事件
 function addMenuItemsEvents() {
     // 使用事件委派方式處理所有按鈕交互
@@ -2353,7 +2440,6 @@ function addMenuItemsEvents() {
     // 綁定取消按鈕 - 這部分交由事件委派處理
 }
 
-// 事件委派處理函數
 // 事件委派處理函數
 function categoryClickHandler(event) {
     const target = event.target;
