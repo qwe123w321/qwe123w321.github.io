@@ -2238,103 +2238,153 @@ function updateMenuItemsList(menuItemsByCategory) {
         return;
     }
     
-    // 為每個類別創建區塊
-    for (const category in menuItemsByCategory) {
-        const items = menuItemsByCategory[category];
-        
-        const categoryElement = document.createElement("div");
-        categoryElement.className = "product-item mb-4";
-        categoryElement.innerHTML = `
-            <div class="product-category d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">${category}</h5>
-                <div class="actions">
-                    <button class="btn btn-sm btn-outline-primary add-product-btn" data-category="${category}">
-                        <i class="fas fa-plus"></i> 新增項目
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary edit-category-btn" data-category="${category}">
-                        <i class="fas fa-edit"></i> 修改類別
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger delete-category-btn" data-category="${category}">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        // 創建項目列表容器
-        const itemsList = document.createElement("div");
-        itemsList.className = "product-item-list";
-        
-        // 添加每個項目
-        items.forEach(item => {
-            const itemElement = document.createElement("div");
-            itemElement.className = "product-subitem mb-2";
-            itemElement.dataset.id = item.id;
+    // 首先，獲取所有類別的詳細信息
+    getCategoryDetails().then(categoryDetails => {
+        // 為每個類別創建區塊
+        for (const category in menuItemsByCategory) {
+            const items = menuItemsByCategory[category];
+            const categoryInfo = categoryDetails[category] || { description: "" };
             
-            itemElement.innerHTML = `
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="product-name fw-bold">${item.name}</span>
-                        ${item.description ? `<p class="mb-0 text-muted small">${item.description}</p>` : ''}
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="text-primary fw-bold">${item.price ? `NT$${item.price}` : ''}</span>
-                        <button class="btn btn-sm btn-outline-secondary edit-item-btn" data-id="${item.id}">
-                            <i class="fas fa-edit"></i>
+            const categoryElement = document.createElement("div");
+            categoryElement.className = "product-item mb-4";
+            categoryElement.innerHTML = `
+                <div class="product-category d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">${category}</h5>
+                    <div class="actions">
+                        <button class="btn btn-sm btn-outline-primary add-product-btn" data-category="${category}">
+                            <i class="fas fa-plus"></i> 新增項目
                         </button>
-                        <button class="btn btn-sm btn-outline-danger delete-item-btn" data-id="${item.id}">
+                        <button class="btn btn-sm btn-outline-secondary edit-category-btn" data-category="${category}">
+                            <i class="fas fa-edit"></i> 修改類別
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger delete-category-btn" data-category="${category}">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>
                 </div>
             `;
             
-            itemsList.appendChild(itemElement);
+            // 添加類別描述（如果有）
+            if (categoryInfo.description && categoryInfo.description.trim() !== "") {
+                const descriptionElement = document.createElement("div");
+                descriptionElement.className = "category-description mb-3";
+                descriptionElement.innerHTML = `
+                    <p class="text-muted small">${categoryInfo.description}</p>
+                `;
+                categoryElement.appendChild(descriptionElement);
+            }
+            
+            // 創建項目列表容器
+            const itemsList = document.createElement("div");
+            itemsList.className = "product-item-list";
+            
+            // 添加每個項目
+            items.forEach(item => {
+                const itemElement = document.createElement("div");
+                itemElement.className = "product-subitem mb-2";
+                itemElement.dataset.id = item.id;
+                
+                itemElement.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="product-name fw-bold">${item.name}</span>
+                            ${item.description ? `<p class="mb-0 text-muted small">${item.description}</p>` : ''}
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-primary fw-bold">${item.price ? `NT$${item.price}` : ''}</span>
+                            <button class="btn btn-sm btn-outline-secondary edit-item-btn" data-id="${item.id}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger delete-item-btn" data-id="${item.id}">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                itemsList.appendChild(itemElement);
+            });
+            
+            // 添加項目表單 (初始隱藏)
+            const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
+            const itemForm = document.createElement("div");
+            itemForm.className = "menu-item-form mt-3";
+            itemForm.id = formId;
+            itemForm.style.display = "none";
+            
+            itemForm.innerHTML = `
+                <h6>新增 ${category} 項目</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="${formId}-name" class="form-label">商品名稱</label>
+                            <input type="text" class="form-control" id="${formId}-name" placeholder="輸入商品名稱">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="${formId}-price" class="form-label">價格</label>
+                            <input type="number" class="form-control" id="${formId}-price" placeholder="輸入價格">
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="${formId}-desc" class="form-label">描述</label>
+                    <textarea class="form-control" id="${formId}-desc" rows="2" placeholder="描述商品特色或口味"></textarea>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary save-item-btn" data-category="${category}">儲存</button>
+                    <button type="button" class="btn btn-outline-secondary cancel-add-item" data-form="${formId}">取消</button>
+                </div>
+            `;
+            
+            // 將項目列表和表單添加到類別元素
+            categoryElement.appendChild(itemsList);
+            categoryElement.appendChild(itemForm);
+            
+            // 將類別元素添加到頁面
+            categoryList.appendChild(categoryElement);
+        }
+        
+        // 添加事件監聽器
+        addMenuItemsEvents();
+    }).catch(error => {
+        console.error("獲取類別詳情失敗:", error);
+        showAlert("載入類別詳情失敗，請稍後再試", "danger");
+    });
+}
+
+// 獲取所有類別的詳細信息，包括描述
+async function getCategoryDetails() {
+    try {
+        // 確保 Firestore 和用戶已初始化
+        if (!window.db || !currentUser) {
+            console.error("Firestore 或用戶未初始化");
+            return {};
+        }
+        
+        // 查詢所有類別
+        const categoriesSnapshot = await window.db.collection("categories")
+            .where("businessId", "==", currentUser.uid)
+            .get();
+        
+        // 建立類別詳情映射
+        const categoryDetails = {};
+        categoriesSnapshot.forEach(doc => {
+            const data = doc.data();
+            categoryDetails[data.name] = {
+                id: doc.id,
+                description: data.description || "",
+                createdAt: data.createdAt,
+                updatedAt: data.updatedAt
+            };
         });
         
-        // 添加項目表單 (初始隱藏)
-        const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
-        const itemForm = document.createElement("div");
-        itemForm.className = "menu-item-form mt-3";
-        itemForm.id = formId;
-        itemForm.style.display = "none";
-        
-        itemForm.innerHTML = `
-            <h6>新增 ${category} 項目</h6>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="${formId}-name" class="form-label">商品名稱</label>
-                        <input type="text" class="form-control" id="${formId}-name" placeholder="輸入商品名稱">
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="${formId}-price" class="form-label">價格</label>
-                        <input type="number" class="form-control" id="${formId}-price" placeholder="輸入價格">
-                    </div>
-                </div>
-            </div>
-            <div class="mb-3">
-                <label for="${formId}-desc" class="form-label">描述</label>
-                <textarea class="form-control" id="${formId}-desc" rows="2" placeholder="描述商品特色或口味"></textarea>
-            </div>
-            <div class="d-flex gap-2">
-                <button type="button" class="btn btn-primary save-item-btn" data-category="${category}">儲存</button>
-                <button type="button" class="btn btn-outline-secondary cancel-add-item" data-form="${formId}">取消</button>
-            </div>
-        `;
-        
-        // 將項目列表和表單添加到類別元素
-        categoryElement.appendChild(itemsList);
-        categoryElement.appendChild(itemForm);
-        
-        // 將類別元素添加到頁面
-        categoryList.appendChild(categoryElement);
+        return categoryDetails;
+    } catch (error) {
+        console.error("獲取類別詳情失敗:", error);
+        return {};
     }
-    
-    // 添加事件監聽器
-    addMenuItemsEvents();
 }
 
 // 將函數暴露到全局範圍
