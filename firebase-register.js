@@ -296,6 +296,7 @@ async function validateStep(stepNumber) {
         const businessType = document.getElementById('businessType');
         const businessAddress = document.getElementById('businessAddress');
         const businessPhone = document.getElementById('businessPhone');
+        const businessDescription = document.getElementById('businessDescription');
         
         if (!businessName.value) {
             showFieldError(businessName, '請輸入店家名稱');
@@ -326,6 +327,12 @@ async function validateStep(stepNumber) {
             isValid = false;
         } else {
             clearFieldError(businessPhone);
+        }
+        if (!businessDescription.value.trim()) {
+            showFieldError(businessDescription, '請輸入店家介紹');
+            isValid = false;
+        } else {
+            clearFieldError(businessDescription);
         }
     } else if (stepNumber === 3) {
         // 驗證第三步：聯絡人與條款
@@ -926,7 +933,7 @@ function updateSummaryInfo() {
     const email = document.getElementById('email').value;
     const businessName = document.getElementById('businessName').value;
     const businessType = document.getElementById('businessType');
-    const businessTypeName = businessType.options[businessType.selectedIndex]?.text || '';
+    const businessDescription = document.getElementById('businessDescription').value;
     const businessAddress = document.getElementById('businessAddress').value;
     const businessPhone = document.getElementById('businessPhone').value;
     const contactName = document.getElementById('contactName').value;
@@ -937,9 +944,10 @@ function updateSummaryInfo() {
     const summaryItems = [
         { label: '電子郵件', value: email },
         { label: '店家名稱', value: businessName },
-        { label: '店家類型', value: businessTypeName },
+        { label: '店家類型', value: businessType },
         { label: '店家地址', value: businessAddress },
         { label: '店家電話', value: businessPhone },
+        { label: '店家介紹', value: businessDescription },
         { label: '聯絡人姓名', value: contactName },
         { label: '聯絡人電話', value: contactPhone },
         { label: '上傳證明文件', value: `${uploadedFilesCount}個檔案` }
@@ -1088,6 +1096,7 @@ async function handleRegisterSubmit(e) {
         const businessType = document.getElementById('businessType').value;
         const businessAddress = document.getElementById('businessAddress').value;
         const businessPhone = document.getElementById('businessPhone').value;
+        const businessDescription = document.getElementById('businessDescription').value;
         const contactName = document.getElementById('contactName').value;
         const contactPhone = document.getElementById('contactPhone').value;
         
@@ -1124,6 +1133,7 @@ async function handleRegisterSubmit(e) {
             businessType: businessType,
             address: businessAddress,
             phoneNumber: businessPhone,
+            description: businessDescription,
             contactName: contactName,
             contactPhone: contactPhone,
             ownerId: user.uid,
@@ -1162,6 +1172,7 @@ async function handleRegisterSubmit(e) {
             businessType: businessType,
             address: businessAddress,
             phoneNumber: businessPhone,
+            description: businessDescription,
             contactName: contactName,
             contactPhone: contactPhone,
             licenseUrls: licenseUrls,
