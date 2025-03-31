@@ -1070,22 +1070,15 @@
                                         <label for="storeName" class="form-label">店家名稱 <span class="text-danger">*</span></label>
                                         <input type="text" class="form-control" id="storeName" placeholder="請輸入店家名稱" required>
                                     </div>
-                                    <div class="mb-3">
-                                        <label for="businessType" class="form-label">店家類型</label>
-                                        <select class="form-select" id="businessType">
-                                            <option value="">請選擇店家類型</option>
-                                            <option value="cafe">咖啡廳</option>
-                                            <option value="restaurant">餐廳</option>
-                                            <option value="bar">酒吧</option>
-                                            <option value="dessert">甜點店</option>
-                                            <option value="bookstore">書店</option>
-                                            <option value="activity">活動場所</option>
-                                            <option value="other">其他</option>
-                                        </select>
+                                    <div class="form-group">
+                                        <label for="businessType">店家類型 <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="businessType" name="businessType" maxlength="10" placeholder="請輸入店家類型 (最多10個字)">
+                                        <div class="error-feedback">請輸入店家類型</div>
                                     </div>
-                                    <div class="mb-3">
-                                        <label for="storeDescription" class="form-label">店家簡介</label>
-                                        <textarea class="form-control" id="storeDescription" rows="5" placeholder="請輸入店家簡介"></textarea>
+                                    <div class="form-group">
+                                        <label for="storeDescription">店家介紹 <span class="text-danger">*</span></label>
+                                        <textarea class="form-control" id="storeDescription" rows="5" placeholder="請輸入店家介紹" required></textarea>
+                                        <div class="error-feedback">請輸入店家介紹</div>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
