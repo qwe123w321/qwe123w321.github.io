@@ -228,21 +228,10 @@ async function initReapplyPage(user) {
             console.warn('找不到businessName欄位');
         }
         
-        const businessTypeSelect = document.getElementById('businessType');
-        if (businessTypeSelect) {
+        const businessTypeField = document.getElementById('businessType');
+        if (businessTypeField) {
+            businessTypeField.value = businessData.businessType || '';
             console.log('設置店家類型:', businessData.businessType);
-            // 確保選擇正確的選項
-            let optionFound = false;
-            for (let i = 0; i < businessTypeSelect.options.length; i++) {
-                if (businessTypeSelect.options[i].value === businessData.businessType) {
-                    businessTypeSelect.selectedIndex = i;
-                    optionFound = true;
-                    break;
-                }
-            }
-            if (!optionFound) {
-                console.warn('找不到匹配的店家類型選項:', businessData.businessType);
-            }
         } else {
             console.warn('找不到businessType欄位');
         }
@@ -261,6 +250,14 @@ async function initReapplyPage(user) {
             console.log('設置店家電話:', businessData.phoneNumber);
         } else {
             console.warn('找不到businessPhone欄位');
+        }
+
+        const businessDescriptionField = document.getElementById('businessDescription');
+        if (businessDescriptionField) {
+            businessDescriptionField.value = businessData.description || '';
+            console.log('設置店家介紹:', businessData.description);
+        } else {
+            console.warn('找不到businessDescription欄位');
         }
         
         const contactNameField = document.getElementById('contactName');
@@ -1067,6 +1064,7 @@ async function submitReapplication(e) {
         const businessType = document.getElementById('businessType').value;
         const businessAddress = document.getElementById('businessAddress').value;
         const businessPhone = document.getElementById('businessPhone').value;
+        const businessDescription = document.getElementById('businessDescription').value;
         const contactName = document.getElementById('contactName').value;
         const contactPhone = document.getElementById('contactPhone').value;
         
@@ -1076,6 +1074,7 @@ async function submitReapplication(e) {
             businessType: businessType,
             address: businessAddress,
             phoneNumber: businessPhone,
+            description: businessDescription,
             contactName: contactName,
             contactPhone: contactPhone,
             ownerId: user.uid, // 確保包含 ownerId
@@ -1160,6 +1159,7 @@ async function submitReapplication(e) {
             businessType: businessType,
             address: businessAddress,
             phoneNumber: businessPhone,
+            description: businessDescription,
             contactName: contactName,
             contactPhone: contactPhone,
             licenseUrls: licenseUrls,
@@ -1252,8 +1252,15 @@ function validateReapplyForm() {
     
     // 驗證店家類型
     const businessType = document.getElementById('businessType');
-    if (!businessType.value) {
+    if (!businessType || !businessType.value) {
+        if (businessType) businessType.classList.add('is-invalid');
+        isValid = false;
+    } else if (businessType.value && businessType.value.length > 10) {
         businessType.classList.add('is-invalid');
+        const errorFeedback = document.querySelector('#businessType + .error-feedback');
+        if (errorFeedback) {
+            errorFeedback.textContent = '店家類型不能超過10個字';
+        }
         isValid = false;
     } else {
         businessType.classList.remove('is-invalid');
@@ -1275,6 +1282,15 @@ function validateReapplyForm() {
         isValid = false;
     } else {
         businessPhone.classList.remove('is-invalid');
+    }
+
+    // 驗證店家介紹
+    const businessDescription = document.getElementById('businessDescription');
+    if (!businessDescription || !businessDescription.value || !businessDescription.value.trim()) {
+        if (businessDescription) businessDescription.classList.add('is-invalid');
+        isValid = false;
+    } else {
+        businessDescription.classList.remove('is-invalid');
     }
     
     // 驗證聯絡人姓名
