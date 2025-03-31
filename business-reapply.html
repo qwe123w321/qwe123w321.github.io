@@ -566,16 +566,8 @@
                                 
                                 <div class="form-group">
                                     <label for="businessType">店家類型 <span class="text-danger">*</span></label>
-                                    <select class="form-select form-control" id="businessType" name="businessType" required>
-                                        <option value="" selected disabled>請選擇</option>
-                                        <option value="cafe">咖啡廳</option>
-                                        <option value="restaurant">餐廳</option>
-                                        <option value="bar">酒吧</option>
-                                        <option value="dessert">甜點店</option>
-                                        <option value="tea">茶飲店</option>
-                                        <option value="other">其他</option>
-                                    </select>
-                                    <div class="error-feedback">請選擇店家類型</div>
+                                    <input type="text" class="form-control" id="businessType" name="businessType" maxlength="10" placeholder="請輸入店家類型 (最多10個字)">
+                                    <div class="error-feedback">請輸入店家類型</div>
                                 </div>
                                 
                                 <div class="form-group">
@@ -589,6 +581,11 @@
                                     <input type="tel" class="form-control" id="businessPhone" name="businessPhone" required>
                                     <div class="error-feedback">請輸入有效的店家電話</div>
                                 </div>
+
+                                <div class="form-group">
+                                    <label for="businessDescription">店家介紹 <span class="text-danger">*</span></label>
+                                    <textarea class="form-control" id="businessDescription" name="businessDescription" rows="5" placeholder="請描述您的店家特色和服務內容" required></textarea>
+                                    <div class="error-feedback">請輸入店家介紹</div>
                                 
                                 <div class="form-group">
                                     <label for="contactName">聯絡人姓名 <span class="text-danger">*</span></label>
