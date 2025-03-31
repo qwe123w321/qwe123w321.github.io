@@ -1567,7 +1567,7 @@ function updateBusinessFormFields() {
         const storeEmailInput = document.getElementById("storeEmail");
         const storeWebsiteInput = document.getElementById("storeWebsite");
         const storeDescriptionInput = document.getElementById("storeDescription");
-        const businessTypeSelect = document.getElementById("businessType");
+        const businessTypeInput = document.getElementById("businessType");
         
         // 設置值
         if (storeNameInput) {
@@ -1591,13 +1591,8 @@ function updateBusinessFormFields() {
         }
         
         // 更新店家類型
-        if (businessTypeSelect && businessData.businessType) {
-            for (let i = 0; i < businessTypeSelect.options.length; i++) {
-                if (businessTypeSelect.options[i].value === businessData.businessType) {
-                    businessTypeSelect.selectedIndex = i;
-                    break;
-                }
-            }
+        if (businessTypeInput) {
+            businessTypeInput.value = businessData.businessType || "";
         }
     } catch (error) {
         console.error("更新基本資料欄位錯誤:", error);
@@ -4012,11 +4007,32 @@ async function saveBusinessInfo() {
         const emailInput = document.getElementById("storeEmail");
         const websiteInput = document.getElementById("storeWebsite");
         const descriptionInput = document.getElementById("storeDescription");
-        const businessTypeSelect = document.getElementById("businessType");
+        const businessTypeInput = document.getElementById("businessType");
         
         // 驗證必填字段
         if (!nameInput || !nameInput.value.trim()) {
             showAlert("請填寫店家名稱", "warning");
+            saveBtn.innerHTML = originalBtnText;
+            saveBtn.disabled = false;
+            return;
+        }
+
+        // 驗證店家類型長度
+        if (!businessTypeInput || !businessTypeInput.value.trim()) {
+            showAlert("請填寫店家類型", "warning");
+            saveBtn.innerHTML = originalBtnText;
+            saveBtn.disabled = false;
+            return;
+        } else if (businessTypeInput.value.trim().length > 10) {
+            showAlert("店家類型不能超過10個字", "warning");
+            saveBtn.innerHTML = originalBtnText;
+            saveBtn.disabled = false;
+            return;
+        }
+        
+        // 驗證店家介紹
+        if (!descriptionInput || !descriptionInput.value.trim()) {
+            showAlert("請填寫店家介紹", "warning");
             saveBtn.innerHTML = originalBtnText;
             saveBtn.disabled = false;
             return;
@@ -4029,7 +4045,7 @@ async function saveBusinessInfo() {
             email: emailInput ? emailInput.value.trim() : "",
             website: websiteInput ? websiteInput.value.trim() : "",
             description: descriptionInput ? descriptionInput.value.trim() : "",
-            businessType: businessTypeSelect ? businessTypeSelect.value : "",
+            businessType: businessTypeInput ? businessTypeInput.value : "",
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
