@@ -3463,6 +3463,7 @@ async function handleMainImageUpload(e) {
         // 更新 Firestore
         await window.db.collection("businesses").doc(currentUser.uid).update({
             imageUrl: imageUrl,
+            profile_image_updated_at: window.firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
         });
         
@@ -3929,6 +3930,7 @@ async function saveLocationInfo() {
         await window.db.collection("businesses").doc(currentUser.uid).update({
             position: positionData,
             address: formattedAddress,
+            location_updated_at: window.firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         
@@ -3986,6 +3988,18 @@ function simpleGeohash(lat, lng, precision = 8) {
     
     return geohash;
 }
+
+// 添加更新追蹤文檔的函數
+async function updateTrackingDocument(businessId, updateType) {
+    const trackingRef = window.db.doc('update_tracking/essential_updates');
+    
+    // 更新追蹤文檔
+    await trackingRef.update({
+      [updateType === 'profile_image' ? 'profile_images' : 'locations']: 
+        window.firebase.firestore.FieldValue.arrayUnion(businessId),
+      'last_updated': window.firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
 
 // 修改的商店基本資料儲存
 async function saveBusinessInfo() {
