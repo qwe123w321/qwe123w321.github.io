@@ -3167,12 +3167,12 @@ async function updateMenuMetadata() {
       
       // 取得元數據引用
       const metadataRef = window.db.collection("menuMetadata").doc(currentUser.uid);
-      
+      console.log('metadataRef', metadataRef);
       // 嘗試使用事務增加版本號
       try {
         const metadataDoc = await metadataRef.get();
         let newVersion = 1;
-        console.log(metadataDoc);
+        console.log('metadataDoc, metadataDoc');
         if (metadataDoc.exists) {
           const currentData = metadataDoc.data();
           newVersion = (currentData.version || 0) + 1;
