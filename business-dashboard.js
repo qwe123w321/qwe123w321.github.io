@@ -3186,10 +3186,10 @@ async function updateMenuMetadata() {
         console.log("元數據已基本更新，新版本:", newVersion);
       
       } catch (error) {
-      console.error("更新菜單元數據錯誤:", error);
+      console.error("更新菜單元數據錯誤1:", error);
       }
     }catch (error) {
-        console.error("更新菜單元數據錯誤:", error);
+        console.error("更新菜單元數據錯誤2:", error);
     }
 }
 
