@@ -2634,12 +2634,12 @@ async function saveMenuItem(category) {
         
         // 添加到Firestore
         await window.db.collection("menuItems").add(itemData);
+
+        // 新增：更新菜單元數據
+        await updateMenuMetadata();
         
         // 重新加載商品列表
         await loadMenuItems();
-        
-        // 新增：更新菜單元數據
-        await updateMenuMetadata();
 
         // 重置表單
         if (nameInput) nameInput.value = "";
@@ -2858,12 +2858,12 @@ async function updateCategory(categoryId) {
         const editForm = document.querySelector('.edit-category-form');
         if (editForm) editForm.remove();
         
-        // 重新加載商品列表
-        await loadMenuItems();
-
         // 新增：更新菜單元數據
         await updateMenuMetadata();
         
+        // 重新加載商品列表
+        await loadMenuItems();
+
         showAlert("類別已成功更新", "success");
     } catch (error) {
         console.error("更新類別失敗:", error);
@@ -2909,12 +2909,12 @@ async function updateMenuItem(itemId) {
         
         // 更新Firestore
         await window.db.collection("menuItems").doc(itemId).update(itemData);
-        
-        // 重新加載商品列表
-        await loadMenuItems();
-        
+                
         // 新增：更新菜單元數據
         await updateMenuMetadata();
+
+        // 重新加載商品列表
+        await loadMenuItems();
         
         showAlert("商品項目已成功更新", "success");
     } catch (error) {
@@ -2940,11 +2940,11 @@ async function deleteMenuItem(itemId) {
         // 從Firestore刪除
         await window.db.collection("menuItems").doc(itemId).delete();
         
-        // 重新加載商品列表
-        await loadMenuItems();
-        
         // 新增：更新菜單元數據
         await updateMenuMetadata();
+
+        // 重新加載商品列表
+        await loadMenuItems();
         
         showAlert("商品項目已成功刪除", "success");
     } catch (error) {
@@ -3038,12 +3038,12 @@ async function saveCategory() {
             updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        // 重新加載商品列表
-        await loadMenuItems();
-
         // 新增：更新菜單元數據
         await updateMenuMetadata();
         
+        // 重新加載商品列表
+        await loadMenuItems();
+
         // 重置表單
         document.getElementById('addCategoryForm').style.display = 'none';
         categoryNameInput.value = '';
@@ -3142,7 +3142,7 @@ function initCategoryManagement() {
     }
 }
 
-// 新增：初始化菜單元數據
+// 初始化菜單元數據
 async function initializeMenuMetadata() {
     try {
       if (!currentUser || !currentUser.uid) {
@@ -3167,7 +3167,7 @@ async function initializeMenuMetadata() {
     }
 }
 
-// 新增：更新菜單元數據函數
+//更新菜單元數據函數
 async function updateMenuMetadata() {
     try {
       if (!currentUser || !currentUser.uid) {
@@ -3175,33 +3175,14 @@ async function updateMenuMetadata() {
         return;
       }
       
-      // 使用事務來更新版本號
-      await window.db.runTransaction(async (transaction) => {
-        const metadataRef = window.db.collection("menuMetadata").doc(currentUser.uid);
-        const metadataDoc = await transaction.get(metadataRef);
-        
-        let newVersion = 1;
-        if (metadataDoc.exists) {
-          const currentData = metadataDoc.data();
-          newVersion = (currentData.version || 0) + 1;
-        }
-        
-        transaction.set(metadataRef, {
-          version: newVersion,
-          lastUpdated: window.firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        console.log("菜單元數據已更新，新版本:", newVersion);
-      });
-    } catch (error) {
-      console.error("更新菜單元數據錯誤:", error);
+      // 取得元數據引用
+      const metadataRef = window.db.collection("menuMetadata").doc(currentUser.uid);
       
-      // 如果事務失敗，使用普通更新方式
+      // 嘗試使用事務增加版本號
       try {
-        const metadataRef = window.db.collection("menuMetadata").doc(currentUser.uid);
         const metadataDoc = await metadataRef.get();
-        
         let newVersion = 1;
+        
         if (metadataDoc.exists) {
           const currentData = metadataDoc.data();
           newVersion = (currentData.version || 0) + 1;
@@ -3212,10 +3193,13 @@ async function updateMenuMetadata() {
           lastUpdated: window.firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        console.log("菜單元數據已使用普通方式更新，新版本:", newVersion);
-      } catch (backupError) {
-        console.error("備用更新方法也失敗:", backupError);
+        console.log("元數據已基本更新，新版本:", newVersion);
+      
+      } catch (error) {
+      console.error("更新菜單元數據錯誤:", error);
       }
+    }catch (error) {
+        console.error("更新菜單元數據錯誤:", error);
     }
 }
 
