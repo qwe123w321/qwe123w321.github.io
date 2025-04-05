@@ -3177,6 +3177,8 @@ async function updateMenuMetadata() {
           const currentData = metadataDoc.data();
           newVersion = (currentData.version || 0) + 1;
         }
+
+        console.log('newVersion', newVersion);
         
         await metadataRef.set({
           version: newVersion,
