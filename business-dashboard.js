@@ -49,6 +49,9 @@ function handleAuthStateChanged(user) {
             
             // 加載店家資料 - 強制刷新
             loadBusinessData(true);
+
+            // 初始化菜單元數據
+            initializeMenuMetadata();
         }, 500);
     } else {
         console.log('未檢測到登入用戶，將重定向到登入頁面');
@@ -2635,6 +2638,9 @@ async function saveMenuItem(category) {
         // 重新加載商品列表
         await loadMenuItems();
         
+        // 新增：更新菜單元數據
+        await updateMenuMetadata();
+
         // 重置表單
         if (nameInput) nameInput.value = "";
         if (priceInput) priceInput.value = "";
@@ -2854,6 +2860,9 @@ async function updateCategory(categoryId) {
         
         // 重新加載商品列表
         await loadMenuItems();
+
+        // 新增：更新菜單元數據
+        await updateMenuMetadata();
         
         showAlert("類別已成功更新", "success");
     } catch (error) {
@@ -2904,6 +2913,9 @@ async function updateMenuItem(itemId) {
         // 重新加載商品列表
         await loadMenuItems();
         
+        // 新增：更新菜單元數據
+        await updateMenuMetadata();
+        
         showAlert("商品項目已成功更新", "success");
     } catch (error) {
         console.error("更新商品項目失敗:", error);
@@ -2931,6 +2943,9 @@ async function deleteMenuItem(itemId) {
         // 重新加載商品列表
         await loadMenuItems();
         
+        // 新增：更新菜單元數據
+        await updateMenuMetadata();
+        
         showAlert("商品項目已成功刪除", "success");
     } catch (error) {
         console.error("刪除商品項目失敗:", error);
@@ -2940,82 +2955,48 @@ async function deleteMenuItem(itemId) {
 
 
 // 刪除類別
+// 使用批量操作刪除類別和相關商品
 async function deleteCategory(categoryName) {
     try {
-        showAlert("刪除類別中...", "info");
+      showAlert("刪除類別中...", "info");
+      
+      // 搜索相關項
+      const categoriesSnapshot = await window.db.collection("categories")
+        .where("businessId", "==", currentUser.uid)
+        .where("name", "==", categoryName)
+        .get();
         
-        // 1. 先查詢所有屬於當前用戶的類別
-        const categoriesSnapshot = await window.db.collection("categories")
-            .where("businessId", "==", currentUser.uid)
-            .get();
-        
-        // 2. 在 JavaScript 中過濾出符合名稱的類別
-        const categoryDocs = [];
-        categoriesSnapshot.forEach(doc => {
-            if (doc.data().name === categoryName) {
-                categoryDocs.push({id: doc.id});
-            }
-        });
-        
-        if (categoryDocs.length === 0) {
-            showAlert(`找不到「${categoryName}」類別`, "warning");
-            return;
-        }
-        
-        // 3. 查詢該類別下所有商品項目
-        const itemsSnapshot = await window.db.collection("menuItems")
-            .where("businessId", "==", currentUser.uid)
-            .get();
-        
-        // 4. 在 JavaScript 中過濾出屬於該類別的商品
-        const itemDocs = [];
-        itemsSnapshot.forEach(doc => {
-            if (doc.data().category === categoryName) {
-                itemDocs.push({id: doc.id});
-            }
-        });
-        
-        // 5. 檢查 batch 方法是否可用
-        console.log("window.db =", window.db);
-        
-        if (typeof window.db.batch !== 'function') {
-            console.error("批處理功能不可用，將逐個刪除文檔");
-            
-            // 逐個刪除商品項目
-            for (const item of itemDocs) {
-                await window.db.collection("menuItems").doc(item.id).delete();
-            }
-            
-            // 逐個刪除類別
-            for (const category of categoryDocs) {
-                await window.db.collection("categories").doc(category.id).delete();
-            }
-        } else {
-            console.log("使用批處理刪除文檔");
-            // 使用批處理刪除多個文檔
-            const batch = window.db.batch();
-            
-            // 添加商品項目到批處理
-            itemDocs.forEach(item => {
-                batch.delete(window.db.collection("menuItems").doc(item.id));
-            });
-            
-            // 添加類別到批處理
-            categoryDocs.forEach(category => {
-                batch.delete(window.db.collection("categories").doc(category.id));
-            });
-            
-            // 提交批處理
-            await batch.commit();
-        }
-        
-        // 重新加載商品列表
-        await loadMenuItems();
-        
-        showAlert(`「${categoryName}」類別已成功刪除`, "success");
+      const itemsSnapshot = await window.db.collection("menuItems")
+        .where("businessId", "==", currentUser.uid)
+        .where("category", "==", categoryName)
+        .get();
+      
+      // 使用批量操作
+      const batch = window.db.batch();
+      
+      // 批量刪除類別
+      categoriesSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      
+      // 批量刪除商品項目
+      itemsSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      
+      // 提交批量操作
+      await batch.commit();
+      
+      // 更新元數據
+      await updateMenuMetadata();
+      
+      // 重新加載商品列表
+      await loadMenuItems();
+      
+      showAlert(`「${categoryName}」類別已成功刪除`, "success");
     } catch (error) {
-        console.error("刪除類別失敗:", error);
-        showAlert(`刪除類別失敗: ${error.message}`, "danger");
+      console.error("刪除類別失敗:", error);
+      showAlert(`刪除類別失敗: ${error.message}`, "danger");
     }
 }
 
@@ -3059,6 +3040,9 @@ async function saveCategory() {
         
         // 重新加載商品列表
         await loadMenuItems();
+
+        // 新增：更新菜單元數據
+        await updateMenuMetadata();
         
         // 重置表單
         document.getElementById('addCategoryForm').style.display = 'none';
@@ -3155,6 +3139,83 @@ function initCategoryManagement() {
     const saveCategoryBtn = addCategoryForm ? addCategoryForm.querySelector('.btn-primary') : null;
     if (saveCategoryBtn) {
         saveCategoryBtn.addEventListener('click', saveCategory);
+    }
+}
+
+// 新增：初始化菜單元數據
+async function initializeMenuMetadata() {
+    try {
+      if (!currentUser || !currentUser.uid) {
+        console.error("未找到用戶資料，無法初始化菜單元數據");
+        return;
+      }
+      
+      // 檢查元數據是否存在
+      const metadataRef = window.db.collection("menuMetadata").doc(currentUser.uid);
+      const metadataDoc = await metadataRef.get();
+      
+      if (!metadataDoc.exists) {
+        // 創建初始元數據
+        await metadataRef.set({
+          version: 1,
+          lastUpdated: window.firebase.firestore.FieldValue.serverTimestamp()
+        });
+        console.log("已初始化菜單元數據");
+      }
+    } catch (error) {
+      console.error("初始化菜單元數據錯誤:", error);
+    }
+}
+
+// 新增：更新菜單元數據函數
+async function updateMenuMetadata() {
+    try {
+      if (!currentUser || !currentUser.uid) {
+        console.error("未找到用戶資料，無法更新菜單元數據");
+        return;
+      }
+      
+      // 使用事務來更新版本號
+      await window.db.runTransaction(async (transaction) => {
+        const metadataRef = window.db.collection("menuMetadata").doc(currentUser.uid);
+        const metadataDoc = await transaction.get(metadataRef);
+        
+        let newVersion = 1;
+        if (metadataDoc.exists) {
+          const currentData = metadataDoc.data();
+          newVersion = (currentData.version || 0) + 1;
+        }
+        
+        transaction.set(metadataRef, {
+          version: newVersion,
+          lastUpdated: window.firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        console.log("菜單元數據已更新，新版本:", newVersion);
+      });
+    } catch (error) {
+      console.error("更新菜單元數據錯誤:", error);
+      
+      // 如果事務失敗，使用普通更新方式
+      try {
+        const metadataRef = window.db.collection("menuMetadata").doc(currentUser.uid);
+        const metadataDoc = await metadataRef.get();
+        
+        let newVersion = 1;
+        if (metadataDoc.exists) {
+          const currentData = metadataDoc.data();
+          newVersion = (currentData.version || 0) + 1;
+        }
+        
+        await metadataRef.set({
+          version: newVersion,
+          lastUpdated: window.firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        console.log("菜單元數據已使用普通方式更新，新版本:", newVersion);
+      } catch (backupError) {
+        console.error("備用更新方法也失敗:", backupError);
+      }
     }
 }
 
