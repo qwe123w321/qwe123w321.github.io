@@ -3160,38 +3160,35 @@ async function initializeMenuMetadata(businessId) {
 //更新菜單元數據函數
 async function updateMenuMetadata() {
     try {
-      if (!currentUser || !currentUser.uid) {
-        console.error("未找到用戶資料，無法更新菜單元數據");
-        return;
-      }
-      
-      // 取得元數據引用
-      const metadataRef = window.db.collection("menuMetadata").doc(currentUser.uid);
-      console.log('metadataRef', metadataRef);
-      // 嘗試使用事務增加版本號
-      try {
-        const metadataDoc = await metadataRef.get();
-        let newVersion = 1;
-        console.log('metadataDoc', metadataDoc);
-        if (metadataDoc.exists) {
-          const currentData = metadataDoc.data();
-          newVersion = (currentData.version || 0) + 1;
+        if (!currentUser || !currentUser.uid) {
+            console.error("未找到用戶資料，無法更新菜單元數據");
+            return;
         }
-
-        console.log('newVersion', newVersion);
         
-        await metadataRef.set({
-          version: newVersion,
-          lastUpdated: window.firebase.firestore.FieldValue.serverTimestamp()
-        });
+        // 取得元數據引用
+        const metadataRef = window.db.collection("menuMetadata").doc(currentUser.uid);
         
-        console.log("元數據已基本更新，新版本:", newVersion);
-      
-      } catch (error) {
-      console.error("更新菜單元數據錯誤1:", error);
-      }
-    }catch (error) {
-        console.error("更新菜單元數據錯誤2:", error);
+        // 嘗試使用事務增加版本號
+        try {
+            const metadataDoc = await metadataRef.get();
+            let newVersion = 1;
+            
+            if (metadataDoc.exists) {
+                const currentData = metadataDoc.data();
+                newVersion = (currentData.version || 0) + 1;
+            }
+            
+            // 修改: 只保存版本號，移除時間戳
+            await metadataRef.set({
+                version: newVersion,
+            });
+            
+            console.log("元數據已基本更新，新版本:", newVersion);
+        } catch (error) {
+            console.error("更新菜單元數據錯誤:", error);
+        }
+    } catch (error) {
+        console.error("更新菜單元數據錯誤:", error);
     }
 }
 
