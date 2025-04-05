@@ -39,27 +39,14 @@ document.addEventListener('DOMContentLoaded', function() {
 // 處理認證狀態變更
 function handleAuthStateChanged(user) {
     if (user) {
-        console.log('已檢測到登入用戶:', user.email);
         currentUser = user;
-        
-        // 延遲一下確保 Firebase DB 連接已建立
         setTimeout(() => {
-            // 確保初始化其他功能
             initAfterAuth();
-            
-            // 加載店家資料 - 強制刷新
             loadBusinessData(true);
-
-            // 初始化菜單元數據
-            initializeMenuMetadata();
+            initializeMenuMetadata(user.uid); // 明確傳入 businessId
         }, 500);
     } else {
-        console.log('未檢測到登入用戶，將重定向到登入頁面');
-        
-        // 確保當前頁面是儀表板頁面
-        if (window.location.pathname.includes('business-dashboard')) {
-            window.location.href = 'business-login.html?redirect=true';
-        }
+        window.location.href = 'business-login.html?redirect=true';
     }
 }
 
@@ -3143,27 +3130,30 @@ function initCategoryManagement() {
 }
 
 // 初始化菜單元數據
-async function initializeMenuMetadata() {
+async function initializeMenuMetadata(businessId) {
     try {
-      if (!currentUser || !currentUser.uid) {
-        console.error("未找到用戶資料，無法初始化菜單元數據");
-        return;
-      }
-      
-      // 檢查元數據是否存在
-      const metadataRef = window.db.collection("menuMetadata").doc(currentUser.uid);
-      const metadataDoc = await metadataRef.get();
-      
-      if (!metadataDoc.exists) {
-        // 創建初始元數據
-        await metadataRef.set({
-          version: 1,
-          lastUpdated: window.firebase.firestore.FieldValue.serverTimestamp()
-        });
-        console.log("已初始化菜單元數據");
-      }
+        if (!businessId) {
+            console.error("未提供店家ID，無法初始化菜單元數據");
+            return;
+        }
+        if (businessId !== currentUser.uid) {
+            console.error("當前用戶無權初始化此店家的菜單元數據");
+            return;
+        }
+
+        const metadataRef = window.db.collection("menuMetadata").doc(businessId);
+        const metadataDoc = await metadataRef.get();
+
+        if (!metadataDoc.exists) {
+            await metadataRef.set({
+                businessId: businessId,
+                version: 1,
+                lastUpdated: window.firebase.firestore.FieldValue.serverTimestamp()
+            });
+            console.log(`已為店家 ${businessId} 初始化菜單元數據`);
+        }
     } catch (error) {
-      console.error("初始化菜單元數據錯誤:", error);
+        console.error("初始化菜單元數據錯誤:", error);
     }
 }
 
