@@ -983,6 +983,107 @@
             padding: 14px 18px;
             z-index: 9999;
         }
+
+        :root {
+            /* 吃飯 */
+            --activity-eat-color: #9D7F86;
+            --activity-eat-gradient: linear-gradient(135deg, #9D7F86, #DFD3D7);
+            
+            /* 逛街 */
+            --activity-shopping-color: #A1A8B7;
+            --activity-shopping-gradient: linear-gradient(135deg, #A1A8B7, #C9C9D5);
+            
+            /* 寵物 */
+            --activity-pet-color: #B7A99A;
+            --activity-pet-gradient: linear-gradient(135deg, #B7A99A, #DAD3CA);
+            
+            /* 咖啡廳 */
+            --activity-cafe-color: #D8CAB8;
+            --activity-cafe-gradient: linear-gradient(135deg, #D8CAB8, #F0E8DF);
+            
+            /* 喝酒 */
+            --activity-drink-color: #9E7F7F;
+            --activity-drink-gradient: linear-gradient(135deg, #9E7F7F, #DECDD0);
+            
+            /* 看電影 */
+            --activity-movie-color: #8C96A7;
+            --activity-movie-gradient: linear-gradient(135deg, #8C96A7, #CAD0D9);
+            
+            /* 讀書 */
+            --activity-read-color: #C7B7A7;
+            --activity-read-gradient: linear-gradient(135deg, #C7B7A7, #E9DFD7);
+            
+            /* 運動 */
+            --activity-sport-color: #A1A8B7;
+            --activity-sport-gradient: linear-gradient(135deg, #A1A8B7, #C9C9D5);
+            
+            /* 娛樂 */
+            --activity-game-color: #919295;
+            --activity-game-gradient: linear-gradient(135deg, #919295, #BEBEC0);
+            
+            /* 音樂 */
+            --activity-music-color: #B0A197;
+            --activity-music-gradient: linear-gradient(135deg, #B0A197, #D6CEC9);
+            
+            /* 聊天 */
+            --activity-chat-color: #CBC2C1;
+            --activity-chat-gradient: linear-gradient(135deg, #CBC2C1, #E8E4E3);
+            
+            /* 藝術展覽 */
+            --activity-art-color: #B2A89F;
+            --activity-art-gradient: linear-gradient(135deg, #B2A89F, #D5D0CB);
+            
+            /* 兜風 */
+            --activity-ride-color: #9D7F86;
+            --activity-ride-gradient: linear-gradient(135deg, #9D7F86, #DFD3D7);
+            
+            /* 擋一根 */
+            --activity-smoke-color: #AFB0B2;
+            --activity-smoke-gradient: linear-gradient(135deg, #AFB0B2, #D8D9DA);
+            }
+
+            /* 對每個活動類型卡片設定特定顏色 */
+            .activity-type-card[data-type="吃飯"] i { color: var(--activity-eat-color); }
+            .activity-type-card[data-type="吃飯"].selected { background-color: rgba(157, 127, 134, 0.15); }
+
+            .activity-type-card[data-type="逛街"] i { color: var(--activity-shopping-color); }
+            .activity-type-card[data-type="逛街"].selected { background-color: rgba(161, 168, 183, 0.15); }
+
+            .activity-type-card[data-type="寵物"] i { color: var(--activity-pet-color); }
+            .activity-type-card[data-type="寵物"].selected { background-color: rgba(183, 169, 154, 0.15); }
+
+            .activity-type-card[data-type="咖啡廳"] i { color: var(--activity-cafe-color); }
+            .activity-type-card[data-type="咖啡廳"].selected { background-color: rgba(216, 202, 184, 0.15); }
+
+            .activity-type-card[data-type="喝酒"] i { color: var(--activity-drink-color); }
+            .activity-type-card[data-type="喝酒"].selected { background-color: rgba(158, 127, 127, 0.15); }
+
+            .activity-type-card[data-type="看電影"] i { color: var(--activity-movie-color); }
+            .activity-type-card[data-type="看電影"].selected { background-color: rgba(140, 150, 167, 0.15); }
+
+            .activity-type-card[data-type="讀書"] i { color: var(--activity-read-color); }
+            .activity-type-card[data-type="讀書"].selected { background-color: rgba(199, 183, 167, 0.15); }
+
+            .activity-type-card[data-type="運動"] i { color: var(--activity-sport-color); }
+            .activity-type-card[data-type="運動"].selected { background-color: rgba(161, 168, 183, 0.15); }
+
+            .activity-type-card[data-type="娛樂"] i { color: var(--activity-game-color); }
+            .activity-type-card[data-type="娛樂"].selected { background-color: rgba(145, 146, 149, 0.15); }
+
+            .activity-type-card[data-type="音樂"] i { color: var(--activity-music-color); }
+            .activity-type-card[data-type="音樂"].selected { background-color: rgba(176, 161, 151, 0.15); }
+
+            .activity-type-card[data-type="聊天"] i { color: var(--activity-chat-color); }
+            .activity-type-card[data-type="聊天"].selected { background-color: rgba(203, 194, 193, 0.15); }
+
+            .activity-type-card[data-type="藝術展覽"] i { color: var(--activity-art-color); }
+            .activity-type-card[data-type="藝術展覽"].selected { background-color: rgba(178, 168, 159, 0.15); }
+
+            .activity-type-card[data-type="兜風"] i { color: var(--activity-ride-color); }
+            .activity-type-card[data-type="兜風"].selected { background-color: rgba(157, 127, 134, 0.15); }
+
+            .activity-type-card[data-type="擋一根"] i { color: var(--activity-smoke-color); }
+            .activity-type-card[data-type="擋一根"].selected { background-color: rgba(175, 176, 178, 0.15); }
     </style>
 </head>
 <body>
@@ -1237,16 +1338,24 @@
                         
                         <div class="activity-type-grid">
                             <div class="activity-type-card">
-                                <i class="fas fa-coffee"></i>
-                                <p>咖啡廳</p>
-                            </div>
-                            <div class="activity-type-card">
                                 <i class="fas fa-utensils"></i>
                                 <p>吃飯</p>
                             </div>
                             <div class="activity-type-card">
                                 <i class="fas fa-shopping-bag"></i>
                                 <p>逛街</p>
+                            </div>
+                            <div class="activity-type-card">
+                                <i class="fas fa-paw"></i>
+                                <p>寵物</p>
+                            </div>
+                            <div class="activity-type-card">
+                                <i class="fas fa-coffee"></i>
+                                <p>咖啡廳</p>
+                            </div>
+                            <div class="activity-type-card">
+                                <i class="fas fa-glass-cheers"></i>
+                                <p>喝酒</p>
                             </div>
                             <div class="activity-type-card">
                                 <i class="fas fa-film"></i>
@@ -1257,24 +1366,32 @@
                                 <p>讀書</p>
                             </div>
                             <div class="activity-type-card">
-                                <i class="fas fa-glass-cheers"></i>
-                                <p>喝酒</p>
+                                <i class="fas fa-running"></i>
+                                <p>運動</p>
                             </div>
                             <div class="activity-type-card">
-                                <i class="fas fa-volleyball ball"></i>
-                                <p>運動</p>
+                                <i class="fas fa-gamepad"></i>
+                                <p>娛樂</p>
+                            </div>
+                            <div class="activity-type-card">
+                                <i class="fas fa-music"></i>
+                                <p>音樂</p>
                             </div>
                             <div class="activity-type-card">
                                 <i class="fas fa-comments"></i>
                                 <p>聊天</p>
                             </div>
                             <div class="activity-type-card">
-                                <i class="fas fa-gamepad"></i>
-                                <p>電玩</p>
+                                <i class="fas fa-monument"></i>
+                                <p>藝術展覽</p>
                             </div>
                             <div class="activity-type-card">
-                                <i class="fas fa-music"></i>
-                                <p>音樂</p>
+                                <i class="fas fa-motorcycle"></i>
+                                <p>兜風</p>
+                            </div>
+                            <div class="activity-type-card">
+                                <i class="fas fa-smoking-ban"></i>
+                                <p>擋一根</p>
                             </div>
                         </div>
                     </div>
