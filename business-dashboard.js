@@ -1872,7 +1872,7 @@ function updateActivityTypesUI() {
     }
 }
 
-// 更新活動類型
+// 更新活動類型UI
 function updateActivityTypes(activityTypes) {
     try {
         const activityCards = document.querySelectorAll(".activity-type-card");
@@ -1890,8 +1890,8 @@ function updateActivityTypes(activityTypes) {
         // 選中對應活動類型
         activityTypes.forEach(type => {
             activityCards.forEach(card => {
-                const cardText = card.querySelector("p");
-                if (cardText && cardText.textContent === type) {
+                const cardType = card.getAttribute('data-type') || card.querySelector("p").textContent;
+                if (cardType === type) {
                     card.classList.add("selected");
                 }
             });
@@ -3340,7 +3340,11 @@ async function updateBusinessTags() {
 function initActivityTypeCards() {
     const activityCards = document.querySelectorAll('.activity-type-card');
     
+    // 設置資料屬性以便於 CSS 和 JS 更容易識別
     activityCards.forEach(card => {
+        const activityType = card.querySelector('p').textContent;
+        card.setAttribute('data-type', activityType);
+        
         card.addEventListener('click', function() {
             this.classList.toggle('selected');
             
@@ -3354,7 +3358,7 @@ function initActivityTypeCards() {
     });
 }
 
-// 儲存活動類型
+// 儲存選擇的活動類型
 async function saveActivityTypes() {
     try {
         // 獲取按鈕並顯示載入狀態
@@ -3372,7 +3376,7 @@ async function saveActivityTypes() {
         const activityTypes = [];
         const selectedCards = document.querySelectorAll(".activity-type-card.selected");
         selectedCards.forEach(card => {
-            const typeText = card.querySelector("p").textContent;
+            const typeText = card.getAttribute('data-type') || card.querySelector("p").textContent;
             activityTypes.push(typeText);
         });
         
