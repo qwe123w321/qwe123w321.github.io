@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrewDate 隱私權政策</title>
+    <!-- SEO 優化 meta 標籤 -->
+    <meta name="description" content="BrewDate 交友APP 隱私權政策 - 了解我們如何收集、使用、分享及保護您的資料，確保安全的約會體驗。">
+    <meta name="keywords" content="BrewDate, 交友, 約會, 隱私權政策, 資料保護">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="base.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="logo_s.png" type="image/png">
+    <script src="error-handler.js"></script>
+
+    <style>
+        /* 隱私權政策頁面樣式 */
+        .privacy-header {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, #4a4a4a 100%);
+            color: var(--white-color);
+            padding: 180px 0 80px;
+            position: relative;
+            text-align: center;
+            overflow: hidden;
+        }
+        
+        .privacy-header:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
+            opacity: 0.1;
+        }
+        
+        .privacy-header h1 {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #B39B7D; /* 棕色標題 */
+        }
+        
+        .privacy-header p.lead {
+            font-size: 20px;
+            max-width: 700px;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+        
+        .privacy-container {
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        
+        .privacy-section {
+            margin-bottom: 40px;
+            font-size: 16px;
+            line-height: 1.8;
+            color: #495057;
+        }
+        
+        .privacy-section h2 {
+            font-size: 28px;
+            color: #343a40;
+            margin-bottom: 20px;
+            font-weight: 600;
+            position: relative;
+            padding-bottom: 10px;
+        }
+        
+        .privacy-section h2:after {
+            content: '';
+            position: absolute;
+            width: 50px;
+            height: 3px;
+            background-color: #9D7F86;
+            bottom: 0;
+            left: 0;
+        }
+        
+        .privacy-section h3 {
+            font-size: 20px;
+            color: #495057;
+            margin: 25px 0 15px;
+            font-weight: 600;
+        }
+        
+        .privacy-section p {
+            margin-bottom: 15px;
+        }
+        
+        .privacy-list {
+            padding-left: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .privacy-list li {
+            margin-bottom: 10px;
+        }
+        
+        /* 確保導航欄在頂部時顯示正確 */
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.6);
+            transition: background-color 0.3s ease;
+        }
+        
+        .navbar-scrolled {
+            background-color: rgba(0, 0, 0, 0.85);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .privacy-header {
+                padding: 150px 0 60px;
+            }
+            
+            .privacy-header h1 {
+                font-size: 32px;
+            }
+            
+            .privacy-section h2 {
+                font-size: 24px;
+            }
+            
+            .privacy-section h3 {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 導航欄 -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <img src="logo.png" alt="BrewDate" height="40">
+                BrewDate
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#home">首頁</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#features">特色</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#business">商家合作</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="business-login.html">店家登入</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link download-btn" href="index.html#download">立即下載</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 隱私權政策頁頭 -->
+    <header class="privacy-header">
+        <div class="container text-center">
+            <h1>BrewDate 隱私權政策</h1>
+            <p class="lead">您的隱私是我們最重視的承諾，請了解我們如何保護您的個人資料</p>
+        </div>
+    </header>
+
+    <!-- 隱私權政策內容 -->
+    <main class="container">
+        <div class="privacy-container">
+            <div class="privacy-section">
+                <p>您的隱私是我們最重視的承諾。我們以透明且負責的方式處理您的個人資料，遵循適用法律（如中華民國《個人資料保護法》）保護您的權益。BrewDate（以下簡稱「本應用」）透過先進技術（包括 Google Firebase 等服務）提供即時連結、活動組織與店家合作的社交體驗。請仔細閱讀本隱私權政策，了解我們如何收集、使用、分享與保護您的資訊，以及您享有的權利。</p>
+
+                <p>本政策可能隨時更新，修訂版本將於本應用內公告，請定期查閱。繼續使用本應用表示您接受最新政策，包括我們與技術合作夥伴（如 Google Firebase）的資料處理方式。</p>
+            </div>
+            
+            <div class="privacy-section">
+                <h2>一、政策適用範圍</h2>
+                <p>本隱私權政策適用於 BrewDate 的網站、手機應用程式及其相關服務（統稱「本應用」）。本政策涵蓋我們收集與處理的所有資料，包括透過技術合作夥伴（如 Google Firebase）管理的資料。若您不同意本政策的任何內容，請立即停止使用本應用。</p>
+            </div>
+            
+            <div class="privacy-section">
+                <h2>二、我們收集的資料</h2>
+                <p>為提供個人化、即時的社交體驗（如連結附近的人、組織探店或咖啡聚會、與合作店家預約），我們可能收集以下資料，其中部分由 Google Firebase 服務支援：</p>
+                
+                <h3>個人識別資訊</h3>
+                <p>註冊與檔案：您提供的姓名（或暱稱）、電子郵件地址、電話號碼、性別、出生日期，以及個人檔案中的照片、興趣愛好、職業或自我介紹。</p>
+                <p>技術細節：這些資料儲存於 Firebase Authentication（用於帳號管理）與 Firebase Firestore（用於檔案與活動資料），部分多媒體（如照片）可能儲存於 Firebase Storage。</p>
+                <p>目的：建立您的社交檔案，促進與其他用戶的互動。</p>
+                
+                <h3>位置資料</h3>
+                <p>即時定位：經您同意後，我們收集即時或大致位置（透過 GPS 或網路定位），以推薦附近的用户、活動或店家。</p>
+                <p>技術細節：位置資料暫存於 Firebase Firestore，由 Firebase Functions 處理配對邏輯（如尋找 5 公里內的咖啡聚會）。</p>
+                <p>管理選項：您可隨時在設備設定或應用內關閉位置存取，但可能影響推薦功能。</p>
+                <p>目的：實現即時社交與活動發現。</p>
+                
+                <h3>使用行為資料</h3>
+                <p>互動紀錄：您的瀏覽頁面、活動參與、訊息交流、點擊行為等。</p>
+                <p>通知記錄：應用內通知或推播訊息的發送與開啟狀態。</p>
+                <p>技術細節：記錄於 Firebase Analytics（分析行為趨勢）與 Firestore（儲存活動紀錄），推播透過 Firebase Cloud Messaging 實現。</p>
+                <p>目的：優化推薦邏輯（如建議您喜愛的探店活動）並提升用戶體驗。</p>
+                
+                <h3>設備與技術資訊</h3>
+                <p>設備資料：設備型號、作業系統版本、IP 地址、電信業者、唯一設備識別碼（UUID）等。</p>
+                <p>技術細節：收集於 Firebase Analytics（追蹤使用模式）與 Crashlytics（錯誤報告），確保應用穩定。</p>
+                <p>目的：防止詐騙、診斷問題（如崩潰）並提升效能。</p>
+                
+                <h3>交易資訊</h3>
+                <p>付費紀錄：訂閱進階功能或活動預約的付款方式、金額與時間，由第三方支付平台（如 Google Play Billing）處理，交易摘要儲存於 Firestore。</p>
+                <p>限制：我們不儲存完整信用卡號。</p>
+                <p>目的：確保交易安全，支援訂閱與預約。</p>
+                
+                <h3>其他來源</h3>
+                <p>合作店家：活動預約紀錄或用戶反饋。</p>
+                <p>客服互動：您提供的問題描述或檔案。</p>
+                <p>技術細節：可能儲存於 Firestore 或外部系統。</p>
+                <p>目的：提升服務品質與滿意度。</p>
+                
+                <h3>Firebase 特定資料</h3>
+                <p>匿名標識符：Firebase Analytics 可能生成匿名用戶 ID，用於行為分析與推播通知。</p>
+                <p>崩潰資料：Firebase Crashlytics 收集應用錯誤報告，包含設備資訊（如記憶體使用量），不直接識別身份。</p>
+                <p>注意：這些資料幫助我們改進應用，但您可透過設定限制部分收集（詳見第七節）。</p>
+                
+                <h3>收集方式</h3>
+                <ul class="privacy-list">
+                    <li>主動提供：您輸入的註冊或活動資訊。</li>
+                    <li>自動收集：透過技術工具（如 Firebase SDK）或應用功能（如定位）。</li>
+                    <li>第三方來源：來自店家或支付平台。</li>
+                </ul>
+            </div>
+            
+            <div class="privacy-section">
+                <h2>三、資料的使用目的</h2>
+                <p>我們使用您的資料以實現以下目的，部分功能由我們的技術合作夥伴支援：</p>
+                
+                <h3>核心服務</h3>
+                <ul class="privacy-list">
+                    <li>管理帳號與登錄，確保安全存取。</li>
+                    <li>實現即時用戶配對與活動組織（如推薦附近咖啡聚會）。</li>
+                    <li>支援店家預約（如餐廳訂位）。</li>
+                </ul>
+                
+                <h3>服務優化</h3>
+                <ul class="privacy-list">
+                    <li>分析使用趨勢，改進功能與介面（如調整活動推薦邏輯）。</li>
+                    <li>測試新功能，確保最佳體驗。</li>
+                </ul>
+                
+                <h3>通知與溝通</h3>
+                <ul class="privacy-list">
+                    <li>發送活動提醒、系統更新或客服回覆。</li>
+                    <li>提供個人化通知（如新活動上線）。</li>
+                </ul>
+                
+                <h3>安全與合規</h3>
+                <ul class="privacy-list">
+                    <li>防止詐騙或濫用行為（如重複註冊）。</li>
+                    <li>監控應用穩定性，修復問題。</li>
+                </ul>
+                
+                <h3>行銷與推廣（選擇性）</h3>
+                <ul class="privacy-list">
+                    <li>若您同意，發送店家優惠或活動資訊。</li>
+                    <li>與合作夥伴分享匿名化資料，設計更好的聚會地點。</li>
+                </ul>
+            </div>
+            
+            <div class="privacy-section">
+                <h2>四、資料的分享與披露</h2>
+                <p>您的資料可能在以下情況下與第三方分享：</p>
+                
+                <h3>與其他用戶</h3>
+                <p>公開檔案（如暱稱、照片）可被其他用戶查看，範圍依您的隱私設定。</p>
+                <p>公開活動的報名資訊可能顯示給參與者。</p>
+                
+                <h3>服務協力廠商</h3>
+                <p>我們與技術合作夥伴（如 Google Firebase）及其他服務商合作，支援應用運營：</p>
+                <ul class="privacy-list">
+                    <li>Google Firebase：提供資料儲存（Firestore、Storage）、認證（Authentication）、分析（Analytics）與通知（Cloud Messaging）。資料可能由 Google 處理，符合其隱私政策。</li>
+                    <li>支付平台：如 Stripe，處理訂閱費用。</li>
+                    <li>其他工具：若未來引入新服務，將更新本政策。</li>
+                </ul>
+                <p>這些廠商受合約約束，僅能為本應用用途處理資料。</p>
+                
+                <h3>合作店家</h3>
+                <p>預約活動時，分享必要資訊（如暱稱、預約時間）至店家。</p>
+                <p>店家不得用於非約定目的。</p>
+                
+                <h3>法律與合規</h3>
+                <p>依法院命令或政府要求披露資料。</p>
+                <p>若涉及安全問題（如詐騙調查），可能主動提供資料。</p>
+                
+                <h3>企業交易</h3>
+                <p>若本應用併購或轉讓，資料可能隨業務移轉，會提前通知。</p>
+                <p>額外分享：新合作需分享資料時，將徵求您的同意。</p>
+            </div>
+            
+            <div class="privacy-section">
+                <h2>五、資料安全</h2>
+                <p>我們採取多項措施保護您的資料，與技術合作夥伴共同確保安全：</p>
+                
+                <h3>技術保護</h3>
+                <p>加密：使用 SSL/TLS 加密傳輸，靜態資料（如 Firestore）亦加密。</p>
+                <p>存取限制：Firebase 安全規則確保僅授權用戶存取資料。</p>
+                <p>監控：定期檢查系統，防止未授權入侵。</p>
+                
+                <h3>Firebase 特定措施</h3>
+                <p>認證安全：Firebase Authentication 保護帳號免於盜用。</p>
+                <p>錯誤診斷：Crashlytics 提供即時報告，快速修復問題。</p>
+                <p>基礎設施：依托 Google Cloud，具高可靠與備援能力。</p>
+                
+                <h3>內部管理</h3>
+                <p>僅授權員工存取資料，需多重驗證。</p>
+                <p>定期培訓隱私保護。</p>
+                <p>風險提示：網際網路無法保證絕對安全。若發生不可抗力（如駭客攻擊），我們將立即補救、依法通報並協助您。</p>
+                
+                <h3>您的責任</h3>
+                <ul class="privacy-list">
+                    <li>使用強密碼並定期更新。</li>
+                    <li>在公共設備上登出，保護帳號安全。</li>
+                    <li>謹慎分享資訊，特別在公開場合。</li>
+                </ul>
+            </div>
+            
+            <div class="privacy-section">
+                <h2>六、您的權利</h2>
+                <p>您享有以下權利：</p>
+                
+                <ul class="privacy-list">
+                    <li>查詢與閱覽：查看您的個人資料（如檔案、活動紀錄）。</li>
+                    <li>更正：修正不正確資料。</li>
+                    <li>刪除：要求移除資料（部分可能因法律保留）。</li>
+                    <li>限制處理：暫停某些用途（如行銷）。</li>
+                    <li>資料移轉：以結構化格式取得資料。</li>
+                    <li>反對：拒絕特定處理（如推播）。</li>
+                </ul>
+                
+                <h3>行使方式</h3>
+                <p>聯繫 brewdate3160@gmail.com，提供帳號 ID 與需求。</p>
+                <p>我們將於 30 天內回覆，可能需驗證身份。</p>
+                <p>注意：匿名分析資料（如 Firebase Analytics）無法單獨刪除，但您可限制收集。</p>
+            </div>
+            
+            <div class="privacy-section">
+                <h2>七、追蹤技術</h2>
+                <p>我們使用以下技術追蹤行為，取代傳統 Cookie：</p>
+                
+                <h3>Firebase Analytics</h3>
+                <p>記錄事件（如參加活動）、頁面瀏覽與時長。</p>
+                <p>使用匿名 ID，分析趨勢而不識別身份。</p>
+                
+                <h3>Firebase Cloud Messaging</h3>
+                <p>發送推播通知，記錄開啟狀態。</p>
+                
+                <h3>Firebase Crashlytics</h3>
+                <p>收集崩潰報告，包含設備資訊，改進穩定性。</p>
+                
+                <h3>管理選項</h3>
+                <p>在設備設定（如 Android 廣告 ID 重設）或應用內隱私選項限制追蹤。</p>
+                <p>關閉通知可減少部分收集，但可能影響提醒。</p>
+                <p>未來工具：若新增其他追蹤技術，將更新政策。</p>
+            </div>
+            
+            <div class="privacy-section">
+                <h2>八、資料的國際傳輸</h2>
+                <p>您的資料可能因技術需求傳輸至海外：</p>
+                
+                <h3>Firebase 傳輸</h3>
+                <p>資料儲存於 Google 的全球伺服器（如美國、歐洲），由 Firebase 處理。</p>
+                <p>Google 遵循《標準契約條款》與隱私承諾，確保傳輸安全。</p>
+                
+                <h3>保障措施</h3>
+                <p>我們與 Google 簽署資料處理協議，限制其用途。</p>
+                <p>傳輸符合台灣法規與國際標準。</p>
+                
+                <h3>您的選擇</h3>
+                <p>不同意傳輸可停止使用，或聯繫我們討論。</p>
+            </div>
+            
+            <div class="privacy-section">
+                <h2>九、政策更新</h2>
+                <p>我們可能更新政策以反映法律或服務變化。重大變更將透過應用內公告、電子郵件或網站通知。請定期查看，繼續使用表示接受新版本。</p>
+            </div>
+            
+            <div class="privacy-section">
+                <h2>十、聯繫我們</h2>
+                <p>有疑問請聯繫：</p>
+                
+                <p>電子郵件：brewdate3160@gmail.com</p>
+                
+                <p>客服時間：週一至週五，09:00-18:00（台灣時間）</p>
+                
+                <p>回覆承諾：48 小時內回覆。</p>
+                
+                <p>了解 Firebase 詳情，請參考 <a href="https://policies.google.com/privacy" target="_blank">Google 隱私政策</a>。</p>
+            </div>
+            
+            <div class="privacy-section text-center">
+                <p>感謝您仔細閱讀本隱私權政策並使用本APP，祝您使用愉快！若有任何問題或需求，歡迎隨時透過客服管道與我們聯繫。</p>
+            </div>
+            <div class="privacy-section text-center">
+                <p>最後更新日期：2025年4月7日</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 頁腳預留位置 -->
+    <div id="footer-placeholder"></div>
+    
+    <!-- 返回頂部按鈕 -->
+    <a href="#" class="back-to-top" id="backToTop"><i class="fas fa-arrow-up"></i></a>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- 載入共用元素 -->
+    <script src="./components/common-elements.js"></script>
+    
+    <!-- AOS 動畫庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    
+    <script>
+        // 初始化 AOS 動畫
+        document.addEventListener('DOMContentLoaded', function() {
+            AOS.init({
+                duration: 800,
+                easing: 'ease-in-out',
+                once: true
+            });
+            
+            // 確保導航欄在頁面頂部時始終為深色
+            const navbar = document.querySelector('.navbar');
+            navbar.classList.add('navbar-dark');
+            
+            // 導航欄滾動效果
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 50) {
+                    navbar.classList.add('navbar-scrolled');
+                } else {
+                    navbar.classList.remove('navbar-scrolled');
+                }
+            });
+            
+            // 返回頂部按鈕
+            const backToTop = document.getElementById('backToTop');
+            if (backToTop) {
+                window.addEventListener('scroll', function() {
+                    if (window.scrollY > 300) {
+                        backToTop.classList.add('active');
+                    } else {
+                        backToTop.classList.remove('active');
+                    }
+                });
+                
+                backToTop.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
+                });
+            }
+        });
+    </script>
+</body>
+</html>
