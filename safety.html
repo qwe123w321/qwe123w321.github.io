@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrewDate 安全提醒</title>
+    <!-- SEO 優化 meta 標籤 -->
+    <meta name="description" content="BrewDate 交友APP 安全提醒 - 了解如何保護自己的安全，確保愉快的約會體驗。">
+    <meta name="keywords" content="BrewDate, 交友, 約會, 安全提醒, 安全指南">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="base.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="logo_s.png" type="image/png">
+    <script src="error-handler.js"></script>
+
+    <style>
+        /* 安全提醒頁面樣式 */
+        .safety-header {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, #4a4a4a 100%);
+            color: var(--white-color);
+            padding: 180px 0 80px;
+            position: relative;
+            text-align: center;
+            overflow: hidden;
+        }
+        
+        .safety-header:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
+            opacity: 0.1;
+        }
+        
+        .safety-header h1 {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #B39B7D; /* 棕色標題 */
+        }
+        
+        .safety-header p.lead {
+            font-size: 20px;
+            max-width: 700px;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+        
+        .safety-container {
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        
+        .safety-section {
+            margin-bottom: 40px;
+            font-size: 16px;
+            line-height: 1.8;
+            color: #495057;
+        }
+        
+        .safety-section > p {
+            text-indent: 2em;
+        }
+        
+        .safety-section h2 {
+            font-size: 28px;
+            color: #343a40;
+            margin-bottom: 20px;
+            font-weight: 600;
+            position: relative;
+            padding-bottom: 10px;
+        }
+        
+        .safety-section h2:after {
+            content: '';
+            position: absolute;
+            width: 50px;
+            height: 3px;
+            background-color: #9D7F86;
+            bottom: 0;
+            left: 0;
+        }
+        
+        .safety-section h3 {
+            font-size: 20px;
+            color: #495057;
+            margin: 25px 0 15px;
+            font-weight: 600;
+            padding-left: 10px;
+        }
+        
+        .safety-section p {
+            margin-bottom: 15px;
+            padding-left: 15px;
+        }
+        
+        .safety-list {
+            padding-left: 35px;
+            margin-bottom: 20px;
+        }
+        
+        .safety-list li {
+            margin-bottom: 10px;
+        }
+        
+        .safety-item {
+            margin-bottom: 30px;
+            background-color: rgba(179, 155, 125, 0.05);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #B39B7D;
+        }
+        
+        .safety-icon {
+            color: #9D7F86;
+        }
+        
+        .safety-intro {
+            background-color: rgba(157, 127, 134, 0.1);
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 40px;
+        }
+        
+        .safety-resources {
+            background-color: rgba(179, 155, 125, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px dashed #B39B7D;
+        }
+        
+        .safety-message {
+            background-color: rgba(157, 127, 134, 0.05);
+            padding: 30px;
+            border-radius: 10px;
+            margin: 40px 0;
+        }
+        
+        /* 確保導航欄在頂部時顯示正確 */
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.6);
+            transition: background-color 0.3s ease;
+        }
+        
+        .navbar-scrolled {
+            background-color: rgba(0, 0, 0, 0.85);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .safety-header {
+                padding: 150px 0 60px;
+            }
+            
+            .safety-header h1 {
+                font-size: 32px;
+            }
+            
+            .safety-section h2 {
+                font-size: 24px;
+            }
+            
+            .safety-section h3 {
+                font-size: 18px;
+            }
+            
+            .safety-item {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 導航欄 -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <img src="logo.png" alt="BrewDate" height="40">
+                BrewDate
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#home">首頁</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#features">特色</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html#business">商家合作</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="business-login.html">店家登入</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link download-btn" href="index.html#download">立即下載</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 安全提醒頁頭 -->
+    <header class="safety-header">
+        <div class="container text-center">
+            <h1>BrewDate 安全提醒</h1>
+            <p class="lead">您的安全是我們的首要優先，請遵循以下指南確保愉快的約會體驗</p>
+        </div>
+    </header>
+
+    <!-- 安全提醒內容 -->
+    <main class="container">
+        <div class="safety-container">
+            <div class="safety-intro text-center">
+                <div class="safety-icon mb-3">
+                    <i class="fas fa-shield-alt fa-3x"></i>
+                </div>
+                <h2>您的安全是我們的首要優先</h2>
+                <p class="lead">為確保您擁有安全且愉快的約會體驗，請遵循以下安全指南</p>
+            </div>
+            
+            <div class="safety-section">
+                <h2>一、線上互動安全</h2>
+                
+                <div class="safety-item">
+                    <h3><i class="fas fa-user-shield me-2"></i>保護個人資料</h3>
+                    <ul class="safety-list">
+                        <li>請勿在個人資料或訊息中分享敏感個人資訊，如完整的身份證號碼、銀行資料或家庭住址</li>
+                        <li>使用具有足夠強度的密碼，並定期更換</li>
+                        <li>小心分享社群媒體資訊，可能揭露您的個人資訊和位置</li>
+                        <li>不要與任何人分享您的BrewDate帳號密碼</li>
+                    </ul>
+                </div>
+                
+                <div class="safety-item">
+                    <h3><i class="fas fa-comment-slash me-2"></i>警惕可疑行為</h3>
+                    <ul class="safety-list">
+                        <li>對過於急切想見面或要求提供財務資訊的用戶保持警惕</li>
+                        <li>提防借口需要金錢幫助的請求，無論理由多麼合理</li>
+                        <li>警惕聲稱在國外工作或遇到緊急情況需要財務協助的用戶</li>
+                        <li>若有用戶堅持將對話轉移到其他平台，請謹慎行事</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="safety-section">
+                <h2>二、線下見面安全</h2>
+                
+                <div class="safety-item">
+                    <h3><i class="fas fa-map-marker-alt me-2"></i>公共場所見面</h3>
+                    <ul class="safety-list">
+                        <li>首次見面請選擇公共場所，如咖啡廳、餐廳或購物中心</li>
+                        <li>儘量在白天或人多的時間安排見面</li>
+                        <li>避免在偏僻或陌生的地點見面</li>
+                        <li>建議使用我們合作的店家，這些地點都經過安全評估</li>
+                    </ul>
+                </div>
+                
+                <div class="safety-item">
+                    <h3><i class="fas fa-car me-2"></i>交通與住宿安全</h3>
+                    <ul class="safety-list">
+                        <li>安排自己的交通工具往返見面地點，避免依賴對方接送</li>
+                        <li>若使用計程車，請使用正規的叫車服務</li>
+                        <li>不要接受對方邀請立即前往私人住所</li>
+                        <li>不要留在讓您感到不舒服的場所，隨時準備離開</li>
+                    </ul>
+                </div>
+                
+                <div class="safety-item">
+                    <h3><i class="fas fa-users me-2"></i>告知親友</h3>
+                    <ul class="safety-list">
+                        <li>在見面前告知朋友或家人您的行程，包括見面地點和預計返回時間</li>
+                        <li>考慮使用位置共享功能，與信任的朋友分享您的實時位置</li>
+                        <li>設定安全確認，約定時間向朋友報平安</li>
+                        <li>若可能，考慮首次約會帶上朋友，進行群體活動</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="safety-section">
+                <h2>三、飲食安全</h2>
+                
+                <div class="safety-item">
+                    <h3><i class="fas fa-glass-cheers me-2"></i>飲料與食物安全</h3>
+                    <ul class="safety-list">
+                        <li>全程留意您的飲料，不要接受來歷不明的飲品</li>
+                        <li>若您離開座位（如上洗手間），回來後請重新點一杯飲料</li>
+                        <li>保持清醒，控制酒精攝入量</li>
+                        <li>若感到不適或頭暈，請立即尋求幫助</li>
+                    </ul>
+                </div>
+                
+                <div class="safety-item">
+                    <h3><i class="fas fa-allergies me-2"></i>過敏與飲食偏好</h3>
+                    <ul class="safety-list">
+                        <li>事先告知對方您的食物過敏或飲食限制</li>
+                        <li>選擇您熟悉且信任的食物類型</li>
+                        <li>若有特殊飲食需求，建議提前選好適合的餐廳</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="safety-section">
+                <h2>四、遭遇不當行為</h2>
+                
+                <div class="safety-item">
+                    <h3><i class="fas fa-exclamation-triangle me-2"></i>應對騷擾或不適情況</h3>
+                    <ul class="safety-list">
+                        <li>明確表達您的界限，如果對方行為讓您不舒服，請直接表明</li>
+                        <li>信任您的直覺，若感到不安全，請立即離開</li>
+                        <li>不要擔心禮貌問題，您的安全比禮節更重要</li>
+                        <li>準備好離開的藉口或理由，如朋友的緊急電話</li>
+                        <li>若情況嚴重，不要猶豫，立即聯繫現場工作人員或報警</li>
+                    </ul>
+                </div>
+                
+                <div class="safety-item">
+                    <h3><i class="fas fa-flag me-2"></i>舉報不當行為</h3>
+                    <ul class="safety-list">
+                        <li>使用BrewDate應用程式內的舉報功能報告可疑或不當行為</li>
+                        <li>提供具體資訊，幫助我們採取適當行動</li>
+                        <li>若遇到違法行為，請聯繫當地執法機關</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="safety-section">
+                <h2>五、安全資源</h2>
+                
+                <div class="safety-resources mb-4">
+                    <h3><i class="fas fa-phone-alt me-2"></i>緊急聯繫資訊</h3>
+                    <ul class="safety-list">
+                        <li><strong>緊急救援：</strong>110 (警察) / 119 (救護)</li>
+                        <li><strong>婦幼保護專線：</strong>113</li>
+                        <li><strong>BrewDate客服：</strong>brewdate3160@gmail.com</li>
+                    </ul>
+                </div>
+                
+                <div class="safety-message text-center">
+                    <div class="safety-icon mb-3">
+                        <i class="fas fa-heart fa-2x text-danger"></i>
+                    </div>
+                    <p class="lead">記住，真正尊重您的人會尊重您的界限和舒適度。</p>
+                    <p>祝您擁有安全、愉快的BrewDate約會體驗！</p>
+                </div>
+            </div>
+            
+            <div class="safety-section text-center">
+                <p>感謝您仔細閱讀本安全提醒並使用本APP，祝您使用愉快！若有任何問題或需求，歡迎隨時透過客服管道與我們聯繫。</p>
+            </div>
+            
+            <div class="safety-section text-center">
+                <p>最後更新日期：2025年4月7日</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 頁腳預留位置 -->
+    <div id="footer-placeholder"></div>
+    
+    <!-- 返回頂部按鈕 -->
+    <a href="#" class="back-to-top" id="backToTop"><i class="fas fa-arrow-up"></i></a>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- 載入共用元素 -->
+    <script src="./components/common-elements.js"></script>
+    
+    <!-- AOS 動畫庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    
+    <script>
+        // 初始化 AOS 動畫
+        document.addEventListener('DOMContentLoaded', function() {
+            AOS.init({
+                duration: 800,
+                easing: 'ease-in-out',
+                once: true
+            });
+            
+            // 確保導航欄在頁面頂部時始終為深色
+            const navbar = document.querySelector('.navbar');
+            navbar.classList.add('navbar-dark');
+            
+            // 導航欄滾動效果
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 50) {
+                    navbar.classList.add('navbar-scrolled');
+                } else {
+                    navbar.classList.remove('navbar-scrolled');
+                }
+            });
+            
+            // 返回頂部按鈕
+            const backToTop = document.getElementById('backToTop');
+            if (backToTop) {
+                window.addEventListener('scroll', function() {
+                    if (window.scrollY > 300) {
+                        backToTop.classList.add('active');
+                    } else {
+                        backToTop.classList.remove('active');
+                    }
+                });
+                
+                backToTop.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
+                });
+            }
+        });
+    </script>
+</body>
+</html>
