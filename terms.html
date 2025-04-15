@@ -1,30 +1,134 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BrewDate 使用條款</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
-    <!-- Google Fonts -->
+    <!-- SEO 優化 meta 標籤 -->
+    <meta name="description" content="BrewDate 交友APP 使用條款 - 了解我們的規則與政策，確保安全的約會體驗。">
+    <meta name="keywords" content="BrewDate, 交友, 約會, 使用條款, 隱私政策">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="base.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <!-- 自定義樣式 -->
-    <link href="style.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="logo_s.png" type="image/png">
+    <script src="error-handler.js"></script>
+
+    <style>
+        /* 使用條款頁面樣式 */
+        .terms-header {
+            background: linear-gradient(135deg, #9D7F86 0%, #8C96A7 100%);
+            color: white;
+            padding: 180px 0 80px;
+            position: relative;
+            text-align: center;
+        }
+        
+        .terms-header h1 {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        
+        .terms-header p.lead {
+            font-size: 20px;
+            max-width: 700px;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+        
+        .terms-container {
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        
+        .terms-section {
+            margin-bottom: 40px;
+            font-size: 16px;
+            line-height: 1.8;
+            color: #495057;
+        }
+        
+        .terms-section h2 {
+            font-size: 28px;
+            color: #343a40;
+            margin-bottom: 20px;
+            font-weight: 600;
+            position: relative;
+            padding-bottom: 10px;
+        }
+        
+        .terms-section h2:after {
+            content: '';
+            position: absolute;
+            width: 50px;
+            height: 3px;
+            background-color: #9D7F86;
+            bottom: 0;
+            left: 0;
+        }
+        
+        .terms-section h3 {
+            font-size: 20px;
+            color: #495057;
+            margin: 25px 0 15px;
+            font-weight: 600;
+        }
+        
+        .terms-section p {
+            margin-bottom: 15px;
+        }
+        
+        .terms-list {
+            padding-left: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .terms-list li {
+            margin-bottom: 10px;
+        }
+        
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .terms-header {
+                padding: 150px 0 60px;
+            }
+            
+            .terms-header h1 {
+                font-size: 32px;
+            }
+            
+            .terms-section h2 {
+                font-size: 24px;
+            }
+            
+            .terms-section h3 {
+                font-size: 18px;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- 導航欄 -->
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="index.html">BrewDate</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <a class="navbar-brand" href="index.html">
+                <img src="logo.png" alt="BrewDate" height="40">
+                BrewDate
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="index.html">首頁</a>
+                        <a class="nav-link" href="index.html#home">首頁</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="index.html#features">特色</a>
@@ -33,10 +137,10 @@
                         <a class="nav-link" href="index.html#business">商家合作</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="index.html#download">下載應用</a>
+                        <a class="nav-link" href="business-login.html">店家登入</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="index.html#faq">常見問題</a>
+                        <a class="nav-link download-btn" href="index.html#download">立即下載</a>
                     </li>
                 </ul>
             </div>
@@ -67,7 +171,7 @@
             </div>
             
             <div class="terms-section">
-                <h2>1. 與其他用戶的互動</h2>
+                <h2>一、與其他用戶的互動</h2>
                 
                 <p>本應用致力於打造一個安全、友善的社交平台，但我們無法逐一核實每位用戶的身份、背景或其個人檔案中所提供的資訊真實性。因此，您在與其他用戶互動時需自行承擔相關責任與風險。以下是一些重要的注意事項：</p>
                 
@@ -88,7 +192,7 @@
             </div>
             
             <div class="terms-section">
-                <h2>2. 您提供的內容</h2>
+                <h2>二、您提供的內容</h2>
                 
                 <p>您在本應用上傳的任何內容（包括但不限於個人檔案、照片、文字、活動描述或留言）均由您自行負責。我們鼓勵您分享真實、有趣的資訊，以促進更好的社交體驗，但同時也需遵守以下規定：</p>
                 
@@ -109,7 +213,7 @@
             </div>
             
             <div class="terms-section">
-                <h2>3. 帳號與使用規範</h2>
+                <h2>三、帳號與使用規範</h2>
                 
                 <p>為確保本應用提供一個安全、公平的社交環境，請您遵守以下帳號使用與行為規範：</p>
                 
@@ -154,7 +258,7 @@
             </div>
             
             <div class="terms-section">
-                <h2>4. 免責聲明</h2>
+                <h2>四、免責聲明</h2>
                 
                 <p>本應用致力於提供穩定、優質的服務，但以下事項需您特別注意：</p>
                 
@@ -178,7 +282,7 @@
             </div>
             
             <div class="terms-section">
-                <h2>5. 帳號安全</h2>
+                <h2>五、帳號安全</h2>
                 
                 <p>您的帳號安全是我們共同的責任，請遵循以下指引：</p>
                 
@@ -196,7 +300,7 @@
             </div>
             
             <div class="terms-section">
-                <h2>6. 智慧財產權</h2>
+                <h2>六、智慧財產權</h2>
                 
                 <p>本應用的所有內容與技術均受法律保護，具體如下：</p>
                 
@@ -211,7 +315,7 @@
             </div>
             
             <div class="terms-section">
-                <h2>7. 第三方服務與連結</h2>
+                <h2>七、第三方服務與連結</h2>
                 
                 <p>本應用可能涉及第三方服務或連結，請注意：</p>
                 
@@ -223,7 +327,7 @@
             </div>
             
             <div class="terms-section">
-                <h2>8. 服務中斷與穩定性</h2>
+                <h2>八、服務中斷與穩定性</h2>
                 
                 <h3>可能中斷</h3>
                 <p>本應用可能因系統升級、例行維護、網路問題或不可抗力（如自然災害、駭客攻擊）暫時中斷。我們將盡力在合理時間內恢復，但不對因此造成的損失負責。</p>
@@ -233,7 +337,7 @@
             </div>
             
             <div class="terms-section">
-                <h2>9. 資料儲存與管理</h2>
+                <h2>九、資料儲存與管理</h2>
                 
                 <h3>儲存政策</h3>
                 <p>為確保系統效能，我們可能對訊息、照片、活動紀錄等設定儲存期限或數量限制。超出限制的資料可能被自動刪除，我們不承擔恢復責任。</p>
@@ -246,7 +350,7 @@
             </div>
             
             <div class="terms-section">
-                <h2>10. 付費服務</h2>
+                <h2>十、付費服務</h2>
                 
                 <h3>費用資訊</h3>
                 <p>付費服務的價格與內容將於應用內清楚標示，請您在購買前確認。</p>
@@ -265,7 +369,7 @@
             </div>
             
             <div class="terms-section">
-                <h2>11. 服務終止</h2>
+                <h2>十一、服務終止</h2>
                 
                 <h3>用戶終止</h3>
                 <p>您可隨時透過應用內設定刪除帳號，刪除後資料無法恢復，請謹慎操作。部分資料可能因法律要求保留一段時間。</p>
@@ -278,7 +382,7 @@
             </div>
             
             <div class="terms-section">
-                <h2>12. 法律適用與爭議解決</h2>
+                <h2>十二、法律適用與爭議解決</h2>
                 
                 <h3>適用法律</h3>
                 <p>本條款依中華民國法律解釋與適用。</p>
@@ -288,7 +392,7 @@
             </div>
             
             <div class="terms-section">
-                <h2>13. 聯繫我們</h2>
+                <h2>十三、聯繫我們</h2>
                 
                 <p>若您對本條款有任何疑問或需要協助，請聯繫：</p>
                 
@@ -306,64 +410,56 @@
         </div>
     </main>
 
-    <!-- 頁腳 -->
-    <footer class="footer">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-4">
-                    <div class="footer-info">
-                        <h3>BrewDate</h3>
-                        <p>用一杯咖啡的時間，快速認識新朋友</p>
-                        <div class="social-links">
-                            <a href="#"><i class="fab fa-facebook-f"></i></a>
-                            <a href="#"><i class="fab fa-instagram"></i></a>
-                            <a href="#"><i class="fab fa-twitter"></i></a>
-                            <a href="#"><i class="fab fa-linkedin-in"></i></a>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-2 col-md-6">
-                    <div class="footer-links">
-                        <h4>快速連結</h4>
-                        <ul>
-                            <li><a href="index.html#home">首頁</a></li>
-                            <li><a href="index.html#features">特色</a></li>
-                            <li><a href="index.html#business">商家合作</a></li>
-                            <li><a href="index.html#download">下載應用</a></li>
-                            <li><a href="index.html#faq">常見問題</a></li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6">
-                    <div class="footer-links">
-                        <h4>聯絡我們</h4>
-                        <ul>
-                            <li><i class="fas fa-envelope"></i> <a href="mailto:brewdate3160@gmail.com">brewdate3160@gmail.com</a></li>
-                            <li><i class="fas fa-phone"></i> <a href="tel:+886905235393">+886 905 235 393</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="copyright">
-            <div class="container">
-                <div class="row">
-                    <div class="col-md-6">
-                        <p>&copy; 2025 BrewDate. 保留所有權利.</p>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="footer-bottom-links">
-                            <a href="privacy.html">隱私政策</a>
-                            <a href="terms.html">使用條款</a>
-                            <a href="safety.html">安全提醒</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </footer>
+    <!-- 頁腳預留位置 -->
+    <div id="footer-placeholder"></div>
+    
+    <!-- 返回頂部按鈕 -->
+    <a href="#" class="back-to-top" id="backToTop"><i class="fas fa-arrow-up"></i></a>
 
     <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- 載入共用元素 -->
+    <script src="./components/common-elements.js"></script>
+    
+    <!-- AOS 動畫庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    
+    <script>
+        // 初始化 AOS 動畫
+        AOS.init({
+            duration: 800,
+            easing: 'ease-in-out',
+            once: true
+        });
+        
+        // 導航欄滾動效果
+        window.addEventListener('scroll', function() {
+            const navbar = document.querySelector('.navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('navbar-scrolled');
+            } else {
+                navbar.classList.remove('navbar-scrolled');
+            }
+        });
+        
+        // 返回頂部按鈕
+        const backToTop = document.getElementById('backToTop');
+        window.addEventListener('scroll', function() {
+            if (window.scrollY > 300) {
+                backToTop.classList.add('active');
+            } else {
+                backToTop.classList.remove('active');
+            }
+        });
+        
+        backToTop.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    </script>
 </body>
 </html>
