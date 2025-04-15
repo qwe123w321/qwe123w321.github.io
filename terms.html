@@ -22,17 +22,30 @@
     <style>
         /* 使用條款頁面樣式 */
         .terms-header {
-            background: linear-gradient(135deg, #9D7F86 0%, #8C96A7 100%);
-            color: white;
+            background: linear-gradient(135deg, var(--secondary-color) 0%, #4a4a4a 100%);
+            color: var(--white-color);
             padding: 180px 0 80px;
             position: relative;
             text-align: center;
+            overflow: hidden;
+        }
+        
+        .terms-header:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
+            opacity: 0.1;
         }
         
         .terms-header h1 {
             font-size: 42px;
             font-weight: 700;
             margin-bottom: 15px;
+            color: #9D7F86; /* 棕色標題 */
         }
         
         .terms-header p.lead {
