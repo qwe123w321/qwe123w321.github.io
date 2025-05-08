@@ -356,6 +356,14 @@ async function validateStep(stepNumber) {
         } else {
             clearFieldError(contactPhone);
         }
+
+        if (uploadedFiles.length === 0) {
+            const fileUploadArea = document.getElementById('businessLicenseFile').parentNode;
+            showFieldError(fileUploadArea, '請上傳營業執照或相關證明');
+            isValid = false;
+        } else {
+            clearFieldError(fileUploadArea);
+        }
         
         if (!termsCheck.checked) {
             showFieldError(termsCheck, '請同意服務條款與隱私政策');
@@ -656,7 +664,7 @@ async function nextStep(currentStep) {
         document.getElementById(`step-${nextStep}`).classList.add('active');
         
         // 如果是第3步，顯示提交按鈕
-        if (nextStep === 3) {
+        if (nextStep === 4) {
             document.querySelector('.btn-submit').style.display = 'block';
         }
         
@@ -932,7 +940,7 @@ function updateSummaryInfo() {
     // 獲取各步驟的輸入值
     const email = document.getElementById('email').value;
     const businessName = document.getElementById('businessName').value;
-    const businessType = document.getElementById('businessType');
+    const businessType = document.getElementById('businessType').value;
     const businessDescription = document.getElementById('businessDescription').value;
     const businessAddress = document.getElementById('businessAddress').value;
     const businessPhone = document.getElementById('businessPhone').value;
