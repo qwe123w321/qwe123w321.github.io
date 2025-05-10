@@ -131,6 +131,8 @@
    </style>
     
     <script src="error-handler.js"></script>
+
+    
     
     <style>
          /* 優惠核銷區塊 */
@@ -214,6 +216,31 @@
             background-color: #86686F;
             transform: translateY(-2px);
             color: white;
+        }
+    </style>
+
+    <style>
+        button, 
+        input[type="submit"], 
+        .btn, 
+        .login-btn, 
+        .register-btn {
+            cursor: pointer;
+        }
+
+        .login-btn:hover {
+            background-color: #86686F;
+            /* 移除可能導致重排的屬性 */
+            /* transform: translateY(-2px); */
+            /* box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); */
+        }
+
+        @media (hover: hover) {
+            .login-btn:hover {
+                background-color: #86686F;
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            }
         }
     </style>
 
@@ -308,7 +335,7 @@
                                 </div>
                                 
                                 <button type="submit" class="btn login-btn w-100">登入</button>
-                                <button type="button" class="btn register-btn w-100" id="registerBtn">註冊店家帳戶</button>
+                                <button type="button" class="btn register-btn w-100" onclick="void(0)" id="registerBtn">註冊店家帳戶</button>
                             </form>
                             
                             <!-- <div class="or-divider">
