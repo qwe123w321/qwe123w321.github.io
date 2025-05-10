@@ -1441,16 +1441,65 @@ document.addEventListener('DOMContentLoaded', function() {
     const registerForm = document.getElementById('businessRegisterForm');
         
     if (registerForm) {
-        // 註冊表單提交事件
-        registerForm.addEventListener('submit', handleRegisterSubmit);
+        // 替換這部分: 註冊表單提交事件
+        registerForm.addEventListener('submit', function(e) {
+            // 防止重複提交
+            const submitButton = document.querySelector('.btn-submit');
+            if (submitButton.dataset.submitting === 'true') {
+                e.preventDefault();
+                return;
+            }
+            
+            // 設置防重複提交標記
+            submitButton.dataset.submitting = 'true';
+            
+            // 正常處理提交
+            handleRegisterSubmit(e);
+            
+            // 如果表單驗證失敗，重置防重複提交標記
+            setTimeout(() => {
+                if (!e.defaultPrevented) {
+                    submitButton.dataset.submitting = 'false';
+                }
+            }, 100);
+        });
         
         // 下一步按鈕點擊事件
         const nextButtons = document.querySelectorAll('.btn-next');
         nextButtons.forEach(button => {
             button.addEventListener('click', function(e) {
                 e.preventDefault();
+                e.stopPropagation(); // 阻止事件冒泡
+                
+                // 添加視覺反饋
+                this.classList.add('clicked');
+                
+                // 防止連續點擊
+                if (this.dataset.processing === 'true') return;
+                this.dataset.processing = 'true';
+                
                 const currentStep = parseInt(this.getAttribute('data-step'));
-                nextStep(currentStep);
+                
+                // 添加短暫延遲避免快速多次點擊和視覺反饋
+                setTimeout(() => {
+                    nextStep(currentStep);
+                    // 移除視覺反饋
+                    this.classList.remove('clicked');
+                    this.dataset.processing = 'false';
+                }, 50);
+            });
+            
+            // 添加觸控事件處理
+            button.addEventListener('touchstart', function() {
+                this.classList.add('touch-active');
+            });
+            
+            button.addEventListener('touchend', function() {
+                this.classList.remove('touch-active');
+            });
+            
+            button.addEventListener('touchcancel', function() {
+                this.classList.remove('touch-active');
             });
         });
         
@@ -1459,8 +1508,37 @@ document.addEventListener('DOMContentLoaded', function() {
         prevButtons.forEach(button => {
             button.addEventListener('click', function(e) {
                 e.preventDefault();
+                e.stopPropagation(); // 阻止事件冒泡
+                
+                // 添加視覺反饋
+                this.classList.add('clicked');
+                
+                // 防止連續點擊
+                if (this.dataset.processing === 'true') return;
+                this.dataset.processing = 'true';
+                
                 const currentStep = parseInt(this.getAttribute('data-step'));
-                prevStep(currentStep);
+                
+                // 添加短暫延遲避免快速多次點擊和視覺反饋
+                setTimeout(() => {
+                    prevStep(currentStep);
+                    // 移除視覺反饋
+                    this.classList.remove('clicked');
+                    this.dataset.processing = 'false';
+                }, 50);
+            });
+            
+            // 添加觸控事件處理
+            button.addEventListener('touchstart', function() {
+                this.classList.add('touch-active');
+            });
+            
+            button.addEventListener('touchend', function() {
+                this.classList.remove('touch-active');
+            });
+            
+            button.addEventListener('touchcancel', function() {
+                this.classList.remove('touch-active');
             });
         });
         
@@ -1473,16 +1551,46 @@ document.addEventListener('DOMContentLoaded', function() {
         // 密碼顯示/隱藏按鈕點擊事件
         const togglePassword = document.getElementById('togglePassword');
         if (togglePassword) {
-            togglePassword.addEventListener('click', function() {
+            const passwordVisibilityHandler = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // 防止連續觸發
+                if (this.dataset.processing === 'true') return;
+                this.dataset.processing = 'true';
+                
                 togglePasswordVisibility('password', 'togglePassword');
-            });
+                
+                // 延遲重置處理標記以避免快速連續點擊
+                setTimeout(() => {
+                    this.dataset.processing = 'false';
+                }, 50);
+            };
+            
+            togglePassword.addEventListener('click', passwordVisibilityHandler);
+            togglePassword.addEventListener('touchend', passwordVisibilityHandler);
         }
-        
+
         const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
         if (toggleConfirmPassword) {
-            toggleConfirmPassword.addEventListener('click', function() {
+            const confirmPasswordVisibilityHandler = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // 防止連續觸發
+                if (this.dataset.processing === 'true') return;
+                this.dataset.processing = 'true';
+                
                 togglePasswordVisibility('confirmPassword', 'toggleConfirmPassword');
-            });
+                
+                // 延遲重置處理標記以避免快速連續點擊
+                setTimeout(() => {
+                    this.dataset.processing = 'false';
+                }, 50);
+            };
+            
+            toggleConfirmPassword.addEventListener('click', confirmPasswordVisibilityHandler);
+            toggleConfirmPassword.addEventListener('touchend', confirmPasswordVisibilityHandler);
         }
         
         // 初始化上傳預覽區域 - 使用增強版
@@ -1524,6 +1632,34 @@ document.addEventListener('DOMContentLoaded', function() {
     // 添加到頁面
     document.body.appendChild(diagnosticsBtn);
 });
+
+const mobileStyles = document.createElement('style');
+mobileStyles.innerHTML = `
+    /* 按鈕點擊效果 */
+    .clicked, .touch-active {
+        opacity: 0.8 !important;
+    }
+    
+    /* 擴大按鈕點擊區域 */
+    .btn, button {
+        min-height: 44px;
+        position: relative;
+    }
+    
+    /* 改善移動設備上的觸控體驗 */
+    @media (max-width: 767px) {
+        .form-control, .btn, button, a {
+            -webkit-tap-highlight-color: rgba(0,0,0,0);
+        }
+        
+        /* 擴展密碼顯示切換按鈕的可點擊區域 */
+        .password-toggle {
+            padding: 12px;
+            margin-right: -12px;
+        }
+    }
+`;
+document.head.appendChild(mobileStyles);
 
 // 處理文件上傳按鈕的點擊事件
 function uploadBusinessLicense(e) {
