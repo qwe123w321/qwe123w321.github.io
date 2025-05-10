@@ -417,6 +417,25 @@
     white-space: nowrap;
 }
 
+/* 解決移動設備點擊延遲問題 */
+html {
+    touch-action: manipulation;
+}
+
+/* 擴大按鈕點擊區域 */
+.login-btn,
+.register-btn,
+.btn-prev, 
+.btn-next, 
+.btn-submit,
+.password-toggle,
+.forgot-password {
+    min-height: 44px; /* 確保足夠大的點擊區域 */
+    padding: 12px 20px;
+    touch-action: manipulation;
+}
+
+
 /* 響應式調整 */
 @media (max-width: 991px) {
     .login-image {
@@ -455,5 +474,43 @@
     
     .btn-prev, .btn-next, .btn-submit {
         width: 100%;
+    }
+    .login-btn:active,
+    .register-btn:active,
+    .btn-prev:active, 
+    .btn-next:active, 
+    .btn-submit:active {
+        background-color: #86686F;
+        transform: translateY(1px);
+        transition: none; /* 確保即時反饋 */
+    }
+    
+    /* 確保表單控制項足夠大 */
+    .form-control {
+        min-height: 48px;
+        font-size: 16px; /* 防止iOS縮放 */
+    }
+    
+    /* 改善移動設備上的點擊體驗 */
+    a, button, input[type="submit"], input[type="button"], .btn {
+        cursor: pointer;
+        -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1); /* 輕微點擊高亮 */
+    }
+    
+    /* 修復iOS上可能出現的hover卡住問題 */
+    * {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    @media (hover: none) {
+        /* 觸控設備禁用hover效果，使用active */
+        .login-btn:hover,
+        .register-btn:hover,
+        .btn-next:hover,
+        .btn-prev:hover,
+        .btn-submit:hover {
+            transform: none;
+            box-shadow: none;
+        }
     }
 }
