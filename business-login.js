@@ -53,26 +53,17 @@ document.addEventListener('DOMContentLoaded', function() {
         loginForm.addEventListener('submit', handleLogin);
     }
     
-    const loginBtn = document.querySelector('.login-btn');
-    if (loginBtn) {
-        loginBtn.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            handleLogin(e);
-        });
-    }
-
+    //註冊
     const registerBtn = document.getElementById('registerBtn');
     if (registerBtn) {
-        registerBtn.addEventListener('touchend', function(e) {
+        // 添加 click 事件監聽器以支持桌面設備
+        registerBtn.addEventListener('click', function(e) {
             e.preventDefault();
             window.location.href = 'business-register.html';
         });
-    }
-    
-    // 註冊連結事件
-    const signupLink = document.getElementById('signupLink');
-    if (signupLink) {
-        signupLink.addEventListener('click', function(e) {
+        
+        // 保留現有的 touchend 事件監聽器以支持移動設備
+        registerBtn.addEventListener('touchend', function(e) {
             e.preventDefault();
             window.location.href = 'business-register.html';
         });
