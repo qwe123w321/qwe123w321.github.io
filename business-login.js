@@ -53,10 +53,18 @@ document.addEventListener('DOMContentLoaded', function() {
         loginForm.addEventListener('submit', handleLogin);
     }
     
-    // 註冊按鈕事件
+    const loginBtn = document.querySelector('.login-btn');
+    if (loginBtn) {
+        loginBtn.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            handleLogin(e);
+        });
+    }
+
     const registerBtn = document.getElementById('registerBtn');
     if (registerBtn) {
-        registerBtn.addEventListener('click', function() {
+        registerBtn.addEventListener('touchend', function(e) {
+            e.preventDefault();
             window.location.href = 'business-register.html';
         });
     }
