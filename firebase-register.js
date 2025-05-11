@@ -83,20 +83,27 @@ const checkEmailAvailability = httpsCallable(functions, 'checkEmailAvailability'
 
 // 檢查電子郵件是否可用（未被註冊）
 async function validateEmail(email) {
+    // 參數驗證
     if (!email || email.trim() === '') {
         console.error('嘗試檢查空的電子郵件');
-        return { available: false };
+        return { available: false }; // 空的電子郵件被視為不可用
     }
 
     try {
+        // 清理並規範化電子郵件
         const normalizedEmail = email.trim().toLowerCase();
         console.log('開始檢查電子郵件可用性:', normalizedEmail);
         
+        // 準備參數 - 使用與 Firebase Function 預期的結構
         const params = { email: normalizedEmail };
+        
+        // 調用 Firebase 函數 - 使用 { data: ... } 結構
         const result = await checkEmailAvailability(params);
         
+        // 記錄完整的回應
         console.log('電子郵件可用性檢查完整回應:', result.data);
         
+        // 檢查回應格式
         if (result.data && typeof result.data === 'object' && 'available' in result.data) {
             return {
                 available: result.data.available || false,
@@ -104,17 +111,24 @@ async function validateEmail(email) {
             };
         } else {
             console.warn('回應格式異常:', result.data);
-            return { available: false };
+            return { available: false }; // 出於安全考量，回應異常時假設電子郵件不可用
         }
     } catch (error) {
-        console.error('檢查電子郵件可用性失敗:', {
-            code: error.code,
-            message: error.message,
-            details: error.details
-        });
+        // 處理 Firebase Functions 異常
+        if (error.code) {
+            console.error(`Firebase 函數異常: [${error.code}] ${error.message}`, error);
+            if (error.details) {
+                console.error('詳細錯誤信息:', error.details);
+            }
+        } else {
+            // 處理所有其他異常
+            console.error('檢查電子郵件可用性時發生錯誤:', error);
+        }
+        
+        // 返回錯誤結果
         return { 
             available: false,
-            error: error.message || '無法檢查電子郵件可用性'
+            error: error.message
         };
     }
 }
@@ -224,10 +238,10 @@ async function validateStep(stepNumber) {
     let isValid = true;
     
     if (stepNumber === 1) {
+        // 驗證第一步：電子郵件和密碼
         const email = document.getElementById('email');
         const password = document.getElementById('password');
         const confirmPassword = document.getElementById('confirmPassword');
-        const nextButton = document.querySelector('.btn-next[data-step="1"]');
         
         if (!email.value) {
             showFieldError(email, '請輸入電子郵件');
@@ -238,54 +252,43 @@ async function validateStep(stepNumber) {
         } else {
             clearFieldError(email);
             
+            // 檢查電子郵件是否可用
             try {
+                const nextButton = document.querySelector('.btn-next[data-step="1"]');
                 const originalText = nextButton.textContent;
                 nextButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 檢查中...';
                 nextButton.disabled = true;
                 
+                // 使用更新的 validateEmail 函數
                 const result = await validateEmail(email.value);
                 
-                // 確保按鈕狀態恢復
+                // 恢復按鈕狀態
                 nextButton.textContent = originalText;
                 nextButton.disabled = false;
                 
                 if (!result.available) {
+                    // 如果有特定錯誤訊息顯示它
                     const errorMessage = result.error ? 
                         `電子郵件檢查失敗: ${result.error}` : 
                         '此電子郵件已被註冊，請使用其他電子郵件';
+                    
                     showFieldError(email, errorMessage);
                     isValid = false;
+                    
+                    // 在控制台中記錄詳細資訊
                     console.warn('電子郵件驗證失敗:', result);
                 }
             } catch (error) {
                 console.error('驗證電子郵件時發生錯誤:', error);
+                
+                // 恢復按鈕狀態
+                const nextButton = document.querySelector('.btn-next[data-step="1"]');
                 nextButton.textContent = '下一步';
-                nextButton.disabled = false; // 確保錯誤時恢復按鈕
+                nextButton.disabled = false;
+                
                 showFieldError(email, '驗證電子郵件時發生錯誤，請稍後再試');
                 isValid = false;
             }
-        }
-        
-        // 驗證密碼
-        if (!password.value) {
-            showFieldError(password, '請輸入密碼');
-            isValid = false;
-        } else if (!isStrongPassword(password.value)) {
-            showFieldError(password, '密碼需至少8位，包含字母和數字');
-            isValid = false;
-        } else {
-            clearFieldError(password);
-        }
-        
-        // 驗證確認密碼
-        if (!confirmPassword.value) {
-            showFieldError(confirmPassword, '請再次輸入密碼');
-            isValid = false;
-        } else if (password.value !== confirmPassword.value) {
-            showFieldError(confirmPassword, '兩次輸入的密碼不一致');
-            isValid = false;
-        } else {
-            clearFieldError(confirmPassword);
         }
     } else if (stepNumber === 2) {
         // 驗證第二步：店家資訊
@@ -352,14 +355,6 @@ async function validateStep(stepNumber) {
             isValid = false;
         } else {
             clearFieldError(contactPhone);
-        }
-
-        if (uploadedFiles.length === 0) {
-            const fileUploadArea = document.getElementById('businessLicenseFile').parentNode;
-            showFieldError(fileUploadArea, '請上傳營業執照或相關證明');
-            isValid = false;
-        } else {
-            clearFieldError(fileUploadArea);
         }
         
         if (!termsCheck.checked) {
@@ -661,7 +656,7 @@ async function nextStep(currentStep) {
         document.getElementById(`step-${nextStep}`).classList.add('active');
         
         // 如果是第3步，顯示提交按鈕
-        if (nextStep === 4) {
+        if (nextStep === 3) {
             document.querySelector('.btn-submit').style.display = 'block';
         }
         
@@ -937,7 +932,7 @@ function updateSummaryInfo() {
     // 獲取各步驟的輸入值
     const email = document.getElementById('email').value;
     const businessName = document.getElementById('businessName').value;
-    const businessType = document.getElementById('businessType').value;
+    const businessType = document.getElementById('businessType');
     const businessDescription = document.getElementById('businessDescription').value;
     const businessAddress = document.getElementById('businessAddress').value;
     const businessPhone = document.getElementById('businessPhone').value;
@@ -1436,118 +1431,50 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 獲取註冊表單
     const registerForm = document.getElementById('businessRegisterForm');
+        
     if (registerForm) {
-        // 表單提交
-        registerForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const submitButton = document.querySelector('.btn-submit');
-            if (submitButton.dataset.submitting === 'true') return;
-            
-            submitButton.dataset.submitting = 'true';
-            try {
-                await handleRegisterSubmit(e);
-            } catch (error) {
-                console.error('表單提交失敗:', error);
-                submitButton.dataset.submitting = 'false';
-            }
-        });
-
-        // 下一步按鈕
+        // 註冊表單提交事件
+        registerForm.addEventListener('submit', handleRegisterSubmit);
+        
+        // 下一步按鈕點擊事件
         const nextButtons = document.querySelectorAll('.btn-next');
         nextButtons.forEach(button => {
-            const handleNext = async function(e) {
+            button.addEventListener('click', function(e) {
                 e.preventDefault();
-                e.stopPropagation();
-                console.log('下一步按鈕觸發:', { type: e.type, step: this.getAttribute('data-step') });
-                if (this.dataset.processing === 'true') return;
-                this.dataset.processing = 'true';
-                
-                try {
-                    this.classList.add('clicked');
-                    const currentStep = parseInt(this.getAttribute('data-step'));
-                    await nextStep(currentStep);
-                } catch (error) {
-                    console.error('下一步處理失敗:', error);
-                } finally {
-                    this.classList.remove('clicked');
-                    this.dataset.processing = 'false';
-                }
-            };
+                const currentStep = parseInt(this.getAttribute('data-step'));
+                nextStep(currentStep);
+            });
         });
-
-        // 上一步按鈕
+        
+        // 上一步按鈕點擊事件
         const prevButtons = document.querySelectorAll('.btn-prev');
         prevButtons.forEach(button => {
-            const handlePrev = function(e) {
+            button.addEventListener('click', function(e) {
                 e.preventDefault();
-                e.stopPropagation();
-                if (this.dataset.processing === 'true') return;
-                this.dataset.processing = 'true';
-                
-                try {
-                    this.classList.add('clicked');
-                    const currentStep = parseInt(this.getAttribute('data-step'));
-                    prevStep(currentStep);
-                } catch (error) {
-                    console.error('上一步處理失敗:', error);
-                } finally {
-                    this.classList.remove('clicked');
-                    this.dataset.processing = 'false';
-                }
-            };
-
-            button.addEventListener('click', handlePrev);
-            button.addEventListener('touchend', handlePrev);
+                const currentStep = parseInt(this.getAttribute('data-step'));
+                prevStep(currentStep);
+            });
         });
-
-        // 密碼顯示/隱藏
-        const togglePassword = document.getElementById('togglePassword');
-        if (togglePassword) {
-            const handleToggle = function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                if (this.dataset.processing === 'true') return;
-                this.dataset.processing = 'true';
-                
-                try {
-                    togglePasswordVisibility('password', 'togglePassword');
-                } catch (error) {
-                    console.error('切換密碼可見性失敗:', error);
-                } finally {
-                    this.dataset.processing = 'false';
-                }
-            };
-
-            togglePassword.addEventListener('click', handleToggle);
-            togglePassword.addEventListener('touchend', handleToggle);
-        }
         
         // 文件選擇變更事件 - 使用正確的處理函數
         const fileInput = document.getElementById('businessLicenseFile');
         if (fileInput) {
             fileInput.addEventListener('change', uploadBusinessLicense);
         }
-
+        
+        // 密碼顯示/隱藏按鈕點擊事件
+        const togglePassword = document.getElementById('togglePassword');
+        if (togglePassword) {
+            togglePassword.addEventListener('click', function() {
+                togglePasswordVisibility('password', 'togglePassword');
+            });
+        }
+        
         const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
         if (toggleConfirmPassword) {
-            const confirmPasswordVisibilityHandler = function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                // 防止連續觸發
-                if (this.dataset.processing === 'true') return;
-                this.dataset.processing = 'true';
-                
+            toggleConfirmPassword.addEventListener('click', function() {
                 togglePasswordVisibility('confirmPassword', 'toggleConfirmPassword');
-                
-                // 延遲重置處理標記以避免快速連續點擊
-                setTimeout(() => {
-                    this.dataset.processing = 'false';
-                }, 50);
-            };
-            
-            toggleConfirmPassword.addEventListener('click', confirmPasswordVisibilityHandler);
-            toggleConfirmPassword.addEventListener('touchend', confirmPasswordVisibilityHandler);
+            });
         }
         
         // 初始化上傳預覽區域 - 使用增強版
@@ -1589,45 +1516,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // 添加到頁面
     document.body.appendChild(diagnosticsBtn);
 });
-
-const mobileStyles = document.createElement('style');
-mobileStyles.innerHTML = `
-    /* 按鈕點擊效果 */
-    .clicked, .touch-active {
-        opacity: 0.8 !important;
-        transform: scale(0.98);
-    }
-    
-    /* 擴大按鈕點擊區域 */
-    .btn, button {
-        min-height: 44px;
-        position: relative;
-        touch-action: manipulation; /* 消除 iOS 點擊延遲 */
-        cursor: pointer;
-    }
-    
-    /* 改善移動設備上的觸控體驗 */
-    @media (max-width: 767px) {
-        .form-control, .btn, button, a {
-            -webkit-tap-highlight-color: rgba(0,0,0,0);
-            touch-action: manipulation; /* 確保觸控行為一致 */
-        }
-        
-        /* 擴展密碼顯示切換按鈕的可點擊區域 */
-        .password-toggle {
-            padding: 12px;
-            margin-right: -12px;
-            touch-action: manipulation;
-        }
-        
-        /* 確保按鈕有足夠的點擊區域 */
-        .btn-next, .btn-prev, .btn-submit, .password-toggle {
-            min-width: 100px;
-            min-height: 44px; /* Apple 建議的最小觸控目標尺寸 */
-        }
-    }
-`;
-document.head.appendChild(mobileStyles);
 
 // 處理文件上傳按鈕的點擊事件
 function uploadBusinessLicense(e) {
