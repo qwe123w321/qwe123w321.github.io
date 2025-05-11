@@ -1603,6 +1603,7 @@ mobileStyles.innerHTML = `
         min-height: 44px;
         position: relative;
         touch-action: manipulation; /* 消除 iOS 點擊延遲 */
+        cursor: pointer;
     }
     
     /* 改善移動設備上的觸控體驗 */
