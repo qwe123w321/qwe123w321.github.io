@@ -55,19 +55,31 @@ document.addEventListener('DOMContentLoaded', function() {
     
     //註冊
     const registerBtn = document.getElementById('registerBtn');
-    if (registerBtn) {
-        // 添加 click 事件監聽器以支持桌面設備
-        registerBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            window.location.href = 'business-register.html';
-        });
-        
-        // 保留現有的 touchend 事件監聽器以支持移動設備
-        registerBtn.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            window.location.href = 'business-register.html';
-        });
-    }
+        if (registerBtn) {
+            const navigateToRegister = function(e) {
+                // 阻止所有默認行為
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // 防止重複觸發
+                if (registerBtn.dataset.navigating === 'true') return;
+                
+                // 設置標誌避免重複觸發
+                registerBtn.dataset.navigating = 'true';
+                
+                // 添加視覺反饋
+                registerBtn.style.opacity = '0.7';
+                
+                // 添加小延遲避免快速連續點擊
+                setTimeout(function() {
+                    window.location.href = 'business-register.html';
+                }, 50);
+            };
+            
+            // 使用這些事件處理所有裝置
+            registerBtn.addEventListener('click', navigateToRegister);
+            registerBtn.addEventListener('touchend', navigateToRegister);
+        }
     
     // 密碼顯示/隱藏切換
     const togglePassword = document.getElementById('togglePassword');
