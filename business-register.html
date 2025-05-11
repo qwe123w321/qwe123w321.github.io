@@ -410,6 +410,18 @@
             justify-content: space-between;
             margin-top: 30px;
         }
+
+        .btn, .password-toggle {
+            position: relative;
+            z-index: 10; /* 確保按鈕在頂層 */
+            touch-action: manipulation;
+        }
+
+        /* 添加活躍狀態反饋 */
+        .btn:active, .password-toggle:active {
+            transform: scale(0.98);
+            opacity: 0.8;
+        }
         
         .btn-prev {
             background-color: transparent;
@@ -699,12 +711,11 @@
 
         /* 設定表單步驟的最大高度和滾動 */
         .form-step {
-            max-height: 70vh; /* 視窗高度的70% */
+            max-height: 70vh;
             overflow-y: auto;
-            padding-right: 15px; /* 為滾動條預留空間 */
-            opacity: 0;
-            transform: translateX(20px);
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            padding-right: 15px;
+            position: relative;
+            z-index: 5;
         }
 
         /* 美化滾動條樣式 */
@@ -733,7 +744,7 @@
             background-color: white;
             padding-top: 15px;
             margin-top: 20px;
-            z-index: 5;
+            z-index: 10;
         }
 
         /* 添加表單加載動畫 */
@@ -977,7 +988,7 @@
                                         <label for="password">密碼 <span class="text-danger">*</span></label>
                                         <div class="password-field">
                                             <input type="password" class="form-control" id="password" name="password" required>
-                                            <button type="button" class="password-toggle" id="togglePassword">
+                                            <button type="button" class="password-toggle" id="togglePassword" ontouchstart="">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                         </div>
@@ -1007,7 +1018,7 @@
                                         <label for="confirmPassword">確認密碼 <span class="text-danger">*</span></label>
                                         <div class="password-field">
                                             <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
-                                            <button type="button" class="password-toggle" id="toggleConfirmPassword">
+                                            <button type="button" class="password-toggle" id="toggleConfirmPassword" ontouchstart="">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                         </div>
@@ -1020,8 +1031,8 @@
                                     </div>
                                     
                                     <div class="form-btn-group">
-                                        <button type="button" class="btn btn-prev disabled" data-step="1">上一步</button>
-                                        <button type="button" class="btn btn-next" data-step="1">下一步</button>
+                                        <button type="button" class="btn btn-prev disabled" data-step="1" ontouchstart="">上一步</button>
+                                        <button type="button" class="btn btn-next" data-step="1" ontouchstart="">下一步</button>
                                     </div>
                                 </div>
                                 
@@ -1058,8 +1069,8 @@
                                     </div>
                                     
                                     <div class="form-btn-group">
-                                        <button type="button" class="btn btn-prev" data-step="2">上一步</button>
-                                        <button type="button" class="btn btn-next" data-step="2">下一步</button>
+                                        <button type="button" class="btn btn-prev" data-step="2" ontouchstart="">上一步</button>
+                                        <button type="button" class="btn btn-next" data-step="2" ontouchstart="">下一步</button>
                                     </div>
 
                                 </div>
@@ -1122,8 +1133,8 @@
                                     </div>
                                     
                                     <div class="form-btn-group">
-                                        <button type="button" class="btn btn-prev" data-step="3">上一步</button>
-                                        <button type="button" class="btn btn-next" data-step="3">下一步</button>
+                                        <button type="button" class="btn btn-prev" data-step="3" ontouchstart="">上一步</button>
+                                        <button type="button" class="btn btn-next" data-step="3" ontouchstart="">下一步</button>
                                     </div>
                                 </div>
                                 
@@ -1152,8 +1163,8 @@
                                     </div>
                                     
                                     <div class="form-btn-group">
-                                        <button type="button" class="btn btn-prev" data-step="4">上一步</button>
-                                        <button type="submit" class="btn btn-submit">提交註冊</button>
+                                        <button type="button" class="btn btn-prev" data-step="4" ontouchstart="">上一步</button>
+                                        <button type="submit" class="btn btn-submit" ontouchstart="">提交註冊</button>
                                     </div>
                                 </div>
                             </form>
