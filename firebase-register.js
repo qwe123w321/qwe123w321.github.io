@@ -1443,6 +1443,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 const currentStep = parseInt(this.getAttribute('data-step'));
                 nextStep(currentStep);
+                console.log(typeof window.nextStep);
+                console.log(typeof window.validateStep);
             });
         });
         
