@@ -2,12 +2,12 @@
 console.log("開始加載 firebase-register.js");
 
 // 立即宣告核心函數，避免順序依賴問題
-let nextStep, prevStep, validateStep, togglePasswordVisibility, updatePasswordStrength, updatePasswordRulesCheck;
-let handleRegisterSubmit, isEmpty, isValidEmail, isValidPhone, isStrongPassword;
-let showFieldError, clearFieldError, removeUploadedFile, enhancedUploadPreview, formatFileSize;
+var nextStep, prevStep, validateStep, togglePasswordVisibility, updatePasswordStrength, updatePasswordRulesCheck;
+var handleRegisterSubmit, isEmpty, isValidEmail, isValidPhone, isStrongPassword;
+var showFieldError, clearFieldError, removeUploadedFile, enhancedUploadPreview, formatFileSize;
 
 // 全局變量存儲上傳的檔案
-let uploadedFiles = [];
+var uploadedFiles = [];
 
 // 立即確保基本函數可用於全局
 function initializeGlobalFunctions() {
@@ -1154,7 +1154,7 @@ function enhancedFileUploadInit() {
 }
 
 // 處理註冊表單提交
-async function handleRegisterSubmit(e) {
+handleRegisterSubmit = async function(e) {
    if (e && e.preventDefault) {
        e.preventDefault();
    }
