@@ -18,37 +18,7 @@ import {
 import { setupSessionManager } from './session-manager.js';
 
 // ===== 驗證相關函數 =====
-(function(global) {
-    // 定義並導出所有全局函數
-    global.validateStep = validateStep;
-    global.validateEmail = validateEmail;
-    global.isValidEmail = isValidEmail;
-    global.isValidPhone = isValidPhone;
-    global.isStrongPassword = isStrongPassword;
-    global.showFieldError = showFieldError;
-    global.clearFieldError = clearFieldError;
-    global.nextStep = nextStep;
-    global.prevStep = prevStep;
-    global.uploadBusinessLicense = uploadBusinessLicense;
-    global.removeUploadedFile = removeUploadedFile;
-    global.getUploadedBusinessLicenseFiles = getUploadedBusinessLicenseFiles;
-    global.updateUploadPreview = enhancedUploadPreview;
-    global.formatFileSize = formatFileSize;
-    global.togglePasswordVisibility = togglePasswordVisibility;
-    global.handleRegisterSubmit = handleRegisterSubmit;
-    global.updatePasswordStrength = updatePasswordStrength;
-    global.updatePasswordRulesCheck = updatePasswordRulesCheck;
-    global.measurePasswordStrength = measurePasswordStrength;
-    global.updateSummaryInfo = updateSummaryInfo;
-    global.enhancedFileUploadInit = enhancedFileUploadInit;
-    global.setupStep3Validation = setupStep3Validation;
-    global.checkAppCheckStatus = checkAppCheckStatus;
-    global.installXHRInterceptor = installXHRInterceptor;
-    global.installFetchInterceptor = installFetchInterceptor;
-    global.setupSessionManager = setupSessionManager;
 
-    console.log('全局函數已同步導出到 window 對象');
-})(typeof window !== 'undefined' ? window : this);
 // 檢查欄位是否為空
 function isEmpty(value) {
     return value === null || value === undefined || value.trim() === '';
@@ -1380,84 +1350,37 @@ function setupStep3Validation() {
 }
 
 // ===== 頁面初始化 =====
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('註冊頁面正在初始化...');
-
-    // 檢查關鍵函數是否已定義
-    const requiredFunctions = ['nextStep', 'validateStep', 'handleRegisterSubmit'];
-    for (const func of requiredFunctions) {
-        if (typeof window[func] !== 'function') {
-            console.error(`關鍵函數 ${func} 未定義，請檢查模組加載`);
-            return;
-        }
-    }
-
-    // 繼續原有初始化邏輯
-    const registerForm = document.getElementById('businessRegisterForm');
-    if (!registerForm) {
-        console.error('找不到 businessRegisterForm 表單元素');
-        return;
-    }
-
-    // 綁定表單提交事件
-    registerForm.addEventListener('submit', window.handleRegisterSubmit);
-
-    // 綁定下一步按鈕事件
+    
+    // 確保按鈕存在再綁定事件
     const nextButtons = document.querySelectorAll('.btn-next');
     nextButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
             const currentStep = parseInt(this.getAttribute('data-step'));
-            console.log('點擊下一步按鈕，當前步驟:', currentStep);
-            console.log('nextStep 類型:', typeof window.nextStep);
-            console.log('validateStep 類型:', typeof window.validateStep);
-            window.nextStep(currentStep);
+            nextStep(currentStep);
         });
     });
 
-    // 綁定上一步按鈕事件
-    const prevButtons = document.querySelectorAll('.btn-prev');
-    prevButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const currentStep = parseInt(this.getAttribute('data-step'));
-            console.log('點擊上一步按鈕，當前步驟:', currentStep);
-            window.prevStep(currentStep);
-        });
-    });
-
-    // 綁定密碼顯示/隱藏事件
     const togglePassword = document.getElementById('togglePassword');
     if (togglePassword) {
-        togglePassword.addEventListener('click', function() {
-            window.togglePasswordVisibility('password', 'togglePassword');
+        togglePassword.addEventListener('click', function(e) {
+            e.preventDefault(); // 防止表單提交
+            togglePasswordVisibility('password', 'togglePassword');
         });
     }
 
     const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
     if (toggleConfirmPassword) {
-        toggleConfirmPassword.addEventListener('click', function() {
-            window.togglePasswordVisibility('confirmPassword', 'toggleConfirmPassword');
+        toggleConfirmPassword.addEventListener('click', function(e) {
+            e.preventDefault(); // 防止表單提交
+            togglePasswordVisibility('confirmPassword', 'toggleConfirmPassword');
         });
     }
 
-    // 初始化文件上傳
-    window.enhancedFileUploadInit();
-
-    // 監聽第三步驟欄位
-    window.setupStep3Validation();
-
-    // 初始化會話管理器
-    const sessionManager = window.setupSessionManager();
-
-    // 初始化上傳預覽
-    if (document.getElementById('photoPreviewContainer')) {
-        window.enhancedUploadPreview();
-    } else {
-        console.warn('初始化時找不到 photoPreviewContainer 元素');
-    }
-
-    // 檢查 App Check 狀態（保留原有邏輯）
+    // 檢查 App Check 狀態
     setTimeout(async () => {
         try {
             const statusElement = document.getElementById('appCheckStatus');
@@ -1466,199 +1389,159 @@ document.addEventListener('DOMContentLoaded', function() {
                 statusElement.textContent = 'App Check: 初始化中...';
                 statusElement.style.display = 'block';
             }
-
+            
             console.log('註冊頁面正在檢查 App Check 狀態...');
-            const result = await window.checkAppCheckStatus();
-
+            const result = await checkAppCheckStatus();
+            
             if (result.success) {
                 console.log('App Check 驗證成功！註冊流程可以正常進行');
+                
                 if (statusElement) {
                     statusElement.className = 'success';
                     statusElement.textContent = 'App Check: 已驗證 ✓';
                     setTimeout(() => { statusElement.style.display = 'none'; }, 3000);
                 }
-                window.installXHRInterceptor();
-                window.installFetchInterceptor();
+                
+                // 安裝 XHR 和 fetch 攔截器
+                installXHRInterceptor();
+                installFetchInterceptor();
             } else {
                 console.warn('App Check 驗證失敗，註冊可能會被拒絕:', result.error);
+                
                 if (statusElement) {
                     statusElement.className = 'error';
                     statusElement.textContent = 'App Check: 驗證失敗 ✗';
                     setTimeout(() => { statusElement.style.display = 'none'; }, 5000);
+                }
+                
+                // 添加警告提示
+                const registerForm = document.getElementById('businessRegisterForm');
+                if (registerForm) {
+                    const warningDiv = document.createElement('div');
+                    warningDiv.className = 'alert alert-warning mt-3';
+                    warningDiv.innerHTML = `
+                        <strong>注意:</strong> 安全驗證失敗，註冊功能可能無法正常使用。
+                        <button type="button" class="btn btn-sm btn-warning mt-2" id="retryAppCheck">重新嘗試驗證</button>
+                    `;
+                    
+                    const formHeader = document.querySelector('.register-form-header');
+                    if (formHeader) {
+                        formHeader.after(warningDiv);
+                        
+                        // 添加重試按鈕事件
+                        setTimeout(() => {
+                            const retryBtn = document.getElementById('retryAppCheck');
+                            if (retryBtn) {
+                                retryBtn.addEventListener('click', async () => {
+                                    await checkAppCheckStatus();
+                                    window.location.reload(); // 重新載入頁面
+                                });
+                            }
+                        }, 100);
+                    }
                 }
             }
         } catch (error) {
             console.error('檢查 App Check 狀態時發生錯誤:', error);
         }
     }, 1000);
-});
-// document.addEventListener('DOMContentLoaded', function() {
-//     console.log('註冊頁面正在初始化...');
-    
-//     // 檢查 App Check 狀態
-//     setTimeout(async () => {
-//         try {
-//             const statusElement = document.getElementById('appCheckStatus');
-//             if (statusElement) {
-//                 statusElement.className = 'initializing';
-//                 statusElement.textContent = 'App Check: 初始化中...';
-//                 statusElement.style.display = 'block';
-//             }
-            
-//             console.log('註冊頁面正在檢查 App Check 狀態...');
-//             const result = await checkAppCheckStatus();
-            
-//             if (result.success) {
-//                 console.log('App Check 驗證成功！註冊流程可以正常進行');
-                
-//                 if (statusElement) {
-//                     statusElement.className = 'success';
-//                     statusElement.textContent = 'App Check: 已驗證 ✓';
-//                     setTimeout(() => { statusElement.style.display = 'none'; }, 3000);
-//                 }
-                
-//                 // 安裝 XHR 和 fetch 攔截器
-//                 installXHRInterceptor();
-//                 installFetchInterceptor();
-//             } else {
-//                 console.warn('App Check 驗證失敗，註冊可能會被拒絕:', result.error);
-                
-//                 if (statusElement) {
-//                     statusElement.className = 'error';
-//                     statusElement.textContent = 'App Check: 驗證失敗 ✗';
-//                     setTimeout(() => { statusElement.style.display = 'none'; }, 5000);
-//                 }
-                
-//                 // 添加警告提示
-//                 const registerForm = document.getElementById('businessRegisterForm');
-//                 if (registerForm) {
-//                     const warningDiv = document.createElement('div');
-//                     warningDiv.className = 'alert alert-warning mt-3';
-//                     warningDiv.innerHTML = `
-//                         <strong>注意:</strong> 安全驗證失敗，註冊功能可能無法正常使用。
-//                         <button type="button" class="btn btn-sm btn-warning mt-2" id="retryAppCheck">重新嘗試驗證</button>
-//                     `;
-                    
-//                     const formHeader = document.querySelector('.register-form-header');
-//                     if (formHeader) {
-//                         formHeader.after(warningDiv);
-                        
-//                         // 添加重試按鈕事件
-//                         setTimeout(() => {
-//                             const retryBtn = document.getElementById('retryAppCheck');
-//                             if (retryBtn) {
-//                                 retryBtn.addEventListener('click', async () => {
-//                                     await checkAppCheckStatus();
-//                                     window.location.reload(); // 重新載入頁面
-//                                 });
-//                             }
-//                         }, 100);
-//                     }
-//                 }
-//             }
-//         } catch (error) {
-//             console.error('檢查 App Check 狀態時發生錯誤:', error);
-//         }
-//     }, 1000);
    
-//     // 初始化文件上傳功能
-//     enhancedFileUploadInit();
+    // 初始化文件上傳功能
+    enhancedFileUploadInit();
     
-//     // 監聽第三步驟的輸入欄位
-//     setupStep3Validation();
+    // 監聽第三步驟的輸入欄位
+    setupStep3Validation();
 
-//     // 初始化會話管理器
-//     const sessionManager = setupSessionManager();
+    // 初始化會話管理器
+    const sessionManager = setupSessionManager();
     
-//     // 獲取註冊表單
-//     const registerForm = document.getElementById('businessRegisterForm');
+    // 獲取註冊表單
+    const registerForm = document.getElementById('businessRegisterForm');
         
-//     if (registerForm) {
-//         // 註冊表單提交事件
-//         registerForm.addEventListener('submit', handleRegisterSubmit);
+    if (registerForm) {
+        // 註冊表單提交事件
+        registerForm.addEventListener('submit', handleRegisterSubmit);
         
-//         // 下一步按鈕點擊事件
-//         const nextButtons = document.querySelectorAll('.btn-next');
-//         nextButtons.forEach(button => {
-//             button.addEventListener('click', function(e) {
-//                 e.preventDefault();
-//                 const currentStep = parseInt(this.getAttribute('data-step'));
-//                 nextStep(currentStep);
-//                 console.log(typeof window.nextStep);
-//                 console.log(typeof window.validateStep);
-//             });
-//         });
+        // 下一步按鈕點擊事件
+        const nextButtons = document.querySelectorAll('.btn-next');
+        nextButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const currentStep = parseInt(this.getAttribute('data-step'));
+                nextStep(currentStep);
+            });
+        });
         
-//         // 上一步按鈕點擊事件
-//         const prevButtons = document.querySelectorAll('.btn-prev');
-//         prevButtons.forEach(button => {
-//             button.addEventListener('click', function(e) {
-//                 e.preventDefault();
-//                 const currentStep = parseInt(this.getAttribute('data-step'));
-//                 prevStep(currentStep);
-//             });
-//         });
+        // 上一步按鈕點擊事件
+        const prevButtons = document.querySelectorAll('.btn-prev');
+        prevButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const currentStep = parseInt(this.getAttribute('data-step'));
+                prevStep(currentStep);
+            });
+        });
         
-//         // 文件選擇變更事件 - 使用正確的處理函數
-//         const fileInput = document.getElementById('businessLicenseFile');
-//         if (fileInput) {
-//             fileInput.addEventListener('change', uploadBusinessLicense);
-//         }
+        // 文件選擇變更事件 - 使用正確的處理函數
+        const fileInput = document.getElementById('businessLicenseFile');
+        if (fileInput) {
+            fileInput.addEventListener('change', uploadBusinessLicense);
+        }
         
-//         // 密碼顯示/隱藏按鈕點擊事件
-//         const togglePassword = document.getElementById('togglePassword');
-//         if (togglePassword) {
-//             togglePassword.addEventListener('click', function() {
-//                 togglePasswordVisibility('password', 'togglePassword');
-//             });
-//         }
+        // 密碼顯示/隱藏按鈕點擊事件
+        const togglePassword = document.getElementById('togglePassword');
+        if (togglePassword) {
+            togglePassword.addEventListener('click', function() {
+                togglePasswordVisibility('password', 'togglePassword');
+            });
+        }
         
-//         const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
-//         if (toggleConfirmPassword) {
-//             toggleConfirmPassword.addEventListener('click', function() {
-//                 togglePasswordVisibility('confirmPassword', 'toggleConfirmPassword');
-//             });
-//         }
+        const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+        if (toggleConfirmPassword) {
+            toggleConfirmPassword.addEventListener('click', function() {
+                togglePasswordVisibility('confirmPassword', 'toggleConfirmPassword');
+            });
+        }
         
-//         // 初始化上傳預覽區域 - 使用增強版
-//         if (document.getElementById('photoPreviewContainer')) {
-//             enhancedUploadPreview();
-//         } else {
-//             console.warn('初始化時找不到 photoPreviewContainer 元素');
-//         }
-//     }
+        // 初始化上傳預覽區域 - 使用增強版
+        if (document.getElementById('photoPreviewContainer')) {
+            enhancedUploadPreview();
+        } else {
+            console.warn('初始化時找不到 photoPreviewContainer 元素');
+        }
+    }
 
-//     // 添加診斷按鈕
-//     const diagnosticsBtn = document.createElement('button');
-//     diagnosticsBtn.id = 'appCheckDiagnosticsBtn';
-//     diagnosticsBtn.innerHTML = '🔍';
-//     diagnosticsBtn.title = 'App Check 診斷';
-//     diagnosticsBtn.style.position = 'fixed';
-//     diagnosticsBtn.style.bottom = '20px';
-//     diagnosticsBtn.style.right = '20px';
-//     diagnosticsBtn.style.width = '50px';
-//     diagnosticsBtn.style.height = '50px';
-//     diagnosticsBtn.style.borderRadius = '50%';
-//     diagnosticsBtn.style.backgroundColor = '#007bff';
-//     diagnosticsBtn.style.color = 'white';
-//     diagnosticsBtn.style.border = 'none';
-//     diagnosticsBtn.style.fontSize = '20px';
-//     diagnosticsBtn.style.display = 'flex';
-//     diagnosticsBtn.style.alignItems = 'center';
-//     diagnosticsBtn.style.justifyContent = 'center';
-//     diagnosticsBtn.style.cursor = 'pointer';
-//     diagnosticsBtn.style.zIndex = '9999';
-//     diagnosticsBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+    // 添加診斷按鈕
+    const diagnosticsBtn = document.createElement('button');
+    diagnosticsBtn.id = 'appCheckDiagnosticsBtn';
+    diagnosticsBtn.innerHTML = '🔍';
+    diagnosticsBtn.title = 'App Check 診斷';
+    diagnosticsBtn.style.position = 'fixed';
+    diagnosticsBtn.style.bottom = '20px';
+    diagnosticsBtn.style.right = '20px';
+    diagnosticsBtn.style.width = '50px';
+    diagnosticsBtn.style.height = '50px';
+    diagnosticsBtn.style.borderRadius = '50%';
+    diagnosticsBtn.style.backgroundColor = '#007bff';
+    diagnosticsBtn.style.color = 'white';
+    diagnosticsBtn.style.border = 'none';
+    diagnosticsBtn.style.fontSize = '20px';
+    diagnosticsBtn.style.display = 'flex';
+    diagnosticsBtn.style.alignItems = 'center';
+    diagnosticsBtn.style.justifyContent = 'center';
+    diagnosticsBtn.style.cursor = 'pointer';
+    diagnosticsBtn.style.zIndex = '9999';
+    diagnosticsBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
     
-//     // 添加點擊事件
-//     diagnosticsBtn.addEventListener('click', () => {
-//         addDiagnosticsPanel();
-//         diagnosticsBtn.style.display = 'none';
-//     });
+    // 添加點擊事件
+    diagnosticsBtn.addEventListener('click', () => {
+        addDiagnosticsPanel();
+        diagnosticsBtn.style.display = 'none';
+    });
     
-//     // 添加到頁面
-//     document.body.appendChild(diagnosticsBtn);
-// });
+    // 添加到頁面
+    document.body.appendChild(diagnosticsBtn);
+});
 
 // 處理文件上傳按鈕的點擊事件
 function uploadBusinessLicense(e) {
