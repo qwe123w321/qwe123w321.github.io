@@ -1354,32 +1354,6 @@ function setupStep3Validation() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('註冊頁面正在初始化...');
     
-    // 確保按鈕存在再綁定事件
-    const nextButtons = document.querySelectorAll('.btn-next');
-    nextButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
-            e.preventDefault();
-            const currentStep = parseInt(this.getAttribute('data-step'));
-            nextStep(currentStep);
-        });
-    });
-
-    const togglePassword = document.getElementById('togglePassword');
-    if (togglePassword) {
-        togglePassword.addEventListener('click', function(e) {
-            e.preventDefault(); // 防止表單提交
-            togglePasswordVisibility('password', 'togglePassword');
-        });
-    }
-
-    const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
-    if (toggleConfirmPassword) {
-        toggleConfirmPassword.addEventListener('click', function(e) {
-            e.preventDefault(); // 防止表單提交
-            togglePasswordVisibility('confirmPassword', 'toggleConfirmPassword');
-        });
-    }
-
     // 檢查 App Check 狀態
     setTimeout(async () => {
         try {
