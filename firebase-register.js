@@ -1562,28 +1562,44 @@ function uploadBusinessLicense(e) {
 
 // ===== 導出公共函數到全局作用域 =====
 
-// 驗證函數
-window.validateStep = validateStep;
-window.validateEmail = validateEmail;
-window.isValidEmail = isValidEmail;
-window.isValidPhone = isValidPhone;
-window.isStrongPassword = isStrongPassword;
-window.showFieldError = showFieldError;
-window.clearFieldError = clearFieldError;
+// 替換原來的 window.xxx = xxx 導出方式
 
-// 表單步驟控制
-window.nextStep = nextStep;
-window.prevStep = prevStep;
+// ===== 導出公共函數到全局作用域 =====
+// 使用IIFE將函數安全地附加到全局對象
+(function(global) {
+    // 驗證函數
+    global.validateStep = validateStep;
+    global.validateEmail = validateEmail;
+    global.isValidEmail = isValidEmail;
+    global.isValidPhone = isValidPhone;
+    global.isStrongPassword = isStrongPassword;
+    global.showFieldError = showFieldError;
+    global.clearFieldError = clearFieldError;
 
-// 檔案上傳
-window.uploadBusinessLicense = uploadBusinessLicense;
-window.removeUploadedFile = removeUploadedFile;
-window.getUploadedBusinessLicenseFiles = getUploadedBusinessLicenseFiles;
-window.updateUploadPreview = enhancedUploadPreview;
-window.formatFileSize = formatFileSize;
+    // 表單步驟控制
+    global.nextStep = nextStep;
+    global.prevStep = prevStep;
 
-// 密碼顯示/隱藏
-window.togglePasswordVisibility = togglePasswordVisibility;
+    // 檔案上傳
+    global.uploadBusinessLicense = uploadBusinessLicense;
+    global.removeUploadedFile = removeUploadedFile;
+    global.getUploadedBusinessLicenseFiles = getUploadedBusinessLicenseFiles;
+    global.updateUploadPreview = enhancedUploadPreview;
+    global.formatFileSize = formatFileSize;
 
-// 註冊表單提交
-window.handleRegisterSubmit = handleRegisterSubmit;
+    // 密碼顯示/隱藏
+    global.togglePasswordVisibility = togglePasswordVisibility;
+
+    // 註冊表單提交
+    global.handleRegisterSubmit = handleRegisterSubmit;
+    
+    // 密碼強度相關
+    global.updatePasswordStrength = updatePasswordStrength;
+    global.updatePasswordRulesCheck = updatePasswordRulesCheck;
+    global.measurePasswordStrength = measurePasswordStrength;
+    
+    // 表單摘要信息
+    global.updateSummaryInfo = updateSummaryInfo;
+    
+    console.log("全局函數已成功導出");
+})(typeof window !== 'undefined' ? window : this);
