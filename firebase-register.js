@@ -235,47 +235,50 @@ if (confirmPasswordInput) {
 
 // 驗證某個步驟的所有欄位
 async function validateStep(stepNumber) {
-    console.log(`驗證第 ${stepNumber} 步表單`);
     let isValid = true;
     
-    try {
-        const nextButton = document.querySelector('.btn-next[data-step="1"]');
-        const originalText = nextButton.textContent;
-        nextButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 檢查中...';
-        nextButton.disabled = true;
+    if (stepNumber === 1) {
+        // 驗證第一步：電子郵件和密碼
+        const email = document.getElementById('email');
+        const password = document.getElementById('password');
+        const confirmPassword = document.getElementById('confirmPassword');
         
-        // 使用Promise而不是await
-        validateEmail(email.value).then(result => {
-            // 恢復按鈕狀態
-            nextButton.textContent = originalText;
-            nextButton.disabled = false;
-            
-            if (!result.available) {
-                const errorMessage = result.error ? 
-                    `電子郵件檢查失敗: ${result.error}` : 
-                    '此電子郵件已被註冊，請使用其他電子郵件';
-                
-                showFieldError(email, errorMessage);
-                isValid = false;
-            } else {
-                // 如果驗證通過，手動觸發nextStep
-                const currentStep = parseInt(nextButton.getAttribute('data-step'));
-                nextStep(currentStep);
-            }
-        }).catch(error => {
-            console.error('驗證電子郵件時發生錯誤:', error);
-            
-            // 恢復按鈕狀態
-            nextButton.textContent = originalText;
-            nextButton.disabled = false;
-            
-            showFieldError(email, '驗證電子郵件時發生錯誤，請稍後再試');
+        if (!email.value) {
+            showFieldError(email, '請輸入電子郵件');
             isValid = false;
-        });
-        
-        // 這裡返回false，因為驗證會在Promise中完成
-        return false;
-    } catch (error) {
+        } else if (!isValidEmail(email.value)) {
+            showFieldError(email, '請輸入有效的電子郵件格式');
+            isValid = false;
+        } else {
+            clearFieldError(email);
+            
+            // 檢查電子郵件是否可用
+            try {
+                const nextButton = document.querySelector('.btn-next[data-step="1"]');
+                const originalText = nextButton.textContent;
+                nextButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 檢查中...';
+                nextButton.disabled = true;
+                
+                // 使用更新的 validateEmail 函數
+                const result = await validateEmail(email.value);
+                
+                // 恢復按鈕狀態
+                nextButton.textContent = originalText;
+                nextButton.disabled = false;
+                
+                if (!result.available) {
+                    // 如果有特定錯誤訊息顯示它
+                    const errorMessage = result.error ? 
+                        `電子郵件檢查失敗: ${result.error}` : 
+                        '此電子郵件已被註冊，請使用其他電子郵件';
+                    
+                    showFieldError(email, errorMessage);
+                    isValid = false;
+                    
+                    // 在控制台中記錄詳細資訊
+                    console.warn('電子郵件驗證失敗:', result);
+                }
+            } catch (error) {
                 console.error('驗證電子郵件時發生錯誤:', error);
                 
                 // 恢復按鈕狀態
@@ -1436,12 +1439,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // 下一步按鈕點擊事件
         const nextButtons = document.querySelectorAll('.btn-next');
         nextButtons.forEach(button => {
-            button.onclick = function(e) {
+            button.addEventListener('click', function(e) {
                 e.preventDefault();
                 const currentStep = parseInt(this.getAttribute('data-step'));
-                console.log('下一步按鈕被點擊, 當前步驟:', currentStep); // 添加日誌
                 nextStep(currentStep);
-            };
+            });
         });
         
         // 上一步按鈕點擊事件
