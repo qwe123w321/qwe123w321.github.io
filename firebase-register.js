@@ -1,3 +1,4 @@
+console.log("開始加載 firebase-register.js");
 // firebase-register.js - 整合 business-register.html 中的所有 JS 功能
 import { auth, db, storage, doc, collection, onAuthStateChanged } from './firebase-config.js';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js';
@@ -16,6 +17,39 @@ import {
 } from './app-check-module.js';
 
 import { setupSessionManager } from './session-manager.js';
+
+console.log("所有模塊已導入");
+function ensureGlobalFunctions() {
+    console.log("確保函數導出到全局作用域", new Date().toISOString());
+    
+    if (typeof window !== 'undefined') {
+        // 核心函數導出
+        window.nextStep = nextStep;
+        window.prevStep = prevStep;
+        window.validateStep = validateStep;
+        window.togglePasswordVisibility = togglePasswordVisibility;
+        window.updatePasswordStrength = updatePasswordStrength;
+        window.updatePasswordRulesCheck = updatePasswordRulesCheck;
+        window.handleRegisterSubmit = handleRegisterSubmit;
+        
+        // 其他輔助函數
+        window.isEmpty = isEmpty;
+        window.isValidEmail = isValidEmail;
+        window.isValidPhone = isValidPhone;
+        window.isStrongPassword = isStrongPassword;
+        window.showFieldError = showFieldError;
+        window.clearFieldError = clearFieldError;
+        window.removeUploadedFile = removeUploadedFile;
+        window.updateUploadPreview = enhancedUploadPreview;
+        window.formatFileSize = formatFileSize;
+        
+        console.log("函數已導出:", 
+            typeof window.nextStep === 'function' ? '✓' : '✗', 
+            typeof window.validateStep === 'function' ? '✓' : '✗',
+            typeof window.togglePasswordVisibility === 'function' ? '✓' : '✗'
+        );
+    }
+}
 
 // ===== 驗證相關函數 =====
 
@@ -1351,8 +1385,14 @@ function setupStep3Validation() {
 
 // ===== 頁面初始化 =====
 
+// 設置 DOMContentLoaded 事件監聽器
+console.log("設置 DOMContentLoaded 事件監聽器", new Date().toISOString());
+
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('註冊頁面正在初始化...');
+    console.log('註冊頁面正在初始化...', new Date().toISOString());
+    
+    // 確保函數可用於全局作用域
+    ensureGlobalFunctions();
     
     // 檢查 App Check 狀態
     setTimeout(async () => {
@@ -1433,16 +1473,53 @@ document.addEventListener('DOMContentLoaded', function() {
     const registerForm = document.getElementById('businessRegisterForm');
         
     if (registerForm) {
+        console.log("找到註冊表單元素", registerForm);
+        
         // 註冊表單提交事件
-        registerForm.addEventListener('submit', handleRegisterSubmit);
+        registerForm.addEventListener('submit', function(e) {
+            console.log("表單提交事件觸發");
+            
+            // 如果全局函數可用，使用它
+            if (typeof window.handleRegisterSubmit === 'function') {
+                window.handleRegisterSubmit(e);
+            } else {
+                console.error("handleRegisterSubmit 函數不可用");
+                e.preventDefault();
+                alert("提交處理函數不可用，請刷新頁面後重試");
+            }
+        });
         
         // 下一步按鈕點擊事件
         const nextButtons = document.querySelectorAll('.btn-next');
+        console.log("找到下一步按鈕:", nextButtons.length);
+        
         nextButtons.forEach(button => {
+            console.log("設置按鈕事件:", button.getAttribute('data-step'));
+            
             button.addEventListener('click', function(e) {
                 e.preventDefault();
                 const currentStep = parseInt(this.getAttribute('data-step'));
-                nextStep(currentStep);
+                console.log("下一步按鈕被點擊，當前步驟:", currentStep);
+                
+                // 如果全局函數可用，使用它
+                if (typeof window.nextStep === 'function') {
+                    window.nextStep(currentStep);
+                } else {
+                    console.error("nextStep 函數不可用，使用內聯實現");
+                    // 內聯實現步驟切換邏輯
+                    const nextStepNum = currentStep + 1;
+                    
+                    // 切換步驟內容
+                    document.querySelectorAll('.form-step').forEach(step => step.classList.remove('active'));
+                    document.getElementById(`step-${nextStepNum}-content`).classList.add('active');
+                    
+                    // 更新進度指示器
+                    document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
+                    document.getElementById(`step-${nextStepNum}`).classList.add('active');
+                    
+                    // 滾動到頂部
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
             });
         });
         
@@ -1484,6 +1561,16 @@ document.addEventListener('DOMContentLoaded', function() {
             console.warn('初始化時找不到 photoPreviewContainer 元素');
         }
     }
+    else {
+        console.warn("未找到註冊表單元素");
+    }
+    
+    // 添加診斷信息
+    console.log("DOM初始化完成，診斷關鍵函數:");
+    console.log("- nextStep:", typeof window.nextStep === 'function' ? '可用' : '不可用');
+    console.log("- prevStep:", typeof window.prevStep === 'function' ? '可用' : '不可用');
+    console.log("- validateStep:", typeof window.validateStep === 'function' ? '可用' : '不可用');
+    console.log("- togglePasswordVisibility:", typeof window.togglePasswordVisibility === 'function' ? '可用' : '不可用');
 
     // 添加診斷按鈕
     const diagnosticsBtn = document.createElement('button');
@@ -1585,3 +1672,164 @@ window.togglePasswordVisibility = togglePasswordVisibility;
 
 // 註冊表單提交
 window.handleRegisterSubmit = handleRegisterSubmit;
+
+setTimeout(function() {
+    console.log("延遲檢查關鍵函數...", new Date().toISOString());
+    
+    // 檢查下一步函數是否可用
+    if (typeof window.nextStep !== 'function') {
+        console.warn("nextStep 函數不可用，添加備用處理程序");
+        
+        // 為下一步按鈕添加備用事件處理
+        document.querySelectorAll('.btn-next').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                const currentStep = parseInt(this.getAttribute('data-step'));
+                console.log("使用備用處理程序：下一步，當前步驟:", currentStep);
+                
+                // 備用的步驟切換邏輯
+                const nextStepNum = currentStep + 1;
+                
+                // 切換步驟內容
+                document.querySelectorAll('.form-step').forEach(step => step.classList.remove('active'));
+                document.getElementById(`step-${nextStepNum}-content`).classList.add('active');
+                
+                // 更新進度指示器
+                document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
+                document.getElementById(`step-${nextStepNum}`).classList.add('active');
+                
+                // 滾動到頂部
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        });
+    }
+    
+    // 檢查密碼顯示切換函數是否可用
+    if (typeof window.togglePasswordVisibility !== 'function') {
+        console.warn("togglePasswordVisibility 函數不可用，添加備用處理程序");
+        
+        // 為密碼顯示切換按鈕添加備用事件處理
+        const togglePassword = document.getElementById('togglePassword');
+        if (togglePassword) {
+            togglePassword.addEventListener('click', function() {
+                const passwordInput = document.getElementById('password');
+                const icon = this.querySelector('i');
+                
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                } else {
+                    passwordInput.type = 'password';
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
+            });
+        }
+        
+        const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+        if (toggleConfirmPassword) {
+            toggleConfirmPassword.addEventListener('click', function() {
+                const confirmPasswordInput = document.getElementById('confirmPassword');
+                const icon = this.querySelector('i');
+                
+                if (confirmPasswordInput.type === 'password') {
+                    confirmPasswordInput.type = 'text';
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                } else {
+                    confirmPasswordInput.type = 'password';
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
+            });
+        }
+    }
+    
+    // 檢查密碼強度更新函數是否可用
+    if (typeof window.updatePasswordStrength !== 'function') {
+        console.warn("updatePasswordStrength 函數不可用，添加備用處理程序");
+        
+        // 為密碼輸入添加備用事件處理
+        const passwordInput = document.getElementById('password');
+        if (passwordInput) {
+            passwordInput.addEventListener('input', function() {
+                const password = this.value;
+                
+                // 檢查各項規則
+                const lengthCheck = password.length >= 8 && password.length <= 20;
+                const lowercaseCheck = /[a-z]/.test(password);
+                const uppercaseCheck = /[A-Z]/.test(password);
+                const numberCheck = /[0-9]/.test(password);
+                
+                // 更新規則顯示
+                document.getElementById('rule-length').className = lengthCheck ? 'text-success' : 'text-danger';
+                document.getElementById('rule-lowercase').className = lowercaseCheck ? 'text-success' : 'text-danger';
+                document.getElementById('rule-uppercase').className = uppercaseCheck ? 'text-success' : 'text-danger';
+                document.getElementById('rule-number').className = numberCheck ? 'text-success' : 'text-danger';
+                
+                // 更新圖標
+                document.getElementById('rule-length-icon').className = lengthCheck ? 'fas fa-check' : 'fas fa-times';
+                document.getElementById('rule-lowercase-icon').className = lowercaseCheck ? 'fas fa-check' : 'fas fa-times';
+                document.getElementById('rule-uppercase-icon').className = uppercaseCheck ? 'fas fa-check' : 'fas fa-times';
+                document.getElementById('rule-number-icon').className = numberCheck ? 'fas fa-check' : 'fas fa-times';
+                
+                // 更新密碼強度條
+                const strengthBar = document.getElementById('password-strength-bar');
+                
+                // 根據密碼長度和強度設置寬度
+                if (password.length === 0) {
+                    strengthBar.style.width = '0%';
+                } else {
+                    let percentage;
+                    if (password.length <= 20) {
+                        percentage = Math.min(100, (password.length / 20) * 100);
+                    } else {
+                        percentage = 100;
+                    }
+                    strengthBar.style.width = `${percentage}%`;
+                }
+                
+                // 計算強度並更新顏色
+                let strength = 0;
+                if (lengthCheck) strength += 2;
+                else if (password.length > 0) strength += 1;
+                if (lowercaseCheck) strength += 1;
+                if (uppercaseCheck) strength += 1;
+                if (numberCheck) strength += 1;
+                
+                if (strength < 3) {
+                    strengthBar.className = 'progress-bar bg-danger';
+                } else if (strength < 5) {
+                    strengthBar.className = 'progress-bar bg-warning';
+                } else {
+                    strengthBar.className = 'progress-bar bg-success';
+                }
+                
+                // 更新強度標籤
+                const strengthLabel = document.getElementById('password-strength-text');
+                if (password.length === 0) {
+                    strengthLabel.textContent = '';
+                } else {
+                    const strengthText = strength < 3 ? '弱' : (strength < 5 ? '中' : '強');
+                    strengthLabel.textContent = `密碼強度: ${strengthText}`;
+                }
+            });
+        }
+        
+        // 為確認密碼輸入添加備用事件處理
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        if (confirmPasswordInput) {
+            confirmPasswordInput.addEventListener('input', function() {
+                const password = document.getElementById('password').value;
+                const confirmPassword = this.value;
+                const matchCheck = password === confirmPassword && password !== '';
+                
+                if (confirmPassword !== '') {
+                    document.getElementById('rule-match').className = matchCheck ? 'text-success' : 'text-danger';
+                    document.getElementById('rule-match-icon').className = matchCheck ? 'fas fa-check' : 'fas fa-times';
+                }
+            });
+        }
+    }
+}, 2000);
