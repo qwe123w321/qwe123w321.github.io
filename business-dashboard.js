@@ -3561,6 +3561,24 @@ async function removeMainImage() {
     }
 }
 
+// 營業時間初始化
+function initBusinessHours() {
+    // 確保營業時間容器存在，且僅創建一次
+    const businessHoursContainer = document.getElementById('businessHoursContainer');
+    if (!businessHoursContainer) {
+        const businessHoursSection = document.querySelector('.dashboard-card .card-body');
+        if (businessHoursSection) {
+            const container = document.createElement('div');
+            container.id = 'businessHoursContainer';
+            container.className = 'row mt-3';
+            businessHoursSection.appendChild(container);
+            console.log("已創建營業時間容器");
+        }
+    } else {
+        console.log("營業時間容器已存在，無需重複創建");
+    }
+}
+
 // 保存營業時間
 async function saveBusinessHours() {
     try {
