@@ -4892,6 +4892,116 @@ async function editCategory(categoryName) {
     }
 }
 
+// 添加商品項目相關事件
+function addMenuItemsEvents() {
+    // 使用事件委派方式處理所有按鈕交互
+    const categoryList = document.getElementById("categoryList");
+    if (categoryList) {
+        // 移除先前的事件處理器，防止重複綁定
+        categoryList.removeEventListener("click", categoryClickHandler);
+        
+        // 添加新的事件委派處理器
+        categoryList.addEventListener("click", categoryClickHandler);
+    }
+    
+    // 綁定添加項目按鈕 - 這部分交由事件委派處理
+    // 綁定取消按鈕 - 這部分交由事件委派處理
+}
+
+// 事件委派處理函數
+function categoryClickHandler(event) {
+    const target = event.target;
+    
+    // ===== 類別相關操作 =====
+    
+    // 處理編輯類別按鈕點擊
+    if (target.classList.contains("edit-category-btn") || target.closest(".edit-category-btn")) {
+        const btn = target.classList.contains("edit-category-btn") ? target : target.closest(".edit-category-btn");
+        const categoryName = btn.getAttribute("data-category");
+        console.log("編輯類別按鈕被點擊，類別名稱:", categoryName);
+        editCategory(categoryName);
+        event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
+    }
+    
+    // 處理刪除類別按鈕點擊
+    if (target.classList.contains("delete-category-btn") || target.closest(".delete-category-btn")) {
+        const btn = target.classList.contains("delete-category-btn") ? target : target.closest(".delete-category-btn");
+        const category = btn.getAttribute("data-category");
+        if (confirm(`確定要刪除「${category}」類別及其所有項目嗎？`)) {
+            deleteCategory(category);
+        }
+        event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
+    }
+    
+    // 處理添加項目按鈕點擊
+    if (target.classList.contains("add-product-btn") || target.closest(".add-product-btn")) {
+        const btn = target.classList.contains("add-product-btn") ? target : target.closest(".add-product-btn");
+        const category = btn.getAttribute("data-category");
+        const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
+        const form = document.getElementById(formId);
+        
+        if (form) {
+            form.style.display = 'block';
+        }
+        event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
+    }
+    
+    // ===== 項目相關操作 =====
+    
+    // 處理編輯項目按鈕點擊
+    if (target.classList.contains("edit-item-btn") || target.closest(".edit-item-btn")) {
+        const btn = target.classList.contains("edit-item-btn") ? target : target.closest(".edit-item-btn");
+        const itemId = btn.getAttribute("data-id");
+        console.log("編輯按鈕被點擊，項目ID:", itemId);
+        editMenuItem(itemId);
+        event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
+    }
+    
+    // 處理刪除項目按鈕點擊
+    if (target.classList.contains("delete-item-btn") || target.closest(".delete-item-btn")) {
+        const btn = target.classList.contains("delete-item-btn") ? target : target.closest(".delete-item-btn");
+        const itemId = btn.getAttribute("data-id");
+        if (confirm("確定要刪除此商品項目嗎？")) {
+            deleteMenuItem(itemId);
+        }
+        event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
+    }
+    
+    // ===== 表單相關操作 =====
+    
+    // 處理儲存項目按鈕點擊
+    if (target.classList.contains("save-item-btn") || target.closest(".save-item-btn")) {
+        const btn = target.classList.contains("save-item-btn") ? target : target.closest(".save-item-btn");
+        const category = btn.getAttribute("data-category");
+        saveMenuItem(category);
+        event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
+    }
+    
+    // 處理取消按鈕點擊
+    if (target.classList.contains("cancel-add-item") || target.closest(".cancel-add-item")) {
+        const btn = target.classList.contains("cancel-add-item") ? target : target.closest(".cancel-add-item");
+        const formId = btn.getAttribute("data-form");
+        
+        if (formId) {
+            const form = document.getElementById(formId);
+            if (form) {
+                form.style.display = 'none';
+            }
+        }
+        event.stopPropagation(); // 阻止事件冒泡
+        return; // 提早返回，防止其他處理邏輯執行
+    }
+}
+
+// 確保該函數成為全局可用
+window.categoryClickHandler = categoryClickHandler;
+
 // 儲存商品項目 - 針對 iOS 改進
 async function saveMenuItem(category) {
     console.log(`正在儲存 ${category} 的商品項目`); // 添加日誌
@@ -5050,6 +5160,205 @@ async function editMenuItem(itemId) {
     }
 }
 
+// 更新類別
+async function updateCategory(categoryId) {
+    try {
+        // 獲取表單數據
+        const nameInput = document.getElementById(`edit-category-name-${categoryId}`);
+        const descInput = document.getElementById(`edit-category-desc-${categoryId}`);
+        const oldNameInput = document.getElementById(`edit-category-oldname-${categoryId}`);
+        
+        if (!nameInput || !oldNameInput) {
+            showAlert("編輯表單欄位不完整", "warning");
+            return;
+        }
+        
+        // 驗證類別名稱
+        if (!nameInput.value.trim()) {
+            showAlert("請填寫類別名稱", "warning");
+            return;
+        }
+        
+        const newCategoryName = nameInput.value.trim();
+        const oldCategoryName = oldNameInput.value.trim();
+        
+        // 如果新名稱與舊名稱相同且描述沒變，不需要更新
+        const categoryDoc = await window.db.collection("categories").doc(categoryId).get();
+        if (!categoryDoc.exists) {
+            showAlert("找不到此類別", "warning");
+            return;
+        }
+        
+        const currentDesc = categoryDoc.data().description || "";
+        const newDesc = descInput ? descInput.value : "";
+        
+        if (newCategoryName === oldCategoryName && newDesc === currentDesc) {
+            // 關閉編輯表單
+            const editForm = document.querySelector('.edit-category-form');
+            if (editForm) editForm.remove();
+            
+            showAlert("未進行任何修改", "info");
+            return;
+        }
+        
+        // 檢查新名稱是否與其他類別重複
+        const categoriesSnapshot = await window.db.collection("categories")
+            .where("businessId", "==", currentUser.uid)
+            .get();
+            
+        let isDuplicate = false;
+        categoriesSnapshot.forEach(doc => {
+            // 跳過當前正在編輯的類別
+            if (doc.id !== categoryId && doc.data().name === newCategoryName) {
+                isDuplicate = true;
+            }
+        });
+        
+        if (isDuplicate) {
+            showAlert("已存在相同名稱的類別", "warning");
+            return;
+        }
+        
+        // 顯示載入提示
+        showAlert("更新中...", "info");
+        
+        // 準備更新數據
+        const updateData = {
+            name: newCategoryName,
+            description: newDesc,
+            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // 更新類別
+        await window.db.collection("categories").doc(categoryId).update(updateData);
+        
+        // 如果類別名稱有變更，需要更新所有使用此類別的商品項目
+        if (newCategoryName !== oldCategoryName) {
+            // 先獲取所有商品項目
+            const menuItemsSnapshot = await window.db.collection("menuItems")
+                .where("businessId", "==", currentUser.uid)
+                .get();
+            
+            // 篩選出使用舊類別名稱的項目
+            const itemsToUpdate = [];
+            menuItemsSnapshot.forEach(doc => {
+                if (doc.data().category === oldCategoryName) {
+                    itemsToUpdate.push({
+                        id: doc.id,
+                        data: doc.data()
+                    });
+                }
+            });
+            
+            // 更新這些項目的類別名稱
+            if (itemsToUpdate.length > 0) {
+                console.log(`需要更新 ${itemsToUpdate.length} 個商品項目的類別名稱`);
+                
+                if (typeof window.db.batch === 'function') {
+                    // 使用批處理更新
+                    const batch = window.db.batch();
+                    
+                    itemsToUpdate.forEach(item => {
+                        const itemRef = window.db.collection("menuItems").doc(item.id);
+                        batch.update(itemRef, {
+                            category: newCategoryName,
+                            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    });
+                    
+                    await batch.commit();
+                } else {
+                    // 如果批處理不可用，逐個更新
+                    for (const item of itemsToUpdate) {
+                        await window.db.collection("menuItems").doc(item.id).update({
+                            category: newCategoryName,
+                            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+                }
+                
+                console.log(`已更新 ${itemsToUpdate.length} 個商品項目的類別名稱`);
+            }
+        }
+        
+        // 關閉編輯表單
+        const editForm = document.querySelector('.edit-category-form');
+        if (editForm) editForm.remove();
+        
+        // 新增：更新菜單元數據
+        await updateMenuMetadata();
+        
+        // 重新加載商品列表
+        await loadMenuItems();
+
+        showAlert("類別已成功更新", "success");
+    } catch (error) {
+        console.error("更新類別失敗:", error);
+        showAlert("更新類別失敗: " + error.message, "danger");
+    }
+}
+
+// 更新商品項目
+async function updateMenuItem(itemId) {
+    try {
+        const nameInput = document.getElementById(`edit-name-${itemId}`);
+        const priceInput = document.getElementById(`edit-price-${itemId}`);
+        const descInput = document.getElementById(`edit-desc-${itemId}`);
+        
+        if (!nameInput || !priceInput) {
+            showAlert("編輯表單欄位不完整", "warning");
+            return;
+        }
+        
+        // 驗證必填字段
+        if (!nameInput.value) {
+            showAlert("請填寫商品名稱", "warning");
+            return;
+        }
+        
+        // 驗證價格
+        const price = parseFloat(priceInput.value);
+        if (isNaN(price) || price <= 0) {
+            showAlert("請輸入有效的價格", "warning");
+            return;
+        }
+        
+        // 顯示載入提示
+        showAlert("更新中...", "info");
+        
+        // 準備更新數據
+        const itemData = {
+            name: nameInput.value,
+            price: price,
+            description: descInput ? descInput.value : "",
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // 更新Firestore
+        await window.db.collection("menuItems").doc(itemId).update(itemData);
+                
+        // 新增：更新菜單元數據
+        await updateMenuMetadata();
+
+        // 重新加載商品列表
+        await loadMenuItems();
+        
+        showAlert("商品項目已成功更新", "success");
+    } catch (error) {
+        console.error("更新商品項目失敗:", error);
+        showAlert("更新商品項目失敗，請稍後再試", "danger");
+    }
+}
+
+// 取消編輯
+function cancelEdit(btn) {
+    // 尋找最近的編輯表單（可能是項目或類別編輯表單）
+    const editForm = btn.closest('.edit-form, .edit-category-form');
+    if (editForm) {
+        editForm.remove();
+    }
+}
+
 // 刪除商品項目
 async function deleteMenuItem(itemId) {
     try {
@@ -5141,14 +5450,6 @@ async function saveCategory() {
     }
 }
 
-// 取消編輯
-function cancelEdit(btn) {
-    // 尋找最近的編輯表單（可能是項目或類別編輯表單）
-    const editForm = btn.closest('.edit-form, .edit-category-form');
-    if (editForm) {
-        editForm.remove();
-    }
-}
 
 // 處理 iOS 上的觸控事件問題
 function enhanceIOSCompatibility() {
