@@ -3940,6 +3940,263 @@ async function initMap() {
     }
 }
 
+// 顯示位置儲存提示對話框
+function showLocationSaveDialog() {
+    // 檢查是否已有相同對話框
+    if (document.getElementById('locationSaveDialog')) {
+        return;
+    }
+    
+    // 創建對話框元素
+    const dialog = document.createElement('div');
+    dialog.id = 'locationSaveDialog';
+    dialog.className = 'modal fade';
+    dialog.tabIndex = -1;
+    dialog.setAttribute('aria-labelledby', 'locationSaveDialogLabel');
+    dialog.setAttribute('aria-hidden', 'true');
+    dialog.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="locationSaveDialogLabel">
+                        <i class="fas fa-map-marker-alt me-2"></i>位置資訊更新
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="bg-light rounded-circle p-2 me-3 text-primary">
+                            <i class="fas fa-exclamation-circle fa-2x"></i>
+                        </div>
+                        <div>
+                            <p class="mb-2">系統已根據您的地址資料找到對應位置，為確保資料完整，請點擊「儲存位置」按鈕儲存地理座標。</p>
+                            <p class="mb-0 text-muted">這將有助於提升您店家在搜尋中的曝光度及準確性。</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">稍後再說</button>
+                    <button type="button" class="btn btn-primary" id="dialogSaveLocationBtn">
+                        <i class="fas fa-save me-2"></i>儲存位置
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 添加到頁面
+    document.body.appendChild(dialog);
+    
+    // 顯示對話框
+    const modalInstance = new bootstrap.Modal(dialog);
+    modalInstance.show();
+    
+    // 綁定儲存按鈕事件
+    const saveBtn = document.getElementById('dialogSaveLocationBtn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', function() {
+            // 呼叫位置儲存函數
+            saveLocationInfo();
+            // 關閉對話框
+            modalInstance.hide();
+        });
+    }
+}
+
+// 顯示位置錯誤對話框
+function showLocationErrorDialog() {
+    // 檢查是否已有相同對話框
+    if (document.getElementById('locationErrorDialog')) {
+        return;
+    }
+    
+    // 創建對話框元素
+    const dialog = document.createElement('div');
+    dialog.id = 'locationErrorDialog';
+    dialog.className = 'modal fade';
+    dialog.tabIndex = -1;
+    dialog.setAttribute('aria-labelledby', 'locationErrorDialogLabel');
+    dialog.setAttribute('aria-hidden', 'true');
+    dialog.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="locationErrorDialogLabel">
+                        <i class="fas fa-exclamation-triangle me-2"></i>位置資訊不完整
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="bg-light rounded-circle p-2 me-3 text-warning">
+                            <i class="fas fa-map-marked-alt fa-2x"></i>
+                        </div>
+                        <div>
+                            <p class="mb-2">系統未能找到有效的店家位置資訊，請完成以下步驟設定您的店家位置：</p>
+                            <ol class="mb-2">
+                                <li>在搜尋框輸入您的店家地址</li>
+                                <li>點擊搜尋按鈕或按下 Enter 鍵</li>
+                                <li>調整地圖標記至精確位置</li>
+                                <li>點擊「儲存位置」按鈕</li>
+                            </ol>
+                            <p class="mb-0 text-danger"><strong>注意：</strong> 未設定位置資訊將影響店家在 APP 中的曝光度！</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">我知道了</button>
+                    <button type="button" class="btn btn-warning" data-bs-dismiss="modal">
+                        <i class="fas fa-arrow-right me-2"></i>前往設定位置
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 添加到頁面
+    document.body.appendChild(dialog);
+    
+    // 顯示對話框
+    const modalInstance = new bootstrap.Modal(dialog);
+    modalInstance.show();
+}
+
+// 根據地址獲取地理位置
+function geocodeAddress(address) {
+    if (!geocoder || !address) return;
+    
+    showAlert("根據地址定位中...", "info");
+    
+    // 設定 geocoding 選項，確保返回繁體中文
+    const geocodingOptions = {
+        address: address,
+        region: 'tw',     // 地區設為台灣
+        language: 'zh-TW' // 語言設為繁體中文
+    };
+    
+    geocoder.geocode(geocodingOptions, function(results, status) {
+        if (status === 'OK' && results[0]) {
+            const position = results[0].geometry.location;
+            
+            // 更新地圖和標記
+            map.setCenter(position);
+            marker.setPosition(position);
+            
+            // 更新座標欄位
+            updateLocationFields(position);
+            
+            // 使用返回的繁體中文地址更新地址欄位
+            const formattedAddressField = document.getElementById('formattedAddress');
+            if (formattedAddressField) {
+                formattedAddressField.value = results[0].formatted_address;
+            }
+            
+            showAlert("已根據地址自動設定位置，請點擊「儲存位置」按鈕確認", "success");
+        } else {
+            showAlert('無法根據地址定位，請手動設定位置或嘗試更詳細的地址', 'warning');
+        }
+    });
+}
+
+// 檢查位置資料，如有需要則提示用戶
+function checkLocationData() {
+    // 檢查是否缺少位置資料
+    if (!businessData || !businessData.position || !businessData.position.geopoint) {
+        // 顯示提醒訊息，要求店家設定位置
+        showAlert("請設定店家位置資訊以提升在APP中的曝光度", "warning", 6000);
+    }
+}
+
+// 搜尋地址
+function searchLocation() {
+    if (!geocoder) {
+        console.error("地理編碼器未初始化");
+        showAlert("地理編碼服務未就緒，請重新整理頁面後再試", "danger");
+        return;
+    }
+    
+    const address = document.getElementById('locationSearch').value;
+    if (!address) {
+        showAlert('請輸入要搜尋的地址', 'warning');
+        return;
+    }
+    
+    showAlert("搜尋地址中...", "info");
+    
+    // 增加在地化參數，提高台灣地址的搜尋準確度並確保繁體中文
+    const geocodingOptions = {
+        address: address,
+        region: 'tw',     // 設定搜尋區域為台灣
+        language: 'zh-TW' // 設定返回結果語言為繁體中文
+    };
+    
+    geocoder.geocode(geocodingOptions, function(results, status) {
+        if (status === 'OK' && results[0]) {
+            const position = results[0].geometry.location;
+            
+            // 更新地圖中心
+            map.setCenter(position);
+            
+            // 根據標記類型設定位置
+            if (marker instanceof google.maps.Marker) {
+                marker.setPosition(position);
+            } else {
+                // 進階標記設定位置的方式
+                marker.position = position;
+            }
+            
+            // 更新顯示欄位
+            updateLocationFields(position);
+            
+            const formattedAddressField = document.getElementById('formattedAddress');
+            if (formattedAddressField) {
+                // 使用繁體中文地址
+                formattedAddressField.value = results[0].formatted_address;
+            }
+            
+            showAlert("地址已找到並更新，請點擊「儲存位置」按鈕確認", "success");
+        } else {
+            showAlert('無法找到該地址，請嘗試更具體的地址或關鍵字', 'warning');
+        }
+    });
+}
+
+// 更新位置欄位
+function updateLocationFields(position) {
+    if (!position) return;
+    
+    // 更新緯度經度欄位
+    const latitudeField = document.getElementById('latitude');
+    const longitudeField = document.getElementById('longitude');
+    
+    if (latitudeField && longitudeField) {
+        let lat, lng;
+        
+        // 處理不同類型的位置物件
+        if (position.lat && typeof position.lat === 'function') {
+            // 傳統的 google.maps.LatLng 物件
+            lat = position.lat();
+            lng = position.lng();
+        } else if (position.lat !== undefined && position.lng !== undefined) {
+            // 普通的 {lat, lng} 物件
+            lat = position.lat;
+            lng = position.lng;
+        } else {
+            console.error("無法識別的位置物件格式", position);
+            return;
+        }
+        
+        latitudeField.value = lat.toFixed(6);
+        longitudeField.value = lng.toFixed(6);
+        
+        // 更新geohash欄位
+        const geohashField = document.getElementById('geohash');
+        if (geohashField && typeof generateGeohash === 'function') {
+            geohashField.value = generateGeohash(lat, lng);
+        }
+    }
+}
+
 // 會話超時處理
 function setupSessionTimeoutHandler() {
     let inactivityTimer;
