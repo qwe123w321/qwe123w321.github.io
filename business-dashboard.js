@@ -323,6 +323,91 @@ function handleAuthStateChanged(user) {
     }
 }
 
+// 表單驗證初始化
+function initFormValidation() {
+    // 為所有必填字段添加驗證
+    const requiredFields = document.querySelectorAll('input[required], textarea[required], select[required]');
+    
+    requiredFields.forEach(field => {
+        field.addEventListener('blur', function() {
+            if (!this.value.trim()) {
+                this.classList.add('is-invalid');
+                
+                // 檢查是否已存在錯誤提示
+                let feedback = this.nextElementSibling;
+                if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+                    feedback = document.createElement('div');
+                    feedback.className = 'invalid-feedback';
+                    feedback.textContent = '此欄位為必填';
+                    this.after(feedback);
+                }
+            } else {
+                this.classList.remove('is-invalid');
+                
+                // 移除錯誤提示
+                const feedback = this.nextElementSibling;
+                if (feedback && feedback.classList.contains('invalid-feedback')) {
+                    feedback.remove();
+                }
+            }
+        });
+    });
+    
+    // 為電子郵件欄位添加格式驗證
+    const emailFields = document.querySelectorAll('input[type="email"]');
+    emailFields.forEach(field => {
+        field.addEventListener('blur', function() {
+            if (this.value && !isValidEmail(this.value)) {
+                this.classList.add('is-invalid');
+                
+                // 檢查是否已存在錯誤提示
+                let feedback = this.nextElementSibling;
+                if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+                    feedback = document.createElement('div');
+                    feedback.className = 'invalid-feedback';
+                    feedback.textContent = '請輸入有效的電子郵件地址';
+                    this.after(feedback);
+                }
+            }
+        });
+    });
+    
+    // 為網址欄位添加格式驗證
+    const urlFields = document.querySelectorAll('input[type="url"]');
+    urlFields.forEach(field => {
+        field.addEventListener('blur', function() {
+            if (this.value && !isValidUrl(this.value)) {
+                this.classList.add('is-invalid');
+                
+                // 檢查是否已存在錯誤提示
+                let feedback = this.nextElementSibling;
+                if (!feedback || !feedback.classList.contains('invalid-feedback')) {
+                    feedback = document.createElement('div');
+                    feedback.className = 'invalid-feedback';
+                    feedback.textContent = '請輸入有效的網址，包含http://或https://';
+                    this.after(feedback);
+                }
+            }
+        });
+    });
+}
+
+// 驗證電子郵件格式
+function isValidEmail(email) {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+}
+
+// 驗證URL格式
+function isValidUrl(url) {
+    try {
+        new URL(url);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
 // 認證後初始化其他功能
 function initAfterAuth() {
     try {
@@ -3510,6 +3595,8 @@ async function saveBusinessHours() {
         }
     }
 }
+
+
 
 // 儲存店家位置資訊
 async function saveLocationInfo() {
