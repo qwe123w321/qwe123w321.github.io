@@ -2300,8 +2300,6 @@ function updateMainImagePreview(imageUrl) {
 // 更新營業時間
 function updateOpeningHoursFields() {
     try {
-        if (!businessData) return;
-        
         if (businessData.openingHours && businessData.openingHours.length > 0) {
             updateOpeningHours(businessData.openingHours);
         } else {
@@ -2330,6 +2328,33 @@ function updateOpeningHours(hours) {
                 // 重新獲取引用
                 const hourSelectionDivs = createBusinessHoursUI(newContainer);
                 // 現在設置值
+                hours.forEach((hourData, index) => {
+                    if (index < hourSelectionDivs.length) {
+                        const selects = hourSelectionDivs[index].querySelectorAll("select");
+                        if (selects.length === 2) {
+                            // 設置值
+                            setSelectValue(selects[0], hourData.open);
+                            setSelectValue(selects[1], hourData.close);
+                        }
+                    }
+                });
+            }
+        } else {
+            const hourSelectionDivs = businessHoursContainer.querySelectorAll(".hours-selection");
+            if (hourSelectionDivs.length > 0) {
+                hours.forEach((hourData, index) => {
+                    if (index < hourSelectionDivs.length) {
+                        const selects = hourSelectionDivs[index].querySelectorAll("select");
+                        if (selects.length === 2) {
+                            // 設置值
+                            setSelectValue(selects[0], hourData.open);
+                            setSelectValue(selects[1], hourData.close);
+                        }
+                    }
+                });
+            } else {
+                // 如果選擇器不存在，創建新的UI
+                const hourSelectionDivs = createBusinessHoursUI(businessHoursContainer);
                 hours.forEach((hourData, index) => {
                     if (index < hourSelectionDivs.length) {
                         const selects = hourSelectionDivs[index].querySelectorAll("select");
