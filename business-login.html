@@ -17,10 +17,9 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
-   <!-- 修改: 使用匿名模式加載 reCAPTCHA 腳本，解決跨域問題 -->
+   <!-- 1. 首先加載 reCAPTCHA 腳本 (非常重要) -->
    <script src="https://www.google.com/recaptcha/api.js?render=6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G" 
         async 
-        crossorigin="anonymous"
         onload="console.log('reCAPTCHA 腳本加載成功', new Date().toISOString())" 
         onerror="console.error('reCAPTCHA 腳本加載失敗', new Date().toISOString())"></script>
     
@@ -53,7 +52,7 @@
         }
     </style>
 
-   <!-- 修改: 使用延遲載入的方式加載 Firebase 配置 -->
+   <!-- 2. 然後加載 Firebase 和 App Check 模組 -->
    <script type="module">
        // 先導入 Firebase 配置
        import './firebase-config.js';
@@ -95,10 +94,8 @@
            document.body.appendChild(diagnosticsBtn);
        });
        
-       // 延遲導入其他模組以確保頁面元素已加載
-       setTimeout(() => {
-           import('./business-login.js');
-       }, 1000);
+       // 導入其他需要的模組
+       import './business-login.js';
    </script>
    
    <!-- 添加 App Check 狀態指示器的樣式 -->
@@ -134,7 +131,7 @@
    </style>
     
     <script src="error-handler.js"></script>
-
+    
     <style>
          /* 優惠核銷區塊 */
          .verification-info {
@@ -217,31 +214,6 @@
             background-color: #86686F;
             transform: translateY(-2px);
             color: white;
-        }
-    </style>
-
-    <style>
-        button, 
-        input[type="submit"], 
-        .btn, 
-        .login-btn, 
-        .register-btn {
-            cursor: pointer;
-        }
-
-        .login-btn:hover {
-            background-color: #86686F;
-            /* 移除可能導致重排的屬性 */
-            /* transform: translateY(-2px); */
-            /* box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); */
-        }
-
-        @media (hover: hover) {
-            .login-btn:hover {
-                background-color: #86686F;
-                transform: translateY(-2px);
-                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            }
         }
     </style>
 
@@ -336,14 +308,75 @@
                                 </div>
                                 
                                 <button type="submit" class="btn login-btn w-100">登入</button>
-                                <a href="business-register.html" class="btn register-btn w-100" id="registerBtn" role="button">註冊店家帳戶</a>
+                                <button type="button" class="btn register-btn w-100" id="registerBtn">註冊店家帳戶</button>
                             </form>
-                    
+                            
+                            <!-- <div class="or-divider">
+                                <span>或使用以下方式</span>
+                            </div>
+                            
+                            <div class="social-login">
+                                <button type="button" class="social-btn google-btn">
+                                    <i class="fab fa-google"></i>
+                                </button>
+                                <button type="button" class="social-btn facebook-btn">
+                                    <i class="fab fa-facebook-f"></i>
+                                </button>
+                                <button type="button" class="social-btn apple-btn">
+                                    <i class="fab fa-apple"></i>
+                                </button>
+                            </div> -->
+                            
+                            <div class="login-footer">
+                                <p>還沒有帳戶？<a href="#" id="signupLink">立即註冊</a></p>
+                                <p>回到 <a href="index.html">首頁</a></p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
             
+            <!-- 優惠核銷資訊區塊（新增） -->
+            <!-- <div class="row mt-5">
+                <div class="col-lg-10 mx-auto">
+                    <div class="verification-info">
+                        <h4><i class="fas fa-ticket-alt"></i> 便捷店家優惠核銷系統</h4>
+                        <p>我們全新的優惠核銷系統讓店家能夠快速、輕鬆地驗證並核銷顧客的優惠，無需下載額外的應用程式！</p>
+                        
+                        <div class="verification-steps">
+                            <div class="verification-step">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h5>顧客出示QR碼</h5>
+                                    <p>當顧客到店消費時，他們會在APP上出示優惠QR碼或6位數驗證碼。</p>
+                                </div>
+                            </div>
+                            
+                            <div class="verification-step">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h5>掃描或輸入驗證碼</h5>
+                                    <p>使用任何手機相機掃描QR碼，或在網頁上輸入顯示的6位數驗證碼。</p>
+                                </div>
+                            </div>
+                            
+                            <div class="verification-step">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h5>一鍵核銷完成</h5>
+                                    <p>驗證後，確認優惠詳情並點擊使用按鈕，系統自動記錄使用情況。</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="verification-cta">
+                            <a href="verify.html" class="try-verification-btn">
+                                <i class="fas fa-arrow-right me-2"></i>立即嘗試優惠核銷
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div> -->
         </div>
     </section>
     
@@ -400,6 +433,8 @@
                             diagnosticsBtn.style.zIndex = '9999';
                             diagnosticsBtn.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
                             
+                            // 設置樣式和事件...（保留原有代碼）
+                            
                             diagnosticsBtn.addEventListener('click', () => {
                                 addDiagnosticsPanel();
                                 diagnosticsBtn.style.display = 'none';
@@ -422,145 +457,6 @@
                 console.error('設置狀態指示器時發生錯誤:', error);
             }
         });
-    </script>
-
-    <!-- 添加修復腳本 -->
-    <script src="recaptcha-fix.js"></script>
-    <script src="app-check-bypass.js"></script>
-    <script src="login-fix.js"></script>
-
-    <!-- 添加內聯腳本以確保立即應用修復 -->
-    <script>
-      // 立即嘗試修復密碼顯示/隱藏功能
-      (function() {
-        console.log("執行緊急修復...");
-        
-        // 修復密碼顯示/隱藏按鈕
-        const fixTogglePassword = function() {
-          const toggleBtn = document.getElementById('togglePassword');
-          if (!toggleBtn) return false;
-          
-          toggleBtn.onclick = function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const passwordInput = document.getElementById('password');
-            if (!passwordInput) return;
-            
-            const icon = this.querySelector('i');
-            if (!icon) return;
-            
-            if (passwordInput.type === 'password') {
-              passwordInput.type = 'text';
-              icon.classList.remove('fa-eye');
-              icon.classList.add('fa-eye-slash');
-            } else {
-              passwordInput.type = 'password';
-              icon.classList.remove('fa-eye-slash');
-              icon.classList.add('fa-eye');
-            }
-          };
-          
-          return true;
-        };
-        
-        // 嘗試修復多次，確保在DOM完全載入後生效
-        const attempts = 5;
-        let currentAttempt = 0;
-        
-        const attemptFix = function() {
-          if (fixTogglePassword()) {
-            console.log("密碼切換按鈕修復成功");
-          } else {
-            currentAttempt++;
-            if (currentAttempt < attempts) {
-              console.log(`修復嘗試 ${currentAttempt}/${attempts} 失敗，將在 500ms 後重試`);
-              setTimeout(attemptFix, 500);
-            } else {
-              console.warn("密碼切換按鈕修復失敗，已達到最大嘗試次數");
-            }
-          }
-        };
-        
-        // 立即嘗試第一次修復
-        setTimeout(attemptFix, 100);
-        
-        // 直接覆蓋 App Check 狀態檢查函數，防止401錯誤
-        window.checkAppCheckStatus = function() {
-          console.log("使用模擬的 App Check 驗證");
-          return Promise.resolve({ success: true });
-        };
-        
-        // 監聽登入表單提交
-        const fixLoginForm = function() {
-          const form = document.getElementById('businessLoginForm');
-          if (!form) return false;
-          
-          form.onsubmit = function(e) {
-            e.preventDefault();
-            console.log("攔截登入表單提交");
-            
-            const emailInput = document.getElementById('email');
-            const passwordInput = document.getElementById('password');
-            
-            if (!emailInput || !passwordInput) {
-              alert('找不到必要的表單元素，請刷新頁面重試');
-              return;
-            }
-            
-            const email = emailInput.value.trim();
-            const password = passwordInput.value;
-            
-            if (!email || !password) {
-              alert('請填寫所有必填欄位');
-              return;
-            }
-            
-            const submitButton = form.querySelector('button[type="submit"]');
-            if (submitButton) {
-              submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 登入中...';
-              submitButton.disabled = true;
-            }
-            
-            // 模擬登入成功 - 在實際環境中，這裡應該調用 Firebase 登入
-            setTimeout(function() {
-              window.location.href = 'business-dashboard.html';
-            }, 1500);
-          };
-          
-          return true;
-        };
-        
-        // 嘗試修復登入表單
-        setTimeout(function() {
-          if (fixLoginForm()) {
-            console.log("登入表單修復成功");
-          } else {
-            console.warn("登入表單修復失敗");
-          }
-        }, 300);
-      })();
-    </script>
-
-    <!-- 替換reCAPTCHA腳本 -->
-    <script>
-      // 移除舊的reCAPTCHA腳本
-      document.addEventListener('DOMContentLoaded', function() {
-        const oldScript = document.querySelector('script[src*="recaptcha/api.js"]');
-        if (oldScript) {
-          console.log('移除舊的reCAPTCHA腳本');
-          oldScript.remove();
-        }
-        
-        // 添加新的reCAPTCHA腳本，使用匿名模式避免憑證問題
-        const newScript = document.createElement('script');
-        newScript.src = 'https://www.google.com/recaptcha/api.js?render=6Lf0pfMqAAAAAPWeK67sgdduOfMbWeB5w0-0bG6G';
-        newScript.async = true;
-        newScript.crossOrigin = 'anonymous'; // 關鍵修復
-        
-        document.head.appendChild(newScript);
-        console.log('添加新的reCAPTCHA腳本');
-      });
     </script>
 </body>
 </html>
