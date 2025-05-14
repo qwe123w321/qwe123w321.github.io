@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // iOS 特定修復
     if (isIOS) {
         applyIOSFixes();
+        enhanceIOSCompatibility();
     }
     
     // 設置 Firebase 初始化檢查器
@@ -207,6 +208,36 @@ function applyIOSFixes() {
             }
         });
     });
+}
+
+// 為 iOS 新增初始化完成檢查機制
+function checkInitializationComplete() {
+    // 檢查所有必要組件是否已就緒
+    const componentsReady = firebaseInitComplete && 
+                           window.db && 
+                           window.auth && 
+                           window.storage;
+    
+    if (componentsReady && currentUser) {
+        // 設定所有模組都已初始化的標記
+        window.dashboardInitialized = true;
+        console.log('所有核心元件已初始化完成');
+        
+        // 發送初始化完成事件以觸發後續流程
+        document.dispatchEvent(new CustomEvent('dashboard-initialized'));
+        return true;
+    }
+    return false;
+}
+
+// 添加此函數以定期檢查初始化狀態
+function monitorInitializationStatus() {
+    const checkInterval = setInterval(() => {
+        if (checkInitializationComplete() || initAttempts > 10) {
+            clearInterval(checkInterval);
+        }
+        initAttempts++;
+    }, 500);
 }
 
 // iOS 事件處理程序映射
@@ -1211,6 +1242,314 @@ function handleDeletePromotion(e) {
     if (promotionId && confirm("確定要刪除此優惠嗎？")) {
         deletePromotion(promotionId);
     }
+}
+
+// 編輯優惠
+function editPromotion(promotionId) {
+    try {
+        // 檢查 Firebase 是否初始化
+        if (!firebaseInitComplete || !window.db) {
+            showAlert("系統尚未準備好，請稍後再試", "warning");
+            return;
+        }
+        
+        // 獲取優惠數據
+        window.db.collection("promotions").doc(promotionId).get()
+            .then(doc => {
+                if (!doc.exists) {
+                    showAlert("找不到此優惠", "warning");
+                    return;
+                }
+                
+                const promotion = doc.data();
+                
+                // 創建編輯模態框
+                showEditPromotionModal(promotionId, promotion);
+            })
+            .catch(error => {
+                console.error("獲取優惠數據失敗:", error);
+                showAlert("獲取優惠數據失敗", "danger");
+            });
+    } catch (error) {
+        console.error("編輯優惠時出錯:", error);
+        showAlert("編輯優惠時出錯", "danger");
+    }
+}
+
+// 顯示編輯優惠模態框
+function showEditPromotionModal(promotionId, promotion) {
+    // 檢查是否已存在相同ID的模態框
+    let modalElement = document.getElementById(`editModal-${promotionId}`);
+    if (modalElement) {
+        try {
+            // 如果存在，嘗試使用 Bootstrap 方法顯示
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+            return;
+        } catch (error) {
+            console.error("顯示現有模態框時出錯:", error);
+            modalElement.remove();
+            modalElement = null;
+        }
+    }
+    
+    try {
+        // 格式化日期
+        const startDate = promotion.startDate instanceof Date ? 
+            promotion.startDate : 
+            new Date(promotion.startDate.seconds * 1000);
+        
+        const endDate = promotion.endDate instanceof Date ? 
+            promotion.endDate : 
+            new Date(promotion.endDate.seconds * 1000);
+        
+        // 創建模態框HTML
+        const modalHTML = `
+            <div class="modal fade" id="editModal-${promotionId}" tabindex="-1" aria-labelledby="editModalLabel-${promotionId}" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="editModalLabel-${promotionId}">編輯優惠</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="editForm-${promotionId}">
+                                <div class="mb-3">
+                                    <label for="editTitle-${promotionId}" class="form-label">優惠標題</label>
+                                    <input type="text" class="form-control" id="editTitle-${promotionId}" value="${promotion.title || ''}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="editType-${promotionId}" class="form-label">優惠類型</label>
+                                    <select class="form-select" id="editType-${promotionId}" required>
+                                        <option value="discount" ${promotion.type === 'discount' ? 'selected' : ''}>折扣</option>
+                                        <option value="gift" ${promotion.type === 'gift' ? 'selected' : ''}>招待</option>
+                                        <option value="combo" ${promotion.type === 'combo' ? 'selected' : ''}>套餐</option>
+                                        <option value="special" ${promotion.type === 'special' ? 'selected' : ''}>特別優惠</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="editDesc-${promotionId}" class="form-label">優惠描述</label>
+                                    <textarea class="form-control" id="editDesc-${promotionId}" rows="3" required>${promotion.description || ''}</textarea>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="editStart-${promotionId}" class="form-label">開始日期</label>
+                                            <input type="date" class="form-control" id="editStart-${promotionId}" value="${formatDateForInput(startDate)}" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="editEnd-${promotionId}" class="form-label">結束日期</label>
+                                            <input type="date" class="form-control" id="editEnd-${promotionId}" value="${formatDateForInput(endDate)}" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">適用對象</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="editTargetAudience-${promotionId}" id="editAllUsers-${promotionId}" value="all" ${promotion.targetAudience === 'all' ? 'checked' : ''}>
+                                        <label class="form-check-label" for="editAllUsers-${promotionId}">
+                                            目前店內活動（所有顧客）
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="editTargetAudience-${promotionId}" id="editBrewdateUsers-${promotionId}" value="brewdate" ${promotion.targetAudience === 'brewdate' ? 'checked' : ''}>
+                                        <label class="form-check-label" for="editBrewdateUsers-${promotionId}">
+                                            <strong>僅限BREWDATE用戶</strong>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="editActive-${promotionId}" ${promotion.isActive ? 'checked' : ''}>
+                                        <label class="form-check-label" for="editActive-${promotionId}">
+                                            優惠狀態 (啟用/停用)
+                                        </label>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                            <button type="button" class="btn btn-primary" id="saveEditBtn-${promotionId}">儲存變更</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 添加模態框到頁面
+        const modalContainer = document.createElement('div');
+        modalContainer.innerHTML = modalHTML;
+        document.body.appendChild(modalContainer);
+        
+        // 顯示模態框
+        modalElement = document.getElementById(`editModal-${promotionId}`);
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        
+        // 綁定儲存按鈕
+        const saveBtn = document.getElementById(`saveEditBtn-${promotionId}`);
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async function() {
+                try {
+                    // 收集表單數據
+                    const title = document.getElementById(`editTitle-${promotionId}`)?.value?.trim();
+                    const type = document.getElementById(`editType-${promotionId}`)?.value;
+                    const description = document.getElementById(`editDesc-${promotionId}`)?.value?.trim();
+                    const startDateStr = document.getElementById(`editStart-${promotionId}`)?.value;
+                    const endDateStr = document.getElementById(`editEnd-${promotionId}`)?.value;
+                    const targetAudience = document.querySelector(`input[name="editTargetAudience-${promotionId}"]:checked`)?.value || 'all';
+                    const isActive = document.getElementById(`editActive-${promotionId}`)?.checked || false;
+                    
+                    // 驗證必填字段
+                    if (!title || !type || !description || !startDateStr || !endDateStr) {
+                        showAlert("請填寫所有必填字段", "warning");
+                        return;
+                    }
+                    
+                    // 解析日期
+                    const startDate = new Date(startDateStr);
+                    const endDate = new Date(endDateStr);
+                    endDate.setHours(23, 59, 59, 999); // 設置結束日期為當天結束
+                    
+                    // 準備更新數據
+                    const updatedData = {
+                        title: title,
+                        type: type,
+                        description: description,
+                        startDate: window.firebase.firestore.Timestamp.fromDate(startDate),
+                        endDate: window.firebase.firestore.Timestamp.fromDate(endDate),
+                        targetAudience: targetAudience,
+                        isActive: isActive
+                    };
+                    
+                    // 更新優惠
+                    await updatePromotion(promotionId, updatedData);
+                    
+                    // 關閉模態框
+                    modal.hide();
+                } catch (error) {
+                    console.error("儲存編輯失敗:", error);
+                    showAlert("儲存編輯失敗: " + error.message, "danger");
+                }
+            });
+        }
+    } catch (error) {
+        console.error("創建編輯模態框時出錯:", error);
+        showAlert("無法創建編輯表單，請重試", "danger");
+    }
+}
+
+// 判斷優惠是否進行中
+function isPromotionActive(promotion) {
+    // 檢查isActive屬性
+    if (promotion.isActive === false) {
+        return false;
+    }
+    
+    const now = new Date();
+    
+    // 如果沒有日期，假設結束
+    if (!promotion.startDate || !promotion.endDate) return false;
+    
+    // 轉換日期
+    let startDate, endDate;
+    
+    // 安全地解析開始日期
+    try {
+        if (promotion.startDate instanceof Date) {
+            startDate = promotion.startDate;
+        } else if (promotion.startDate.seconds) {
+            // Firestore Timestamp
+            startDate = new Date(promotion.startDate.seconds * 1000);
+        } else {
+            startDate = new Date(promotion.startDate);
+        }
+    } catch (e) {
+        console.error("無法解析開始日期:", e);
+        return false;
+    }
+    
+    // 安全地解析結束日期
+    try {
+        if (promotion.endDate instanceof Date) {
+            endDate = promotion.endDate;
+        } else if (promotion.endDate.seconds) {
+            // Firestore Timestamp
+            endDate = new Date(promotion.endDate.seconds * 1000);
+        } else {
+            endDate = new Date(promotion.endDate);
+        }
+    } catch (e) {
+        console.error("無法解析結束日期:", e);
+        return false;
+    }
+    
+    // 設置結束日期到當天結束
+    endDate.setHours(23, 59, 59, 999);
+    
+    return now >= startDate && now <= endDate;
+}
+
+// 格式化優惠類型
+function formatPromotionType(type) {
+    const types = {
+        "discount": "折扣",
+        "gift": "贈品",
+        "combo": "套餐",
+        "special": "特別優惠"
+    };
+    
+    return types[type] || type || "未指定";
+}
+
+// 格式化目標受眾
+function formatTargetAudience(audience) {
+    const audiences = {
+        "all": "目前店內活動",
+        "brewdate": "僅限BREWDATE用戶"
+    };
+    
+    return audiences[audience] || audience || "所有顧客";
+}
+
+// 格式化日期範圍
+function formatDateRange(start, end) {
+    if (!start || !end) return "未設定";
+    
+    // 解析開始日期
+    let startDate;
+    if (start instanceof Date) {
+        startDate = start;
+    } else if (start.seconds) {
+        // Firestore Timestamp
+        startDate = new Date(start.seconds * 1000);
+    } else {
+        startDate = new Date(start);
+    }
+    
+    // 解析結束日期
+    let endDate;
+    if (end instanceof Date) {
+        endDate = end;
+    } else if (end.seconds) {
+        // Firestore Timestamp
+        endDate = new Date(end.seconds * 1000);
+    } else {
+        endDate = new Date(end);
+    }
+    
+    // 格式化
+    const formatDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}/${month}/${day}`;
+    };
+    
+    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
 }
 
 // 查看優惠詳情
@@ -2433,6 +2772,59 @@ function updateLocationFields() {
         }
     } catch (error) {
         console.error("更新地理位置欄位錯誤:", error);
+    }
+}
+
+// 為新用戶初始化店家資料
+async function initializeNewBusiness() {
+    try {
+        if (!currentUser || !currentUser.uid) {
+            console.error("未找到用戶資料，無法初始化店家");
+            return;
+        }
+        
+        // 檢查 Firebase 是否初始化
+        if (!firebaseInitComplete || !window.db) {
+            console.error("Firestore 未正確初始化");
+            showAlert("資料庫連接錯誤，請重新整理頁面", "danger");
+            return;
+        }
+        
+        // 檢查是否已存在店家文檔
+        const businessDoc = await window.db.collection("businesses").doc(currentUser.uid).get();
+        if (businessDoc.exists) {
+            console.log("店家文檔已存在，不需要初始化");
+            return;
+        }
+        
+        // 創建預設數據
+        const defaultBusinessData = {
+            businessName: "未命名店家",
+            description: "",
+            businessPhone: "",
+            email: currentUser.email || "",
+            website: "",
+            businessType: "",
+            status: "active",
+            createdAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // 寫入到資料庫
+        await window.db.collection("businesses").doc(currentUser.uid).set(defaultBusinessData);
+        console.log("已創建新的店家資料");
+        
+        // 更新本地數據
+        businessData = defaultBusinessData;
+        
+        // 更新UI顯示
+        updateHeaderInfo();
+        updateBusinessFormFields();
+        
+        showAlert("歡迎使用店家管理系統！請完善您的店家資料", "info", 5000);
+    } catch (error) {
+        console.error("初始化新店家資料時出錯:", error);
+        showAlert("創建店家檔案時發生錯誤，請稍後再試", "danger");
     }
 }
 
@@ -3877,6 +4269,1143 @@ async function compressImage(file, maxWidth, maxHeight) {
             reject(new Error('文件讀取失敗'));
         };
     });
+}
+
+// 初始化菜單元數據
+async function initializeMenuMetadata(businessId) {
+    try {
+        if (!businessId) {
+            console.error("未提供店家ID，無法初始化菜單元數據");
+            return;
+        }
+        
+        // 安全檢查
+        if (businessId !== currentUser?.uid) {
+            console.error("當前用戶無權初始化此店家的菜單元數據");
+            return;
+        }
+        
+        // 檢查 Firebase 是否初始化
+        if (!firebaseInitComplete || !window.db) {
+            console.warn("Firestore 未正確初始化，稍後再試初始化菜單元數據");
+            // 延遲重試
+            setTimeout(() => {
+                if (firebaseInitComplete && window.db) {
+                    initializeMenuMetadata(businessId);
+                }
+            }, 2000);
+            return;
+        }
+
+        const metadataRef = window.db.collection("menuMetadata").doc(businessId);
+        try {
+            const metadataDoc = await metadataRef.get();
+
+            if (!metadataDoc.exists) {
+                await metadataRef.set({
+                    businessId: businessId,
+                    version: 1,
+                    lastUpdated: window.firebase.firestore.FieldValue.serverTimestamp()
+                });
+                console.log(`已為店家 ${businessId} 初始化菜單元數據`);
+            }
+        } catch (error) {
+            console.error("讀取/寫入菜單元數據時出錯:", error);
+        }
+    } catch (error) {
+        console.error("初始化菜單元數據錯誤:", error);
+    }
+}
+
+// 更新菜單元數據函數
+async function updateMenuMetadata() {
+    try {
+        if (!currentUser || !currentUser.uid) {
+            console.error("未找到用戶資料，無法更新菜單元數據");
+            return;
+        }
+        
+        // 檢查 Firebase 是否初始化
+        if (!firebaseInitComplete || !window.db) {
+            console.warn("Firestore 未正確初始化，跳過更新菜單元數據");
+            return;
+        }
+        
+        // 取得元數據引用
+        const metadataRef = window.db.collection("menuMetadata").doc(currentUser.uid);
+        
+        // 嘗試使用事務增加版本號
+        try {
+            // 先檢查文檔是否存在
+            const metadataDoc = await metadataRef.get();
+            let newVersion = 1;
+            
+            if (metadataDoc.exists) {
+                const currentData = metadataDoc.data();
+                newVersion = (currentData.version || 0) + 1;
+                
+                // 更新現有文檔
+                await metadataRef.update({
+                    version: newVersion,
+                    lastUpdated: window.firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } else {
+                // 創建新文檔
+                await metadataRef.set({
+                    businessId: currentUser.uid,
+                    version: newVersion,
+                    lastUpdated: window.firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+            
+            console.log("菜單元數據已更新，新版本:", newVersion);
+        } catch (error) {
+            console.error("更新菜單元數據錯誤:", error);
+        }
+    } catch (error) {
+        console.error("更新菜單元數據失敗:", error);
+    }
+}
+
+// 側邊欄初始化
+function initSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const mainContent = document.querySelector('.main-content');
+    const businessToggle = document.querySelector('.business-toggle');
+    
+    if (businessToggle) {
+        // 移除現有事件，避免重複綁定
+        businessToggle.removeEventListener('click', toggleSidebar);
+        
+        // 為避免 iOS 上的事件冒泡問題，使用延遲點擊事件
+        if (isIOS) {
+            businessToggle.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                toggleSidebar();
+            });
+        } else {
+            businessToggle.addEventListener('click', toggleSidebar);
+        }
+    }
+    
+    function toggleSidebar() {
+        sidebar.classList.toggle('active');
+        mainContent.classList.toggle('active');
+    }
+    
+    // 內容區塊切換
+    const menuItems = document.querySelectorAll('.sidebar-menu li a');
+    const contentSections = document.querySelectorAll('.content-section');
+    
+    menuItems.forEach(item => {
+        // 移除現有事件，避免重複綁定
+        item.removeEventListener('click', handleMenuItemClick);
+        
+        // 添加新的點擊事件
+        if (isIOS) {
+            item.addEventListener('touchend', function(e) {
+                // 避免特殊按鈕（如登出）被攔截
+                if (item.id === 'logoutLink') return;
+                
+                e.preventDefault();
+                handleMenuItemClick.call(this, e);
+            });
+        } else {
+            item.addEventListener('click', handleMenuItemClick);
+        }
+    });
+    
+    function handleMenuItemClick(e) {
+        // 避免特殊按鈕（如登出）被攔截
+        if (this.id === 'logoutLink') return;
+        
+        e.preventDefault();
+        
+        const target = this.getAttribute('href').substring(1);
+        const targetSection = document.getElementById(target + '-section');
+        
+        if (!targetSection) return;
+        
+        // 更新活躍菜單項
+        const activeItem = document.querySelector('.sidebar-menu li.active');
+        if (activeItem) {
+            activeItem.classList.remove('active');
+        }
+        this.parentElement.classList.add('active');
+        
+        // 顯示對應的內容區塊
+        const activeSection = document.querySelector('.content-section.active');
+        if (activeSection) {
+            activeSection.classList.remove('active');
+        }
+        targetSection.classList.add('active');
+    }
+    
+    // 預設選中側邊欄第一項
+    const defaultMenuItem = document.querySelector('.sidebar-menu li a');
+    if (defaultMenuItem && !document.querySelector('.content-section.active')) {
+        setTimeout(() => {
+            if (isIOS) {
+                // 手動觸發點擊
+                const target = defaultMenuItem.getAttribute('href').substring(1);
+                const targetSection = document.getElementById(target + '-section');
+                
+                if (targetSection) {
+                    const activeItem = document.querySelector('.sidebar-menu li.active');
+                    if (activeItem) {
+                        activeItem.classList.remove('active');
+                    }
+                    defaultMenuItem.parentElement.classList.add('active');
+                    
+                    const activeSection = document.querySelector('.content-section.active');
+                    if (activeSection) {
+                        activeSection.classList.remove('active');
+                    }
+                    targetSection.classList.add('active');
+                }
+            } else {
+                defaultMenuItem.click();
+            }
+        }, 100);
+    }
+}
+
+// 商品類別管理初始化
+function initCategoryManagement() {
+    // 類別管理
+    const addCategoryBtn = document.getElementById('addCategoryBtn');
+    const addCategoryForm = document.getElementById('addCategoryForm');
+    const cancelAddCategory = document.getElementById('cancelAddCategory');
+    
+    if (addCategoryBtn) {
+        // 移除現有事件，避免重複綁定
+        addCategoryBtn.removeEventListener('click', showAddCategoryForm);
+        
+        // 添加新事件
+        addCategoryBtn.addEventListener('click', showAddCategoryForm);
+    }
+    
+    if (cancelAddCategory) {
+        // 移除現有事件，避免重複綁定
+        cancelAddCategory.removeEventListener('click', hideAddCategoryForm);
+        
+        // 添加新事件
+        cancelAddCategory.addEventListener('click', hideAddCategoryForm);
+    }
+    
+    // 儲存類別按鈕
+    const saveCategoryBtn = addCategoryForm ? addCategoryForm.querySelector('.btn-primary') : null;
+    if (saveCategoryBtn) {
+        // 移除現有事件，避免重複綁定
+        saveCategoryBtn.removeEventListener('click', saveCategory);
+        
+        // 添加新事件
+        saveCategoryBtn.addEventListener('click', saveCategory);
+    }
+    
+    function showAddCategoryForm() {
+        if (addCategoryForm) {
+            addCategoryForm.style.display = 'block';
+        }
+    }
+    
+    function hideAddCategoryForm() {
+        if (addCategoryForm) {
+            addCategoryForm.style.display = 'none';
+        }
+    }
+}
+
+// 加載商品項目
+async function loadMenuItems() {
+    try {
+        console.log("開始加載商品項目列表");
+        
+        // 檢查 Firebase 是否初始化
+        if (!firebaseInitComplete || !window.db) {
+            console.warn("Firestore 未正確初始化，稍後再試加載商品項目");
+            // 延遲重試
+            setTimeout(() => {
+                if (firebaseInitComplete && window.db) {
+                    loadMenuItems();
+                }
+            }, 2000);
+            return;
+        }
+        
+        if (!currentUser) {
+            console.error("用戶未登入，無法加載商品項目");
+            return;
+        }
+        
+        // 確保商品管理區域可見
+        const menuSection = document.getElementById('menu-section');
+        if (menuSection && !menuSection.innerHTML.trim()) {
+            console.log("初始化商品管理區域");
+        }
+        
+        // 查詢商品類別
+        const categoriesSnapshot = await window.db.collection("categories")
+            .where("businessId", "==", currentUser.uid)
+            .orderBy("createdAt", "asc")
+            .get();
+        
+        const categories = [];
+        categoriesSnapshot.forEach(doc => {
+            categories.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+        
+        console.log(`找到 ${categories.length} 個類別`);
+        
+        // 查詢商品項目
+        const menuItemsSnapshot = await window.db.collection("menuItems")
+            .where("businessId", "==", currentUser.uid)
+            .orderBy("createdAt", "asc")
+            .get();
+        
+        // 按類別分組商品項目
+        const menuItemsByCategory = {};
+        
+        // 先初始化從資料庫獲取的類別
+        categories.forEach(category => {
+            menuItemsByCategory[category.name] = [];
+        });
+        
+        // 將項目添加到對應類別
+        let totalItems = 0;
+        menuItemsSnapshot.forEach(doc => {
+            const item = {
+                id: doc.id,
+                ...doc.data()
+            };
+            totalItems++;
+            
+            // 如果類別不存在，創建它
+            if (!menuItemsByCategory[item.category]) {
+                menuItemsByCategory[item.category] = [];
+            }
+            
+            menuItemsByCategory[item.category].push(item);
+        });
+        
+        console.log(`找到 ${totalItems} 個商品項目`);
+        
+        // 更新 UI
+        updateMenuItemsList(menuItemsByCategory);
+    } catch (error) {
+        console.error("載入商品項目錯誤:", error);
+        showAlert("載入商品項目失敗，請稍後再試", "danger");
+    }
+}
+
+// 更新商品列表UI
+function updateMenuItemsList(menuItemsByCategory) {
+    const categoryList = document.getElementById("categoryList");
+    if (!categoryList) {
+        console.warn("找不到類別列表容器");
+        return;
+    }
+    
+    try {
+        // 顯示載入中的狀態
+        categoryList.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">載入中...</span>
+                </div>
+                <p class="mt-2 text-muted">載入商品類別中...</p>
+            </div>
+        `;
+        
+        // 清空現有內容
+        setTimeout(() => {
+            categoryList.innerHTML = "";
+            
+            // 檢查是否有商品類別
+            if (Object.keys(menuItemsByCategory).length === 0) {
+                categoryList.innerHTML = `
+                    <div class="text-center py-4 text-muted" id="categoryListEmpty">
+                        <i class="fas fa-utensils fa-3x mb-3"></i>
+                        <p>尚未添加任何商品類別</p>
+                        <p>點擊「新增類別」按鈕開始建立您的菜單</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 獲取所有類別的詳細信息
+            getCategoryDetails().then(categoryDetails => {
+                // 為每個類別創建區塊
+                for (const category in menuItemsByCategory) {
+                    const items = menuItemsByCategory[category];
+                    const categoryInfo = categoryDetails[category] || { description: "" };
+                    
+                    const categoryElement = document.createElement("div");
+                    categoryElement.className = "product-item mb-4";
+                    categoryElement.innerHTML = `
+                        <div class="product-category d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="mb-0">${category}</h5>
+                            <div class="actions">
+                                <button class="btn btn-sm btn-outline-primary add-product-btn" data-category="${category}">
+                                    <i class="fas fa-plus"></i> 新增項目
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary edit-category-btn" data-category="${category}">
+                                    <i class="fas fa-edit"></i> 修改類別
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger delete-category-btn" data-category="${category}">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // 添加類別描述（如果有）
+                    if (categoryInfo.description && categoryInfo.description.trim() !== "") {
+                        const descriptionElement = document.createElement("div");
+                        descriptionElement.className = "category-description mb-3";
+                        descriptionElement.innerHTML = `
+                            <p class="text-muted small">${categoryInfo.description}</p>
+                        `;
+                        categoryElement.appendChild(descriptionElement);
+                    }
+                    
+                    // 創建項目列表容器
+                    const itemsList = document.createElement("div");
+                    itemsList.className = "product-item-list";
+                    
+                    // 添加每個項目
+                    items.forEach(item => {
+                        const itemElement = document.createElement("div");
+                        itemElement.className = "product-subitem mb-2";
+                        itemElement.dataset.id = item.id;
+                        
+                        itemElement.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="product-name fw-bold">${item.name}</span>
+                                    ${item.description ? `<p class="mb-0 text-muted small">${item.description}</p>` : ''}
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="text-primary fw-bold">${item.price ? `NT$${item.price}` : ''}</span>
+                                    <button class="btn btn-sm btn-outline-secondary edit-item-btn" data-id="${item.id}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger delete-item-btn" data-id="${item.id}">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        
+                        itemsList.appendChild(itemElement);
+                    });
+                    
+                    // 添加項目表單 (初始隱藏)
+                    const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
+                    const itemForm = document.createElement("div");
+                    itemForm.className = "menu-item-form mt-3";
+                    itemForm.id = formId;
+                    itemForm.style.display = "none";
+                    
+                    itemForm.innerHTML = `
+                        <h6>新增 ${category} 項目</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="${formId}-name" class="form-label">商品名稱</label>
+                                    <input type="text" class="form-control" id="${formId}-name" placeholder="輸入商品名稱">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="${formId}-price" class="form-label">價格</label>
+                                    <input type="number" class="form-control" id="${formId}-price" placeholder="輸入價格">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="${formId}-desc" class="form-label">描述</label>
+                            <textarea class="form-control" id="${formId}-desc" rows="2" placeholder="描述商品特色或口味"></textarea>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-primary save-item-btn" data-category="${category}">儲存</button>
+                            <button type="button" class="btn btn-outline-secondary cancel-add-item" data-form="${formId}">取消</button>
+                        </div>
+                    `;
+                    
+                    // 將項目列表和表單添加到類別元素
+                    categoryElement.appendChild(itemsList);
+                    categoryElement.appendChild(itemForm);
+                    
+                    // 將類別元素添加到頁面
+                    categoryList.appendChild(categoryElement);
+                }
+                
+                // 添加事件監聽器
+                addMenuItemsEvents();
+            }).catch(error => {
+                console.error("獲取類別詳情失敗:", error);
+                showAlert("載入類別詳情失敗，請稍後再試", "danger");
+            });
+        }, 100);
+    } catch (error) {
+        console.error("更新商品列表時出錯:", error);
+        categoryList.innerHTML = `
+            <div class="alert alert-danger m-3">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                載入商品列表時出錯：${error.message}
+                <button class="btn btn-sm btn-outline-danger mt-2" onclick="loadMenuItems()">
+                    重新載入
+                </button>
+            </div>
+        `;
+    }
+}
+
+// 獲取所有類別的詳細信息，包括描述
+async function getCategoryDetails() {
+    try {
+        // 確保 Firestore 和用戶已初始化
+        if (!window.db || !currentUser) {
+            console.error("Firestore 或用戶未初始化");
+            return {};
+        }
+        
+        // 查詢所有類別
+        const categoriesSnapshot = await window.db.collection("categories")
+            .where("businessId", "==", currentUser.uid)
+            .get();
+        
+        // 建立類別詳情映射
+        const categoryDetails = {};
+        categoriesSnapshot.forEach(doc => {
+            const data = doc.data();
+            categoryDetails[data.name] = {
+                id: doc.id,
+                description: data.description || "",
+                createdAt: data.createdAt,
+                updatedAt: data.updatedAt
+            };
+        });
+        
+        return categoryDetails;
+    } catch (error) {
+        console.error("獲取類別詳情失敗:", error);
+        return {};
+    }
+}
+
+// 將函數暴露到全局範圍
+window.editCategory = editCategory;
+window.updateCategory = updateCategory;
+
+// 儲存商品項目 - 針對 iOS 改進
+async function saveMenuItem(category) {
+    console.log(`正在儲存 ${category} 的商品項目`); // 添加日誌
+    
+    try {
+        const formId = `${category.replace(/\s+/g, '-').toLowerCase()}-item-form`;
+        const nameInput = document.getElementById(`${formId}-name`);
+        const priceInput = document.getElementById(`${formId}-price`);
+        const descInput = document.getElementById(`${formId}-desc`);
+        
+        if (!nameInput || !priceInput) {
+            showAlert("商品表單欄位不完整", "warning");
+            return;
+        }
+        
+        // 驗證必填字段
+        if (!nameInput.value) {
+            showAlert("請填寫商品名稱", "warning");
+            return;
+        }
+        
+        // 驗證價格
+        const priceValue = priceInput.value.trim();
+        const price = parseFloat(priceValue);
+        if (priceValue === '' || isNaN(price) || price <= 0) {
+            showAlert("請輸入有效的價格", "warning");
+            return;
+        }
+        
+        // 檢查 Firebase 初始化
+        if (!firebaseInitComplete || !window.db) {
+            showAlert("系統尚未準備好，請稍後再試", "warning");
+            return;
+        }
+        
+        // 顯示載入提示
+        showAlert("儲存中...", "info");
+        
+        // 準備項目數據
+        const itemData = {
+            businessId: currentUser.uid,
+            category: category,
+            name: nameInput.value,
+            price: price,
+            description: descInput ? descInput.value : "",
+            displayInApp: true,
+            createdAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        // 添加到Firestore
+        await window.db.collection("menuItems").add(itemData);
+
+        // 更新菜單元數據
+        await updateMenuMetadata();
+        
+        // 重新加載商品列表
+        await loadMenuItems();
+
+        // 重置表單
+        if (nameInput) nameInput.value = "";
+        if (priceInput) priceInput.value = "";
+        if (descInput) descInput.value = "";
+        
+        // 隱藏表單
+        const form = document.getElementById(formId);
+        if (form) {
+            form.style.display = "none";
+        }
+        
+        showAlert("商品項目已成功添加", "success");
+    } catch (error) {
+        console.error("保存商品項目時出錯:", error);
+        showAlert("保存商品項目失敗，請稍後再試", "danger");
+    }
+}
+
+// 編輯商品項目
+async function editMenuItem(itemId) {
+    try {
+        console.log("開始編輯商品項目:", itemId);
+        
+        // 檢查 Firebase 初始化
+        if (!firebaseInitComplete || !window.db) {
+            showAlert("系統尚未準備好，請稍後再試", "warning");
+            return;
+        }
+        
+        // 獲取項目數據
+        const doc = await window.db.collection("menuItems").doc(itemId).get();
+        if (!doc.exists) {
+            showAlert("找不到此商品項目", "warning");
+            return;
+        }
+        
+        const item = doc.data();
+        console.log("獲取到商品項目資料:", item);
+        
+        // 建立編輯表單
+        const productItem = document.querySelector(`.product-subitem[data-id="${itemId}"]`);
+        if (!productItem) {
+            showAlert("找不到商品項目元素", "warning");
+            return;
+        }
+        
+        const categoryElement = productItem.closest('.product-item');
+        if (!categoryElement) {
+            showAlert("找不到商品類別元素", "warning");
+            return;
+        }
+        
+        // 如果已有編輯表單，先移除
+        const existingForm = categoryElement.querySelector('.edit-form');
+        if (existingForm) {
+            existingForm.remove();
+        }
+        
+        // 創建編輯表單
+        const editForm = document.createElement('div');
+        editForm.className = 'menu-item-form mt-3 edit-form';
+        editForm.style.display = 'block'; // 確保表單顯示
+        editForm.innerHTML = `
+            <h6>編輯 ${item.name}</h6>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">商品名稱</label>
+                        <input type="text" class="form-control" id="edit-name-${itemId}" value="${item.name || ''}">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">價格</label>
+                        <input type="number" class="form-control" id="edit-price-${itemId}" value="${item.price || ''}">
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">描述</label>
+                <textarea class="form-control" id="edit-desc-${itemId}" rows="2">${item.description || ''}</textarea>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary" onclick="updateMenuItem('${itemId}')">更新</button>
+                <button type="button" class="btn btn-outline-secondary" onclick="cancelEdit(this)">取消</button>
+            </div>
+        `;
+        
+        // 插入表單
+        categoryElement.appendChild(editForm);
+        
+        // 滾動到表單位置
+        editForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (error) {
+        console.error("載入商品項目編輯失敗:", error);
+        showAlert("無法載入商品項目，請稍後再試", "danger");
+    }
+}
+
+// 刪除商品項目
+async function deleteMenuItem(itemId) {
+    try {
+        // 檢查 Firebase 初始化
+        if (!firebaseInitComplete || !window.db) {
+            showAlert("系統尚未準備好，請稍後再試", "warning");
+            return;
+        }
+        
+        showAlert("刪除中...", "info");
+        
+        // 從Firestore刪除
+        await window.db.collection("menuItems").doc(itemId).delete();
+        
+        // 更新菜單元數據
+        await updateMenuMetadata();
+
+        // 重新加載商品列表
+        await loadMenuItems();
+        
+        showAlert("商品項目已成功刪除", "success");
+    } catch (error) {
+        console.error("刪除商品項目失敗:", error);
+        showAlert("刪除商品項目失敗，請稍後再試", "danger");
+    }
+}
+
+// 儲存類別
+async function saveCategory() {
+    try {
+        const categoryNameInput = document.getElementById('categoryName');
+        if (!categoryNameInput || !categoryNameInput.value.trim()) {
+            showAlert("請填寫類別名稱", "warning");
+            return;
+        }
+        
+        // 檢查 Firebase 初始化
+        if (!firebaseInitComplete || !window.db) {
+            showAlert("系統尚未準備好，請稍後再試", "warning");
+            return;
+        }
+        
+        const categoryName = categoryNameInput.value.trim();
+        
+        // 先獲取商家的所有類別
+        const categoriesSnapshot = await window.db.collection("categories")
+            .where("businessId", "==", currentUser.uid)
+            .get();
+            
+        // 手動在JavaScript中檢查是否有重複名稱
+        let isDuplicate = false;
+        categoriesSnapshot.forEach(doc => {
+            if (doc.data().name === categoryName) {
+                isDuplicate = true;
+            }
+        });
+        
+        if (isDuplicate) {
+            showAlert("已存在相同名稱的類別", "warning");
+            return;
+        }
+        
+        // 添加到Firestore
+        await window.db.collection("categories").add({
+            businessId: currentUser.uid,
+            name: categoryName,
+            description: document.getElementById('categoryDesc')?.value || "",
+            createdAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // 更新菜單元數據
+        await updateMenuMetadata();
+        
+        // 重新加載商品列表
+        await loadMenuItems();
+
+        // 重置表單
+        document.getElementById('addCategoryForm').style.display = 'none';
+        categoryNameInput.value = '';
+        if (document.getElementById('categoryDesc')) {
+            document.getElementById('categoryDesc').value = '';
+        }
+        
+        showAlert("商品類別已成功添加", "success");
+    } catch (error) {
+        console.error("添加類別時發生錯誤:", error);
+        showAlert("添加類別失敗，請稍後再試", "danger");
+    }
+}
+
+// 取消編輯
+function cancelEdit(btn) {
+    // 尋找最近的編輯表單（可能是項目或類別編輯表單）
+    const editForm = btn.closest('.edit-form, .edit-category-form');
+    if (editForm) {
+        editForm.remove();
+    }
+}
+
+// 處理 iOS 上的觸控事件問題
+function enhanceIOSCompatibility() {
+    if (!isIOS) return;
+    
+    console.log("增強 iOS 相容性...");
+    
+    // 添加 iOS 特定樣式
+    const iosStyles = document.createElement('style');
+    iosStyles.innerHTML = `
+        /* 改善 iOS 上的按鈕點擊體驗 */
+        button, .btn, a.btn, input[type="submit"] {
+            cursor: pointer;
+            -webkit-tap-highlight-color: rgba(0,0,0,0);
+            touch-action: manipulation;
+        }
+        
+        /* 改善 iOS 上的輸入體驗 */
+        input, select, textarea {
+            -webkit-appearance: none;
+            border-radius: 0;
+        }
+        
+        /* 改善 iOS 上的滾動體驗 */
+        .main-content, .sidebar {
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* 修復 iOS 上的模態框問題 */
+        .modal {
+            -webkit-transform: translate3d(0, 0, 0);
+        }
+    `;
+    document.head.appendChild(iosStyles);
+    
+    // 修復 iOS 上的模態框問題
+    fixIOSModalBehavior();
+    
+    // 修復 iOS 上的表單提交問題
+    fixIOSFormSubmission();
+    
+    // 修復 iOS 上的滾動問題
+    fixIOSScrolling();
+}
+
+// 修復 iOS 上的模態框問題
+function fixIOSModalBehavior() {
+    // 監聽模態框開啟事件
+    document.addEventListener('show.bs.modal', function(e) {
+        const modalElement = e.target;
+        
+        // 添加額外的變換以強制 iOS 創建新的繪製層
+        modalElement.style.webkitTransform = 'translateZ(0)';
+        
+        // 防止背景捲動
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+    });
+    
+    // 監聽模態框關閉事件
+    document.addEventListener('hidden.bs.modal', function() {
+        // 恢復正常捲動
+        document.body.style.position = '';
+        document.body.style.width = '';
+    });
+}
+
+// 修復 iOS 上的表單提交問題
+function fixIOSFormSubmission() {
+    // 尋找所有表單
+    document.querySelectorAll('form').forEach(form => {
+        // 防止表單自動提交
+        form.setAttribute('onsubmit', 'event.preventDefault(); return false;');
+        
+        // 監聽提交按鈕點擊
+        const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+        if (submitBtn) {
+            submitBtn.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                
+                // 觸發自定義提交事件
+                const customEvent = new CustomEvent('ios-form-submit', {
+                    bubbles: true,
+                    detail: { formId: form.id }
+                });
+                form.dispatchEvent(customEvent);
+            });
+        }
+    });
+    
+    // 監聽自定義表單提交事件
+    document.addEventListener('ios-form-submit', function(e) {
+        const formId = e.detail.formId;
+        
+        // 根據表單 ID 執行相應操作
+        switch (formId) {
+            case 'promotionForm':
+                createPromotion();
+                break;
+            case 'businessInfoForm':
+                saveBusinessInfo();
+                break;
+            // 其他表單...
+        }
+    });
+}
+
+// 修復 iOS 上的滾動問題
+function fixIOSScrolling() {
+    // 主要內容區域
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+        mainContent.style.overflowScrolling = 'touch';
+        mainContent.style.webkitOverflowScrolling = 'touch';
+    }
+    
+    // 側邊欄
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        sidebar.style.overflowScrolling = 'touch';
+        sidebar.style.webkitOverflowScrolling = 'touch';
+    }
+    
+    // 模態框內容
+    document.addEventListener('show.bs.modal', function(e) {
+        const modalBody = e.target.querySelector('.modal-body');
+        if (modalBody) {
+            modalBody.style.overflowScrolling = 'touch';
+            modalBody.style.webkitOverflowScrolling = 'touch';
+        }
+    });
+}
+
+// 改進的圖片壓縮函數，適用於 iOS
+async function compressImage(file, maxWidth, maxHeight) {
+    return new Promise((resolve, reject) => {
+        try {
+            // 檢查文件是否為圖片
+            if (!file || !file.type.match('image.*')) {
+                return reject(new Error('請提供有效的圖片文件'));
+            }
+            
+            // 特殊處理 iOS 上的 HEIC/HEIF 格式
+            if (file.type.match('image/heic') || file.type.match('image/heif')) {
+                showAlert("iOS 圖片格式處理中，請稍候...", "info");
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                // 創建圖像對象
+                const img = new Image();
+                
+                // 圖像加載完成後處理
+                img.onload = function() {
+                    try {
+                        // 計算新尺寸
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        // 根據最大尺寸調整
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+                        
+                        if (height > maxHeight) {
+                            width = Math.round((width * maxHeight) / height);
+                            height = maxHeight;
+                        }
+                        
+                        // 創建 canvas 進行繪製
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        // 獲取 2D 上下文
+                        const ctx = canvas.getContext('2d', { alpha: false });
+                        
+                        // 清除畫布並繪製圖像
+                        ctx.fillStyle = 'white'; // 設置背景色
+                        ctx.fillRect(0, 0, width, height);
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // 轉換為 blob，iOS 上使用較低質量
+                        canvas.toBlob(
+                            function(blob) {
+                                // 釋放資源
+                                URL.revokeObjectURL(img.src);
+                                resolve(blob);
+                            },
+                            'image/jpeg',
+                            isIOS ? 0.6 : 0.8 // iOS 上使用較低質量
+                        );
+                    } catch (error) {
+                        console.error('圖片處理錯誤:', error);
+                        reject(error);
+                    }
+                };
+                
+                // 處理圖像載入錯誤
+                img.onerror = function(error) {
+                    console.error('圖片載入錯誤:', error);
+                    reject(new Error('圖片載入失敗'));
+                };
+                
+                // 開始載入圖像
+                img.src = event.target.result;
+            };
+            
+            // 處理文件讀取錯誤
+            reader.onerror = function(error) {
+                console.error('文件讀取錯誤:', error);
+                reject(new Error('文件讀取失敗'));
+            };
+            
+            // 以 DataURL 格式讀取文件
+            reader.readAsDataURL(file);
+        } catch (error) {
+            console.error('壓縮圖片時出現未預期的錯誤:', error);
+            reject(error);
+        }
+    });
+}
+
+// 處理環境照片上傳 - 針對 iOS 優化
+async function handleEnvironmentImageUpload(files) {
+    if (!files || files.length === 0) return;
+    
+    try {
+        showPageLoading("正在處理環境照片，請稍候...");
+        
+        // 檢查 Firebase 初始化
+        if (!firebaseInitComplete || !window.storage || !window.db) {
+            hidePageLoading();
+            showAlert("系統尚未準備好，請稍後再試", "warning");
+            return;
+        }
+        
+        // 獲取環境照片容器
+        const environmentPreview = document.querySelector('.environment-preview');
+        if (!environmentPreview) {
+            hidePageLoading();
+            showAlert("找不到環境照片容器", "danger");
+            return;
+        }
+        
+        // 確保先獲取添加按鈕
+        const addBtn = environmentPreview.querySelector('.add-environment-item');
+        if (!addBtn) {
+            hidePageLoading();
+            showAlert("找不到添加照片按鈕，請確認HTML結構", "danger");
+            return;
+        }
+        
+        // 獲取既有的環境照片URLs
+        let environmentImages = [];
+        if (businessData && businessData.environmentImages) {
+            environmentImages = [...businessData.environmentImages];
+        }
+        
+        // 並行處理多張照片上傳
+        const uploadPromises = [];
+        const newImageUrls = [];
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // 檢查文件類型和大小
+            if (!file.type.match('image.*')) {
+                showAlert(`文件 ${file.name} 不是圖片，已跳過`, "warning");
+                continue;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) { // 5MB
+                showAlert(`圖片 ${file.name} 超過 5MB，已跳過`, "warning");
+                continue;
+            }
+            
+            // 創建一個上傳承諾
+            const uploadPromise = (async () => {
+                try {
+                    // 壓縮圖片
+                    const imageBlob = await compressImage(file, 800, 600);
+                    
+                    // 生成唯一文件路徑
+                    const fileExtension = file.name.split('.').pop() || 'jpg';
+                    const timestamp = Date.now();
+                    const randomString = Math.random().toString(36).substring(2, 8);
+                    const filename = `image_${timestamp}_${randomString}.${fileExtension}`;
+                    const path = `businesses/${currentUser.uid}/environment/${filename}`;
+                    
+                    // 上傳到 Storage
+                    const storageRef = window.storage.ref(path);
+                    const uploadResult = await storageRef.put(imageBlob);
+                    const imageUrl = await uploadResult.ref.getDownloadURL();
+                    
+                    // 保存 URL 以便後續處理
+                    newImageUrls.push(imageUrl);
+                    return imageUrl;
+                } catch (error) {
+                    console.error(`圖片 ${file.name} 上傳錯誤:`, error);
+                    return null;
+                }
+            })();
+            
+            uploadPromises.push(uploadPromise);
+        }
+        
+        // 等待所有上傳完成
+        await Promise.allSettled(uploadPromises);
+        
+        // 過濾出成功的上傳
+        const successfulUploads = newImageUrls.filter(url => url !== null);
+        
+        if (successfulUploads.length === 0) {
+            hidePageLoading();
+            showAlert("沒有照片上傳成功，請重試", "warning");
+            return;
+        }
+        
+        // 更新環境照片列表
+        environmentImages = [...environmentImages, ...successfulUploads];
+        
+        // 更新 Firestore
+        await window.db.collection("businesses").doc(currentUser.uid).update({
+            environmentImages: environmentImages,
+            updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // 更新本地數據
+        if (!businessData) businessData = {};
+        businessData.environmentImages = environmentImages;
+        
+        // 更新 UI
+        updateEnvironmentUI(environmentImages);
+        
+        hidePageLoading();
+        showAlert(`成功上傳 ${successfulUploads.length} 張環境照片`, "success");
+    } catch (error) {
+        console.error("上傳環境照片錯誤:", error);
+        hidePageLoading();
+        showAlert("上傳環境照片失敗: " + error.message, "danger");
+    } finally {
+        // 清空文件輸入，允許再次選擇相同檔案
+        const fileInput = document.getElementById('addEnvironmentImage');
+        if (fileInput) fileInput.value = '';
+    }
 }
 
 // 添加全局函數，以便在HTML中直接調用
