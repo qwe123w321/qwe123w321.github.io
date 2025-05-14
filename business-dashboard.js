@@ -2631,6 +2631,43 @@ function updateEnvironmentUI(images) {
     }
 }
 
+// 標籤輸入系統初始化
+function initTagsSystem() {
+    const tagContainer = document.getElementById('tagContainer');
+    if (!tagContainer) {
+        console.warn("找不到標籤容器");
+        return;
+    }
+    
+    // 確保容器中有一個輸入框
+    let tagInput = tagContainer.querySelector('.tag-input');
+    if (!tagInput) {
+        tagInput = createTagInput();
+        tagContainer.appendChild(tagInput);
+    }
+    
+    // 添加新標籤事件
+    tagInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && this.value.trim() !== '') {
+            e.preventDefault();
+            addTag(this.value.trim());
+            this.value = '';
+        }
+    });
+    
+    // 為推薦標籤按鈕添加點擊事件
+    const tagButtons = document.querySelectorAll('.btn-outline-secondary');
+    tagButtons.forEach(btn => {
+        // 只處理標籤按鈕 (有mb-2類的按鈕)
+        if (btn.classList.contains('me-2') || btn.classList.contains('mb-2')) {
+            btn.addEventListener('click', function() {
+                const tagText = this.textContent.trim();
+                addTag(tagText);
+            });
+        }
+    });
+}
+
 // 更新標籤UI
 function updateTagsUI() {
     try {
@@ -4728,6 +4765,8 @@ async function updateMenuMetadata() {
         console.error("更新菜單元數據失敗:", error);
     }
 }
+
+
 
 // 側邊欄初始化
 function initSidebar() {
