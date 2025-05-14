@@ -4802,6 +4802,96 @@ async function getCategoryDetails() {
 window.editCategory = editCategory;
 window.updateCategory = updateCategory;
 
+// 編輯類別功能
+async function editCategory(categoryName) {
+    try {
+        console.log("開始編輯類別:", categoryName);
+        
+        // 使用單一 where 查詢，然後在 JavaScript 中篩選結果
+        const categoriesSnapshot = await window.db.collection("categories")
+            .where("businessId", "==", currentUser.uid)
+            .get();
+        
+        // 手動在結果中查找對應名稱的類別
+        let categoryDoc = null;
+        let categoryId = null;
+        
+        categoriesSnapshot.forEach(doc => {
+            // 只處理名稱匹配的文檔
+            if (doc.data().name === categoryName) {
+                categoryDoc = doc.data();
+                categoryId = doc.id;
+            }
+        });
+        
+        if (!categoryDoc) {
+            showAlert("找不到此類別", "warning");
+            return;
+        }
+        
+        console.log("獲取到類別資料:", categoryDoc);
+        
+        // 找到此類別的HTML元素
+        let categoryElement = null;
+        const categoryHeaders = document.querySelectorAll('.product-category h5.mb-0');
+        for (const header of categoryHeaders) {
+            if (header.textContent === categoryName) {
+                categoryElement = header.closest('.product-item');
+                break;
+            }
+        }
+        
+        if (!categoryElement) {
+            showAlert("找不到類別元素", "warning");
+            return;
+        }
+        
+        // 如果已有編輯表單，先移除
+        const existingForm = categoryElement.querySelector('.edit-category-form');
+        if (existingForm) {
+            existingForm.remove();
+        }
+        
+        // 創建編輯表單
+        const editForm = document.createElement('div');
+        editForm.className = 'menu-item-form mt-3 edit-category-form';
+        editForm.style.display = 'block'; // 確保表單顯示
+        editForm.innerHTML = `
+            <h6>編輯「${categoryName}」類別</h6>
+            <div class="mb-3">
+                <label class="form-label">類別名稱</label>
+                <input type="text" class="form-control" id="edit-category-name-${categoryId}" value="${categoryDoc.name || ''}">
+                <input type="hidden" id="edit-category-oldname-${categoryId}" value="${categoryName}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">類別描述</label>
+                <textarea class="form-control" id="edit-category-desc-${categoryId}" rows="2">${categoryDoc.description || ''}</textarea>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary" onclick="updateCategory('${categoryId}')">更新類別</button>
+                <button type="button" class="btn btn-outline-secondary cancel-edit-btn">取消</button>
+            </div>
+        `;
+        
+        // 插入表單到類別元素中
+        categoryElement.appendChild(editForm);
+        
+        // 為取消按鈕添加事件
+        const cancelBtn = editForm.querySelector('.cancel-edit-btn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                editForm.remove();
+            });
+        }
+        
+        // 滾動到表單位置
+        editForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (error) {
+        console.error("載入類別編輯失敗:", error);
+        showAlert("無法載入類別資料，請稍後再試", "danger");
+    }
+}
+
 // 儲存商品項目 - 針對 iOS 改進
 async function saveMenuItem(category) {
     console.log(`正在儲存 ${category} 的商品項目`); // 添加日誌
