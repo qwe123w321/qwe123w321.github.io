@@ -4403,6 +4403,24 @@ function hidePageLoading() {
     }
 }
 
+// 簡易 geohash 生成器 (如果沒有額外庫可用)
+function generateGeohash(lat, lng, precision = 8) {
+    // 以下是一個非常簡化的 geohash 生成方法
+    // 實際應用中應使用專門的庫，如 latlon-geohash 或 ngeohash
+    
+    // 將緯度和經度轉換為整數部分和小數部分
+    const latInt = Math.floor(lat);
+    const lngInt = Math.floor(lng);
+    const latDecimal = (lat - latInt).toFixed(precision);
+    const lngDecimal = (lng - lngInt).toFixed(precision);
+    
+    // 用這些數字組合成一個字符串
+    // 這不是真正的 geohash，僅供演示
+    return `${latInt}_${latDecimal}_${lngInt}_${lngDecimal}`;
+}
+
+
+
 // 添加優惠事件監聽器
 function addPromotionEventListeners() {
     try {
