@@ -834,6 +834,70 @@
             z-index: 3;
         }
 
+        /* 郵件導出區段樣式 */
+        .email-export-container {
+            margin: 20px 0;
+            background-color: #fff;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+        }
+
+        .email-export-container .card-header {
+            padding: 15px 20px;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #eee;
+        }
+
+        .email-export-container .card-body {
+            padding: 20px;
+        }
+
+        .email-export-container h5 {
+            margin: 0;
+            font-size: 18px;
+            color: var(--text-color);
+        }
+
+        .email-export-container .btn-primary,
+        .email-export-container .btn-danger {
+            padding: 8px 15px;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        .email-export-container .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .email-export-container .btn-primary:hover {
+            background-color: #8a6e74;
+        }
+
+        .email-export-container .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .email-export-container .btn-danger:hover {
+            background-color: #d32f2f;
+        }
+
+        /* 適應不同螢幕尺寸 */
+        @media (max-width: 768px) {
+            .email-export-container .d-flex {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .email-export-container .btn-primary,
+            .email-export-container .btn-danger {
+                width: 100%;
+                margin-right: 0;
+            }
+        }
+
         /* 過濾欄位容器樣式 */
         .filter-bar {
             display: flex;
