@@ -1521,6 +1521,27 @@ async function approveBusinessRequest() {
         
         // 4. 刪除審核請求 (確保這一步不會失敗)
         await deleteDoc(doc(db, 'businessApprovalRequests', requestId));
+
+        // 存儲郵件信息到localStorage
+        const emailData = {
+            timestamp: new Date().toISOString(),
+            businessId: userId,
+            businessName: requestData.businessName || '未命名店家',
+            contactEmail: requestData.contactEmail || requestData.email || '',
+            contactName: requestData.contactName || '',
+            contactPhone: requestData.contactPhone || requestData.phoneNumber || '',
+            status: 'approved',
+            rejectReason: '',
+            processed: false
+        };
+
+        // 獲取現有待發送郵件列表
+        let pendingEmails = JSON.parse(localStorage.getItem('pendingBusinessEmails') || '[]');
+        pendingEmails.push(emailData);
+        localStorage.setItem('pendingBusinessEmails', JSON.stringify(pendingEmails));
+
+        // 更新導出按鈕狀態
+        updateExportButtonStatus();
         
         alert('已核准店家帳號');
         backToBusinessApprovalList();
@@ -1607,6 +1628,27 @@ async function rejectBusinessRequest() {
         
         // 4. 刪除審核請求 (確保這一步不會失敗)
         await deleteDoc(doc(db, 'businessApprovalRequests', requestId));
+
+        // 存儲郵件信息到localStorage
+        const emailData = {
+            timestamp: new Date().toISOString(),
+            businessId: userId,
+            businessName: requestData.businessName || '未命名店家',
+            contactEmail: requestData.contactEmail || requestData.email || '',
+            contactName: requestData.contactName || '',
+            contactPhone: requestData.contactPhone || requestData.phoneNumber || '',
+            status: 'rejected',
+            rejectReason: rejectReason,
+            processed: false
+        };
+
+        // 獲取現有待發送郵件列表
+        let pendingEmails = JSON.parse(localStorage.getItem('pendingBusinessEmails') || '[]');
+        pendingEmails.push(emailData);
+        localStorage.setItem('pendingBusinessEmails', JSON.stringify(pendingEmails));
+
+        // 更新導出按鈕狀態
+        updateExportButtonStatus();
         
         alert('已拒絕店家審核申請');
         backToBusinessApprovalList();
@@ -1622,6 +1664,202 @@ async function rejectBusinessRequest() {
         rejectBtn.disabled = false;
         rejectBtn.textContent = '拒絕審核';
     }
+}
+
+// 更新導出按鈕狀態
+function updateExportButtonStatus() {
+    const pendingEmails = JSON.parse(localStorage.getItem('pendingBusinessEmails') || '[]');
+    const emailSection = document.getElementById('email-export-section');
+    
+    if (!emailSection) {
+        // 如果元素不存在，創建一個
+        createEmailExportSection();
+        return;
+    }
+    
+    const countElement = document.getElementById('pending-email-count');
+    
+    if (pendingEmails.length > 0) {
+        emailSection.style.display = 'block';
+        if (countElement) {
+            countElement.textContent = `目前有 ${pendingEmails.length} 封待發送郵件`;
+        }
+    } else {
+        emailSection.style.display = 'none';
+    }
+}
+
+// 創建郵件導出區塊
+function createEmailExportSection() {
+    // 確保不重複創建
+    if (document.getElementById('email-export-section')) {
+        return;
+    }
+    
+    // 找到合適的容器 - 可能是管理界面的某個部分
+    const container = document.querySelector('.main-content') || document.body;
+    
+    const emailSection = document.createElement('div');
+    emailSection.id = 'email-export-section';
+    emailSection.className = 'admin-section email-export-container';
+    emailSection.style.margin = '20px';
+    emailSection.style.display = 'none';
+    
+    // 郵件導出區塊內容
+    emailSection.innerHTML = `
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-envelope me-2"></i>待發送店家郵件</h5>
+            </div>
+            <div class="card-body">
+                <p id="pending-email-count" class="mb-3">目前有 0 封待發送郵件</p>
+                <div class="d-flex gap-2">
+                    <button id="export-pending-emails" class="btn btn-primary">
+                        <i class="fas fa-file-export me-1"></i> 導出待發送郵件
+                    </button>
+                    <button id="clear-pending-emails" class="btn btn-outline-danger">
+                        <i class="fas fa-trash me-1"></i> 清除所有待發送郵件
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 添加到頁面
+    container.appendChild(emailSection);
+    
+    // 綁定按鈕事件
+    const exportBtn = document.getElementById('export-pending-emails');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportPendingEmailsToExcel);
+    }
+    
+    const clearBtn = document.getElementById('clear-pending-emails');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearPendingEmails);
+    }
+    
+    // 更新狀態
+    updateExportButtonStatus();
+}
+
+// 導出Excel函數
+function exportPendingEmailsToExcel() {
+    const pendingEmails = JSON.parse(localStorage.getItem('pendingBusinessEmails') || '[]');
+    
+    if (pendingEmails.length === 0) {
+        showAlert('沒有待處理的郵件', 'warning');
+        return;
+    }
+    
+    try {
+        // 准備數據（格式化日期等）
+        const formattedData = pendingEmails.map(email => {
+            return {
+                '時間戳記': formatDateTime(email.timestamp),
+                '商家ID': email.businessId,
+                '商家名稱': email.businessName,
+                '聯絡人': email.contactName || '',
+                '聯絡信箱': email.contactEmail,
+                '聯絡電話': email.contactPhone || '',
+                '審核狀態': email.status === 'approved' ? '已核准' : '已拒絕',
+                '拒絕原因': email.rejectReason || '',
+                '處理狀態': '未處理'
+            };
+        });
+        
+        // 確認SheetJS庫是否可用
+        if (typeof XLSX === 'undefined') {
+            // 如果沒有加載SheetJS庫，動態加載
+            loadSheetJSLibrary().then(() => {
+                // 庫加載完成後繼續處理
+                createAndDownloadExcel(formattedData);
+            });
+        } else {
+            // SheetJS庫已經加載，直接創建Excel
+            createAndDownloadExcel(formattedData);
+        }
+    } catch (error) {
+        console.error('導出Excel時發生錯誤:', error);
+        showAlert('導出Excel失敗: ' + error.message, 'danger');
+    }
+}
+
+// 動態加載SheetJS庫
+function loadSheetJSLibrary() {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('無法加載SheetJS庫'));
+        document.head.appendChild(script);
+    });
+}
+
+// 創建並下載Excel文件
+function createAndDownloadExcel(formattedData) {
+    // 使用SheetJS創建工作表
+    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "待發送郵件");
+    
+    // 調整列寬
+    const colWidths = [
+        { wch: 20 }, // 時間戳記
+        { wch: 20 }, // 商家ID
+        { wch: 20 }, // 商家名稱
+        { wch: 15 }, // 聯絡人
+        { wch: 25 }, // 聯絡信箱
+        { wch: 15 }, // 聯絡電話
+        { wch: 10 }, // 審核狀態
+        { wch: 30 }, // 拒絕原因
+        { wch: 10 }  // 處理狀態
+    ];
+    worksheet['!cols'] = colWidths;
+    
+    // 導出Excel文件
+    const fileName = `商家審核郵件_${formatDateForFilename(new Date())}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+    
+    // 顯示成功訊息
+    showAlert(`Excel文件已導出: ${fileName}\n\n請使用Python腳本處理此文件來發送郵件。`, 'success', 5000);
+}
+
+// 清除所有待發送郵件
+function clearPendingEmails() {
+    if (confirm('確定要清除所有待發送郵件嗎？此操作無法撤銷。')) {
+        localStorage.removeItem('pendingBusinessEmails');
+        updateExportButtonStatus();
+        showAlert('所有待發送郵件已清除', 'success');
+    }
+}
+
+// 輔助函數：格式化日期時間
+function formatDateTime(timestamp) {
+    if (!timestamp) return '';
+    
+    try {
+        const date = new Date(timestamp);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    } catch (e) {
+        console.error('日期格式化錯誤:', e);
+        return timestamp;
+    }
+}
+
+// 輔助函數：格式化文件名日期
+function formatDateForFilename(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
 }
 
 // 增強的燈箱功能，支持更好的圖片預覽
@@ -1854,111 +2092,6 @@ function createPhotoItem(url, index) {
     
     return photoItem;
 }
-
-// 修改店家審核詳情函數，使用增強的照片處理
-// async function enhancedShowBusinessApprovalDetail(requestId) {
-//     // 保留原有函數的大部分邏輯
-//     // 但在處理照片的部分改用新的方法
-    
-//     try {
-//         console.log(`開始顯示店家審核詳情，請求ID: ${requestId}`);
-        
-//         // 隱藏主內容
-//         mainContent.style.display = 'none';
-        
-//         // 使用準確的類名選擇器，避免ID衝突
-//         const detailContainer = document.querySelector('.business-verification-detail');
-//         if (!detailContainer) {
-//             console.error('找不到店家審核詳情容器');
-//             alert('頁面元素錯誤，請聯絡管理員');
-//             backToBusinessApprovalList();
-//             return;
-//         }
-        
-//         detailContainer.style.display = 'block';
-        
-//         // 設置請求ID到隱藏字段
-//         const requestIdField = document.getElementById('business-approval-requestid');
-//         if (!requestIdField) {
-//             console.error('找不到business-approval-requestid元素');
-//             alert('頁面元素錯誤，請聯絡管理員');
-//             backToBusinessApprovalList();
-//             return;
-//         }
-        
-//         requestIdField.value = requestId;
-        
-//         // 獲取審核請求數據
-//         try {
-//             // 創建對文檔的引用
-//             const requestDocRef = doc(db, 'businessApprovalRequests', requestId);
-            
-//             // 獲取文檔
-//             const requestDoc = await getDoc(requestDocRef);
-            
-//             if (!requestDoc.exists()) {  // 注意: V9 中 exists 是一個方法，不是屬性
-//                 console.error('找不到審核請求數據');
-//                 alert('找不到審核請求');
-//                 backToBusinessApprovalList();
-//                 return;
-//             }
-            
-//             const requestData = requestDoc.data();
-//             console.log(`成功獲取審核請求數據:`, requestData);
-            
-//             // 填充詳情頁數據
-//             document.getElementById('business-name').textContent = requestData.businessName || '未知店家';
-//             document.getElementById('business-userid').textContent = requestData.userId || '未知';
-//             document.getElementById('business-type').textContent = getBusinessTypeText(requestData.businessType);
-//             document.getElementById('business-time').textContent = formatDate(
-//                 requestData.createdAt ? new Date(requestData.createdAt.toDate()) : new Date()
-//             );
-//             document.getElementById('business-address').textContent = requestData.address || '未知';
-//             document.getElementById('business-phone').textContent = requestData.phoneNumber || '未知';
-//             document.getElementById('business-contact-name').textContent = requestData.contactName || '未知';
-//             document.getElementById('business-contact-phone').textContent = requestData.contactPhone || '未知';
-            
-//             // 使用增強的照片顯示函數
-//             setupBusinessPhotosView('business-licenses', requestData.licenseUrls || []);
-            
-//             // 確保事件處理綁定只執行一次
-//             const backBtn = document.getElementById('business-approval-back');
-//             const approveBtn = document.getElementById('business-approve');
-//             const rejectBtn = document.getElementById('business-reject');
-            
-//             // 先移除舊的事件處理程序（如果有的話）
-//             if (backBtn) {
-//                 const newBackBtn = backBtn.cloneNode(true);
-//                 backBtn.parentNode.replaceChild(newBackBtn, backBtn);
-//                 newBackBtn.addEventListener('click', backToBusinessApprovalList);
-//             }
-            
-//             if (approveBtn) {
-//                 const newApproveBtn = approveBtn.cloneNode(true);
-//                 approveBtn.parentNode.replaceChild(newApproveBtn, approveBtn);
-//                 newApproveBtn.addEventListener('click', approveBusinessRequest);
-//             }
-            
-//             if (rejectBtn) {
-//                 const newRejectBtn = rejectBtn.cloneNode(true);
-//                 rejectBtn.parentNode.replaceChild(newRejectBtn, rejectBtn);
-//                 newRejectBtn.addEventListener('click', rejectBusinessRequest);
-//             }
-            
-//             console.log("店家審核詳情載入完成:", requestId);
-            
-//         } catch (error) {
-//             console.error('顯示店家審核詳情錯誤:', error);
-//             alert(`載入審核詳情時發生錯誤: ${error.message}`);
-//             backToBusinessApprovalList();
-//         }
-            
-//     } catch (error) {
-//         console.error('顯示店家審核詳情頁面錯誤:', error);
-//         alert('頁面載入錯誤，請重試');
-//         mainContent.style.display = 'block';
-//     }
-// }
     
 // 獲取店家類型文字描述
 function getBusinessTypeText(type) {
@@ -4603,140 +4736,3 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeApplication();
     console.log('initializeApplication');
 });
-
-// function setupSessionTimeoutHandler() {
-//   let inactivityTimer;
-//   const SESSION_TIMEOUT = 60 * 60 * 1000; // 30分鐘閒置時間
-  
-//   // 重置計時器的函數
-//   function resetInactivityTimer() {
-//     clearTimeout(inactivityTimer);
-//     inactivityTimer = setTimeout(handleSessionTimeout, SESSION_TIMEOUT);
-//   }
-  
-//   // 處理會話超時的函數
-//   function handleSessionTimeout() {
-//     // 檢查是否已經顯示了對話框
-//     if (document.getElementById('session-timeout-modal')) {
-//       return;
-//     }
-    
-//     // 創建會話超時對話框
-//     const modal = document.createElement('div');
-//     modal.id = 'session-timeout-modal';
-//     modal.className = 'modal-overlay';
-//     modal.innerHTML = `
-//       <div class="modal-content">
-//         <h2>登入已過期</h2>
-//         <p>由於長時間未操作，您的登入已過期。</p>
-//         <p>請重新登入以繼續使用系統。</p>
-//         <div class="modal-buttons">
-//           <button id="session-relogin" class="btn-primary">重新登入</button>
-//         </div>
-//       </div>
-//     `;
-    
-//     // 添加樣式
-//     const style = document.createElement('style');
-//     style.textContent = `
-//       .modal-overlay {
-//         position: fixed;
-//         top: 0;
-//         left: 0;
-//         width: 100%;
-//         height: 100%;
-//         background: rgba(0, 0, 0, 0.7);
-//         display: flex;
-//         align-items: center;
-//         justify-content: center;
-//         z-index: 10000;
-//       }
-//       .modal-content {
-//         background: white;
-//         padding: 30px;
-//         border-radius: 10px;
-//         box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-//         max-width: 450px;
-//         width: 85%;
-//         text-align: center;
-//       }
-//       .modal-buttons {
-//         margin-top: 20px;
-//       }
-//       .btn-primary {
-//         background: #9D7F86;
-//         color: white;
-//         border: none;
-//         padding: 10px 20px;
-//         border-radius: 5px;
-//         cursor: pointer;
-//         font-size: 16px;
-//       }
-//       .btn-primary:hover {
-//         background: #8A6E75;
-//       }
-//     `;
-    
-//     // 添加到頁面
-//     document.head.appendChild(style);
-//     document.body.appendChild(modal);
-    
-//     // 添加事件監聽器
-//     document.getElementById('session-relogin').addEventListener('click', () => {
-//       // 登出當前用戶
-//       signOut(auth).then(() => {
-//         // 刷新頁面
-//         window.location.reload();
-//       }).catch(error => {
-//         console.error('登出錯誤:', error);
-//         window.location.reload();
-//       });
-//     });
-    
-//     // 如果用戶仍然登入，則強制登出
-//     if (auth.currentUser) {
-//       // 停止所有後台操作和監聽器
-//       // 這裡您可能需要清理項目中特定的監聽器
-//     }
-//   }
-  
-//   // 添加用戶活動監聽器
-//   const userActivityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-//   userActivityEvents.forEach(eventType => {
-//     document.addEventListener(eventType, resetInactivityTimer, { passive: true });
-//   });
-  
-//   // 監聽 App Check 錯誤
-//   window.addEventListener('error', event => {
-//     // 檢查是否是 App Check 403 錯誤
-//     if (event.message && (
-//         event.message.includes('appCheck/fetch-status-error') || 
-//         (event.error && event.error.code === 'appCheck/fetch-status-error')
-//     )) {
-//       handleSessionTimeout();
-//     }
-//   });
-  
-//   // 擴展 XHR 以捕獲 403 錯誤
-//   const originalXHROpen = XMLHttpRequest.prototype.open;
-//   XMLHttpRequest.prototype.open = function() {
-//     const xhr = this;
-//     const originalOnReadyStateChange = xhr.onreadystatechange;
-    
-//     xhr.onreadystatechange = function() {
-//       if (xhr.readyState === 4 && xhr.status === 403) {
-//         if (xhr.responseText && xhr.responseText.includes('appCheck/fetch-status-error')) {
-//           handleSessionTimeout();
-//         }
-//       }
-//       if (originalOnReadyStateChange) {
-//         originalOnReadyStateChange.apply(this, arguments);
-//       }
-//     };
-    
-//     originalXHROpen.apply(this, arguments);
-//   };
-  
-//   // 初始化計時器
-//   resetInactivityTimer();
-// }
