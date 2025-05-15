@@ -1748,13 +1748,27 @@ function exportPendingEmailsToExcel() {
     const pendingEmails = JSON.parse(localStorage.getItem('pendingBusinessEmails') || '[]');
     
     if (pendingEmails.length === 0) {
-        showAlert('沒有待處理的郵件', 'warning');
+        alert('沒有待處理的郵件');
         return;
     }
     
     try {
         // 准備數據（格式化日期等）
         const formattedData = pendingEmails.map(email => {
+            // 將狀態轉換為中文
+            let statusText = '未知';
+            switch(email.status) {
+                case 'approved':
+                    statusText = '已核准';
+                    break;
+                case 'rejected':
+                    statusText = '已拒絕';
+                    break;
+                case 'pending':
+                    statusText = '待審核';
+                    break;
+            }
+            
             return {
                 '時間戳記': formatDateTime(email.timestamp),
                 '商家ID': email.businessId,
@@ -1762,7 +1776,7 @@ function exportPendingEmailsToExcel() {
                 '聯絡人': email.contactName || '',
                 '聯絡信箱': email.contactEmail,
                 '聯絡電話': email.contactPhone || '',
-                '審核狀態': email.status === 'approved' ? '已核准' : '已拒絕',
+                '審核狀態': statusText,
                 '拒絕原因': email.rejectReason || '',
                 '處理狀態': '未處理'
             };
@@ -1781,7 +1795,7 @@ function exportPendingEmailsToExcel() {
         }
     } catch (error) {
         console.error('導出Excel時發生錯誤:', error);
-        showAlert('導出Excel失敗: ' + error.message, 'danger');
+        alert('導出Excel失敗: ' + error.message);
     }
 }
 
@@ -1822,7 +1836,7 @@ function createAndDownloadExcel(formattedData) {
     XLSX.writeFile(workbook, fileName);
     
     // 顯示成功訊息
-    showAlert(`Excel文件已導出: ${fileName}\n\n請使用Python腳本處理此文件來發送郵件。`, 'success', 5000);
+    alert(`Excel文件已導出: ${fileName}\n\n請使用Python腳本處理此文件來發送郵件。`);
 }
 
 // 清除所有待發送郵件
@@ -1830,27 +1844,7 @@ function clearPendingEmails() {
     if (confirm('確定要清除所有待發送郵件嗎？此操作無法撤銷。')) {
         localStorage.removeItem('pendingBusinessEmails');
         updateExportButtonStatus();
-        showAlert('所有待發送郵件已清除', 'success');
-    }
-}
-
-// 輔助函數：格式化日期時間
-function formatDateTime(timestamp) {
-    if (!timestamp) return '';
-    
-    try {
-        const date = new Date(timestamp);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        const seconds = String(date.getSeconds()).padStart(2, '0');
-        
-        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-    } catch (e) {
-        console.error('日期格式化錯誤:', e);
-        return timestamp;
+        alert('所有待發送郵件已清除');
     }
 }
 
