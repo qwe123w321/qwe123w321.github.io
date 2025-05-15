@@ -80,6 +80,9 @@ function initializeAfterDOMLoaded() {
             console.log('App Check 檢查完成，繼續初始化頁面');
             initializePage();
             setupAuthStateListener();
+
+            createEmailExportSection();
+            updateExportButtonStatus();
         })
         .catch(error => {
             console.error('App Check 初始化失敗:', error);
@@ -89,6 +92,9 @@ function initializeAfterDOMLoaded() {
             // 仍然初始化頁面，允許用戶嘗試使用
             initializePage();
             setupAuthStateListener();
+
+            createEmailExportSection();
+            updateExportButtonStatus();
         });
 }
 
@@ -850,6 +856,11 @@ function onLoginSuccess(user) {
         }
         
         console.log('登入成功處理完成');
+
+        setTimeout(() => {
+            createEmailExportSection();
+            updateExportButtonStatus();
+        }, 1000);
     } catch (error) {
         console.error('登入成功處理出錯:', error);
         
@@ -1047,11 +1058,15 @@ async function loadBusinessApprovalRequests() {
         console.error('店家審核容器元素未找到');
         return;
     }
+
+    // 這確保每次載入店家審核請求時，都會更新郵件匯出按鈕狀態
+    updateExportButtonStatus();
     
     // 重要: 確保完全清空容器
     container.innerHTML = '';
     loadingElement.style.display = 'flex';
     
+    updateExportButtonStatus();
     try {
         console.log("開始載入店家審核請求列表...");
         // 獲取所有待處理審核請求
@@ -1685,9 +1700,14 @@ function updateExportButtonStatus() {
             countElement.textContent = `目前有 ${pendingEmails.length} 封待發送郵件`;
         }
     } else {
-        emailSection.style.display = 'none';
+        if (countElement) {
+            countElement.textContent = `目前有 0 封待發送郵件`;
+        }
     }
+    
+    console.log(`郵件導出區段狀態已更新，共有 ${pendingEmails.length} 封待發送郵件`);
 }
+
 
 // 創建郵件導出區塊
 function createEmailExportSection() {
@@ -1696,37 +1716,46 @@ function createEmailExportSection() {
         return;
     }
     
-    // 找到合適的容器 - 可能是管理界面的某個部分
-    const container = document.querySelector('.main-content') || document.body;
+    // 找到合適的容器 - 修改為直接使用 business-approval-tab
+    const container = document.getElementById('businessApproval-tab') || document.querySelector('.main-content');
+    if (!container) {
+        console.error('無法找到適合的容器來放置郵件導出區段');
+        return;
+    }
     
     const emailSection = document.createElement('div');
     emailSection.id = 'email-export-section';
-    emailSection.className = 'admin-section email-export-container';
-    emailSection.style.margin = '20px';
-    emailSection.style.display = 'none';
+    emailSection.className = 'admin-section email-export-container card';
+    emailSection.style.margin = '20px 0';
+    
+    // 默認顯示，稍後在 updateExportButtonStatus 中根據是否有待發送郵件來決定是否隱藏
+    emailSection.style.display = 'block';
     
     // 郵件導出區塊內容
     emailSection.innerHTML = `
-        <div class="card shadow-sm">
-            <div class="card-header bg-light">
-                <h5 class="mb-0"><i class="fas fa-envelope me-2"></i>待發送店家郵件</h5>
-            </div>
-            <div class="card-body">
-                <p id="pending-email-count" class="mb-3">目前有 0 封待發送郵件</p>
-                <div class="d-flex gap-2">
-                    <button id="export-pending-emails" class="btn btn-primary">
-                        <i class="fas fa-file-export me-1"></i> 導出待發送郵件
-                    </button>
-                    <button id="clear-pending-emails" class="btn btn-outline-danger">
-                        <i class="fas fa-trash me-1"></i> 清除所有待發送郵件
-                    </button>
-                </div>
+        <div class="card-header bg-light">
+            <h5 class="mb-0"><i class="fas fa-envelope me-2"></i>待發送店家郵件</h5>
+        </div>
+        <div class="card-body">
+            <p id="pending-email-count" class="mb-3">目前有 0 封待發送郵件</p>
+            <div class="d-flex gap-2">
+                <button id="export-pending-emails" class="btn-primary">
+                    <i class="fas fa-file-export me-1"></i> 導出待發送郵件
+                </button>
+                <button id="clear-pending-emails" class="btn-danger">
+                    <i class="fas fa-trash me-1"></i> 清除所有待發送郵件
+                </button>
             </div>
         </div>
     `;
     
-    // 添加到頁面
-    container.appendChild(emailSection);
+    // 將區段插入到 businessApproval-tab 的開頭
+    const firstChild = container.firstChild;
+    if (firstChild) {
+        container.insertBefore(emailSection, firstChild);
+    } else {
+        container.appendChild(emailSection);
+    }
     
     // 綁定按鈕事件
     const exportBtn = document.getElementById('export-pending-emails');
@@ -1739,7 +1768,9 @@ function createEmailExportSection() {
         clearBtn.addEventListener('click', clearPendingEmails);
     }
     
-    // 更新狀態
+    console.log('郵件導出區段已創建');
+    
+    // 立即更新狀態
     updateExportButtonStatus();
 }
 
