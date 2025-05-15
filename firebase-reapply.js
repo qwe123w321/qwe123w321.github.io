@@ -923,6 +923,7 @@ async function submitReapplication(e) {
             description: businessDescription,
             contactName: contactName,
             contactPhone: contactPhone,
+            email: user.email,
             ownerId: user.uid, // 確保包含 ownerId
             status: 'pending', // 改為待審核狀態
             rejectReason: null, // 清除拒絕原因
@@ -1066,6 +1067,7 @@ async function submitReapplication(e) {
             description: businessDescription,
             contactName: contactName,
             contactPhone: contactPhone,
+            email: user.email,
             licenseUrls: licenseUrls,
             status: 'pending',
             rejectReason: null,
