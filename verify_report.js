@@ -4578,8 +4578,8 @@ async function rejectVerification() {
         
         // 先獲取驗證請求數據，用於之後發送通知
         const requestDocRef = doc(db, 'PhotoVerificationRequest', requestId);
-        const requestDoc = get(requestDocRef);
-        if (!requestDoc.exists) {
+        const requestDoc = await getDoc(requestDocRef); // 修正：使用 getDoc 而不是 get
+        if (!requestDoc.exists()) { // 修正：使用 exists() 方法
             throw new Error('找不到驗證請求');
         }
         const requestData = requestDoc.data();
@@ -4599,6 +4599,11 @@ async function rejectVerification() {
         });
         
         alert('已拒絕驗證請求並刪除記錄');
+        
+        // 重置按鈕狀態
+        rejectBtn.disabled = false;
+        rejectBtn.textContent = '拒絕驗證';
+        
         backToVerificationList();
         
     } catch (error) {
@@ -4610,7 +4615,6 @@ async function rejectVerification() {
         rejectBtn.textContent = '拒絕驗證';
     }
 }
-
 
 // 加載照片驗證請求
 async function loadVerificationRequests() {
