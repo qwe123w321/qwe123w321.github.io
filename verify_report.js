@@ -4568,6 +4568,13 @@ async function rejectVerification() {
         return;
     }
     
+    // 獲取拒絕原因
+    const rejectReason = prompt('請輸入拒絕原因：', '照片模糊或未清楚顯示本人，請重新拍攝');
+    if (!rejectReason || rejectReason.trim() === '') {
+        alert('請輸入拒絕原因');
+        return;
+    }
+    
     const confirmReject = confirm('確定要拒絕此驗證請求嗎？');
     if (!confirmReject) return;
     
@@ -4576,15 +4583,26 @@ async function rejectVerification() {
         rejectBtn.disabled = true;
         rejectBtn.innerHTML = '<div class="loading-spinner"></div> 處理中...';
         
-        // 先獲取驗證請求數據，用於之後發送通知
+        // 先獲取驗證請求數據和用戶數據
         const requestDocRef = doc(db, 'PhotoVerificationRequest', requestId);
-        const requestDoc = await getDoc(requestDocRef); // 修正：使用 getDoc 而不是 get
-        if (!requestDoc.exists()) { // 修正：使用 exists() 方法
+        const requestDoc = await getDoc(requestDocRef);
+        if (!requestDoc.exists()) {
             throw new Error('找不到驗證請求');
         }
         const requestData = requestDoc.data();
         
-        // 直接刪除驗證請求記錄，而不是更新它的狀態
+        // 獲取用戶的 email
+        const userDocRef = doc(db, 'userprofileData', userId);
+        const userDoc = await getDoc(userDocRef);
+        let userEmail = '';
+        let userName = '';
+        if (userDoc.exists()) {
+            const userData = userDoc.data();
+            userEmail = userData.email || '';
+            userName = userData.name || requestData.userName || '用戶';
+        }
+        
+        // 直接刪除驗證請求記錄
         await deleteDoc(requestDocRef);
         console.log('已刪除驗證請求:', requestId);
         
@@ -4593,10 +4611,30 @@ async function rejectVerification() {
         await addDoc(notificationsRef, {
             userId: userId,
             type: 'verification_rejected',
-            message: '您的照片驗證請求未通過審核，請確保照片清晰顯示您本人，並按照指示的動作拍攝。',
+            message: '您的照片驗證請求未通過審核，請確保網路順暢及照片清晰顯示您本人，並按照指示的動作拍攝。',
             isRead: false,
             createdAt: serverTimestamp()
         });
+        
+        // 存儲郵件信息到localStorage以供導出
+        const emailData = {
+            timestamp: new Date().toISOString(),
+            userId: userId,
+            userName: userName,
+            userEmail: userEmail,
+            type: 'verification_rejected',
+            rejectReason: rejectReason.trim(),
+            requestId: requestId,
+            processed: false
+        };
+
+        // 獲取現有待發送郵件列表
+        let pendingEmails = JSON.parse(localStorage.getItem('pendingVerificationEmails') || '[]');
+        pendingEmails.push(emailData);
+        localStorage.setItem('pendingVerificationEmails', JSON.stringify(pendingEmails));
+
+        // 更新郵件導出按鈕狀態
+        updateVerificationEmailExportStatus();
         
         alert('已拒絕驗證請求並刪除記錄');
         
@@ -4613,6 +4651,165 @@ async function rejectVerification() {
         const rejectBtn = document.getElementById('verification-reject');
         rejectBtn.disabled = false;
         rejectBtn.textContent = '拒絕驗證';
+    }
+}
+
+// 更新驗證郵件導出狀態
+function updateVerificationEmailExportStatus() {
+    const pendingEmails = JSON.parse(localStorage.getItem('pendingVerificationEmails') || '[]');
+    
+    // 檢查是否有驗證郵件導出區段，如果沒有則創建
+    let emailSection = document.getElementById('verification-email-export-section');
+    if (!emailSection) {
+        createVerificationEmailExportSection();
+        emailSection = document.getElementById('verification-email-export-section');
+    }
+    
+    const countElement = document.getElementById('pending-verification-email-count');
+    
+    if (pendingEmails.length > 0) {
+        emailSection.style.display = 'block';
+        if (countElement) {
+            countElement.textContent = `目前有 ${pendingEmails.length} 封待發送的驗證拒絕郵件`;
+        }
+    } else {
+        if (countElement) {
+            countElement.textContent = `目前有 0 封待發送的驗證拒絕郵件`;
+        }
+    }
+    
+    console.log(`驗證郵件導出區段狀態已更新，共有 ${pendingEmails.length} 封待發送郵件`);
+}
+
+// 創建驗證郵件導出區塊
+function createVerificationEmailExportSection() {
+    // 確保不重複創建
+    if (document.getElementById('verification-email-export-section')) {
+        return;
+    }
+    
+    // 找到verification-tab容器
+    const container = document.getElementById('verification-tab');
+    if (!container) {
+        console.error('無法找到verification-tab容器來放置郵件導出區段');
+        return;
+    }
+    
+    const emailSection = document.createElement('div');
+    emailSection.id = 'verification-email-export-section';
+    emailSection.className = 'admin-section email-export-container card';
+    emailSection.style.margin = '20px 0';
+    emailSection.style.display = 'block';
+    
+    emailSection.innerHTML = `
+        <div class="card-header bg-light">
+            <h5 class="mb-0"><i class="fas fa-envelope me-2"></i>待發送驗證拒絕郵件</h5>
+        </div>
+        <div class="card-body">
+            <p id="pending-verification-email-count" class="mb-3">目前有 0 封待發送的驗證拒絕郵件</p>
+            <div class="d-flex gap-2">
+                <button id="export-verification-emails" class="btn-primary">
+                    <i class="fas fa-file-export me-1"></i> 導出驗證拒絕郵件
+                </button>
+                <button id="clear-verification-emails" class="btn-danger">
+                    <i class="fas fa-trash me-1"></i> 清除所有待發送郵件
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // 將區段插入到verification-tab的開頭
+    const firstChild = container.firstChild;
+    if (firstChild) {
+        container.insertBefore(emailSection, firstChild);
+    } else {
+        container.appendChild(emailSection);
+    }
+    
+    // 綁定按鈕事件
+    const exportBtn = document.getElementById('export-verification-emails');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportVerificationEmailsToExcel);
+    }
+    
+    const clearBtn = document.getElementById('clear-verification-emails');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearVerificationEmails);
+    }
+    
+    console.log('驗證郵件導出區段已創建');
+}
+
+// 導出驗證郵件Excel
+function exportVerificationEmailsToExcel() {
+    const pendingEmails = JSON.parse(localStorage.getItem('pendingVerificationEmails') || '[]');
+    
+    if (pendingEmails.length === 0) {
+        alert('沒有待處理的驗證拒絕郵件');
+        return;
+    }
+    
+    try {
+        // 準備數據
+        const formattedData = pendingEmails.map(email => {
+            return {
+                '時間戳記': formatDateTime(email.timestamp),
+                '用戶ID': email.userId,
+                '用戶名稱': email.userName,
+                '用戶信箱': email.userEmail,
+                '類型': '驗證拒絕',
+                '拒絕原因': email.rejectReason,
+                '請求ID': email.requestId,
+                '處理狀態': '未處理'
+            };
+        });
+        
+        // 確認SheetJS庫是否可用
+        if (typeof XLSX === 'undefined') {
+            loadSheetJSLibrary().then(() => {
+                createAndDownloadVerificationExcel(formattedData);
+            });
+        } else {
+            createAndDownloadVerificationExcel(formattedData);
+        }
+    } catch (error) {
+        console.error('導出驗證郵件Excel時發生錯誤:', error);
+        alert('導出Excel失敗: ' + error.message);
+    }
+}
+
+// 創建並下載驗證郵件Excel文件
+function createAndDownloadVerificationExcel(formattedData) {
+    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "驗證拒絕郵件");
+    
+    // 調整列寬
+    const colWidths = [
+        { wch: 20 }, // 時間戳記
+        { wch: 20 }, // 用戶ID
+        { wch: 15 }, // 用戶名稱
+        { wch: 25 }, // 用戶信箱
+        { wch: 10 }, // 類型
+        { wch: 30 }, // 拒絕原因
+        { wch: 20 }, // 請求ID
+        { wch: 10 }  // 處理狀態
+    ];
+    worksheet['!cols'] = colWidths;
+    
+    // 導出Excel文件
+    const fileName = `驗證拒絕郵件_${formatDateForFilename(new Date())}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+    
+    alert(`Excel文件已導出: ${fileName}\n\n請使用Python腳本處理此文件來發送郵件。`);
+}
+
+// 清除驗證郵件
+function clearVerificationEmails() {
+    if (confirm('確定要清除所有待發送的驗證拒絕郵件嗎？此操作無法撤銷。')) {
+        localStorage.removeItem('pendingVerificationEmails');
+        updateVerificationEmailExportStatus();
+        alert('所有待發送的驗證拒絕郵件已清除');
     }
 }
 
