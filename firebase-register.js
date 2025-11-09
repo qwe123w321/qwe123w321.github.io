@@ -5,6 +5,7 @@ console.log("開始加載 firebase-register.js");
 var nextStep, prevStep, validateStep, togglePasswordVisibility, updatePasswordStrength, updatePasswordRulesCheck;
 var handleRegisterSubmit, isEmpty, isValidEmail, isValidPhone, isStrongPassword;
 var showFieldError, clearFieldError, removeUploadedFile, enhancedUploadPreview, formatFileSize;
+var updateSummaryInfo;
 
 // 全局變量存儲上傳的檔案
 var uploadedFiles = [];
@@ -61,6 +62,122 @@ function initializeGlobalFunctions() {
             errorMessage.remove();
         }
     };
+
+    // === 添加 updateSummaryInfo 函數定義 ===
+    updateSummaryInfo = function() {
+        console.log('開始更新摘要信息');
+        
+        try {
+            // 獲取表單數據
+            const formData = {
+                // 步驟 1 的資料
+                email: document.getElementById('email')?.value || '',
+                
+                // 步驟 2 的資料
+                businessName: document.getElementById('businessName')?.value || '',
+                businessType: document.getElementById('businessType')?.value || '',
+                businessAddress: document.getElementById('businessAddress')?.value || '',
+                businessPhone: document.getElementById('businessPhone')?.value || '',
+                businessDescription: document.getElementById('businessDescription')?.value || '',
+                
+                // 步驟 3 的資料
+                contactName: document.getElementById('contactName')?.value || '',
+                contactPhone: document.getElementById('contactPhone')?.value || '',
+                uploadedFilesCount: uploadedFiles.length
+            };
+            
+            // 獲取摘要容器
+            const summaryContainer = document.querySelector('.summary-info .row');
+            
+            if (!summaryContainer) {
+                console.error('找不到摘要信息容器');
+                // 如果找不到容器，嘗試創建一個
+                const summaryInfo = document.querySelector('.summary-info');
+                if (summaryInfo) {
+                    const row = document.createElement('div');
+                    row.className = 'row';
+                    summaryInfo.appendChild(row);
+                    updateSummaryWithData(row, formData);
+                }
+                return;
+            }
+            
+            updateSummaryWithData(summaryContainer, formData);
+            
+        } catch (error) {
+            console.error('更新摘要信息時發生錯誤:', error);
+        }
+    };
+    
+    // 輔助函數：更新摘要數據
+    function updateSummaryWithData(container, data) {
+        // 清空現有內容
+        container.innerHTML = '';
+        
+        // 創建摘要 HTML
+        const summaryHTML = `
+            <div class="col-md-6 mb-3">
+                <h6 class="text-muted mb-2">基本資訊</h6>
+                <div class="summary-item mb-2">
+                    <strong>電子郵件：</strong>
+                    <span>${data.email || '未填寫'}</span>
+                </div>
+                <div class="summary-item mb-2">
+                    <strong>店家名稱：</strong>
+                    <span>${data.businessName || '未填寫'}</span>
+                </div>
+                <div class="summary-item mb-2">
+                    <strong>店家類型：</strong>
+                    <span>${getBusinessTypeLabel(data.businessType) || '未選擇'}</span>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-3">
+                <h6 class="text-muted mb-2">聯絡資訊</h6>
+                <div class="summary-item mb-2">
+                    <strong>店家地址：</strong>
+                    <span>${data.businessAddress || '未填寫'}</span>
+                </div>
+                <div class="summary-item mb-2">
+                    <strong>店家電話：</strong>
+                    <span>${data.businessPhone || '未填寫'}</span>
+                </div>
+                <div class="summary-item mb-2">
+                    <strong>聯絡人：</strong>
+                    <span>${data.contactName || '未填寫'}</span>
+                </div>
+            </div>
+            
+            <div class="col-12 mb-3">
+                <h6 class="text-muted mb-2">店家介紹</h6>
+                <div class="summary-item">
+                    <p class="mb-0 text-break">${data.businessDescription || '未填寫'}</p>
+                </div>
+            </div>
+            
+            <div class="col-12">
+                <h6 class="text-muted mb-2">上傳文件</h6>
+                <div class="summary-item">
+                    <span>${data.uploadedFilesCount > 0 ? `已上傳 ${data.uploadedFilesCount} 個檔案` : '未上傳任何檔案'}</span>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = summaryHTML;
+        console.log('摘要信息已更新');
+    }
+    
+    // 輔助函數：獲取業務類型標籤
+    function getBusinessTypeLabel(value) {
+        const types = {
+            'restaurant': '餐廳',
+            'cafe': '咖啡廳',
+            'bar': '酒吧',
+            'entertainment': '娛樂場所',
+            'other': '其他'
+        };
+        return types[value] || value;
+    }
     
     // 導出所有基本函數到全局
     window.isEmpty = isEmpty;
@@ -69,12 +186,349 @@ function initializeGlobalFunctions() {
     window.isStrongPassword = isStrongPassword;
     window.showFieldError = showFieldError;
     window.clearFieldError = clearFieldError;
+    window.updateSummaryInfo = updateSummaryInfo;  // 導出 updateSummaryInfo
     
     console.log("基本工具函數已初始化並導出到全局");
 }
 
+
 // 立即執行初始化
 initializeGlobalFunctions();
+
+// === 表單步驟控制（修正版本）===
+function setupStepNavigation() {
+    nextStep = async function(currentStep) {
+        console.log(`嘗試進入下一步: 從第 ${currentStep} 步到第 ${currentStep + 1} 步`);
+        
+        // 使用內部函數進行驗證，避免對外部函數的依賴
+        let isValid = true;
+        
+        try {
+            if (typeof validateStep === 'function') {
+                isValid = await validateStep(currentStep);
+            } else {
+                // 內部實現備用驗證邏輯
+                if (currentStep === 1) {
+                    const email = document.getElementById('email');
+                    const password = document.getElementById('password');
+                    const confirmPassword = document.getElementById('confirmPassword');
+                    
+                    if (!email.value || !isValidEmail(email.value)) {
+                        showFieldError(email, '請輸入有效的電子郵件');
+                        isValid = false;
+                    } else {
+                        clearFieldError(email);
+                    }
+                    
+                    if (!password.value || password.value.length < 8) {
+                        showFieldError(password, '密碼長度至少為8位');
+                        isValid = false;
+                    } else {
+                        clearFieldError(password);
+                    }
+                    
+                    if (password.value !== confirmPassword.value) {
+                        showFieldError(confirmPassword, '兩次輸入的密碼不一致');
+                        isValid = false;
+                    } else {
+                        clearFieldError(confirmPassword);
+                    }
+                } else if (currentStep === 2) {
+                    // 簡化的第二步驗證
+                    const businessName = document.getElementById('businessName');
+                    if (!businessName.value) {
+                        showFieldError(businessName, '請輸入店家名稱');
+                        isValid = false;
+                    } else {
+                        clearFieldError(businessName);
+                    }
+                } else if (currentStep === 3) {
+                    // 第三步驗證
+                    const contactName = document.getElementById('contactName');
+                    const contactPhone = document.getElementById('contactPhone');
+                    const termsCheck = document.getElementById('termsCheck');
+                    
+                    if (!contactName.value) {
+                        showFieldError(contactName, '請輸入聯絡人姓名');
+                        isValid = false;
+                    } else {
+                        clearFieldError(contactName);
+                    }
+                    
+                    if (!contactPhone.value) {
+                        showFieldError(contactPhone, '請輸入聯絡人電話');
+                        isValid = false;
+                    } else {
+                        clearFieldError(contactPhone);
+                    }
+                    
+                    if (!termsCheck.checked) {
+                        showFieldError(termsCheck, '請同意使用條款和隱私政策');
+                        isValid = false;
+                    } else {
+                        clearFieldError(termsCheck);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('驗證時發生錯誤:', error);
+            isValid = false;
+        }
+        
+        if (isValid) {
+            const nextStepNum = currentStep + 1;
+            console.log(`驗證通過，切換到步驟 ${nextStepNum}`);
+            
+            // 隱藏所有步驟
+            document.querySelectorAll('.form-step').forEach(step => {
+                step.classList.remove('active');
+                step.style.display = 'none';
+            });
+            
+            // 顯示下一步
+            const nextStepContent = document.getElementById(`step-${nextStepNum}-content`);
+            if (nextStepContent) {
+                nextStepContent.classList.add('active');
+                nextStepContent.style.display = 'block';
+                console.log(`步驟 ${nextStepNum} 內容已顯示`);
+                
+                // 如果是第4步，更新摘要信息
+                if (nextStepNum === 4) {
+                    console.log('進入步驟 4，準備更新摘要信息');
+                    // 使用 setTimeout 確保 DOM 完全渲染
+                    setTimeout(() => {
+                        if (typeof updateSummaryInfo === 'function') {
+                            updateSummaryInfo();
+                        } else {
+                            console.error('updateSummaryInfo 函數不可用');
+                        }
+                    }, 100);
+                }
+            } else {
+                console.error(`找不到步驟 ${nextStepNum} 的內容元素`);
+            }
+            
+            // 更新進度指示器
+            document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
+            const nextStepIndicator = document.getElementById(`step-${nextStepNum}`);
+            if (nextStepIndicator) {
+                nextStepIndicator.classList.add('active');
+            }
+            
+            // 滾動到頂部
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+            console.log('驗證失敗，停留在當前步驟');
+        }
+    };
+    
+    prevStep = function(currentStep) {
+        if (currentStep > 1) {
+            const prevStepNum = currentStep - 1;
+            console.log(`返回到步驟 ${prevStepNum}`);
+            
+            // 隱藏所有步驟
+            document.querySelectorAll('.form-step').forEach(step => {
+                step.classList.remove('active');
+                step.style.display = 'none';
+            });
+            
+            // 顯示上一步
+            const prevStepContent = document.getElementById(`step-${prevStepNum}-content`);
+            if (prevStepContent) {
+                prevStepContent.classList.add('active');
+                prevStepContent.style.display = 'block';
+            }
+            
+            // 更新進度指示器
+            document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
+            const prevStepIndicator = document.getElementById(`step-${prevStepNum}`);
+            if (prevStepIndicator) {
+                prevStepIndicator.classList.add('active');
+            }
+            
+            // 滾動到頂部
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+    
+    // 導出到全局
+    window.nextStep = nextStep;
+    window.prevStep = prevStep;
+}
+
+// 簡化的驗證步驟函數
+validateStep = async function(step) {
+    console.log(`驗證步驟 ${step}`);
+    
+    switch(step) {
+        case 1:
+            // 驗證步驟1：基本資訊
+            const email = document.getElementById('email');
+            const password = document.getElementById('password');
+            const confirmPassword = document.getElementById('confirmPassword');
+            
+            let isValid = true;
+            
+            if (!email.value || !isValidEmail(email.value)) {
+                showFieldError(email, '請輸入有效的電子郵件');
+                isValid = false;
+            }
+            
+            if (!password.value || password.value.length < 8) {
+                showFieldError(password, '密碼長度至少為8位');
+                isValid = false;
+            }
+            
+            if (password.value !== confirmPassword.value) {
+                showFieldError(confirmPassword, '兩次輸入的密碼不一致');
+                isValid = false;
+            }
+            
+            return isValid;
+            
+        case 2:
+            // 驗證步驟2：店家資訊
+            const businessName = document.getElementById('businessName');
+            const businessType = document.getElementById('businessType');
+            const businessAddress = document.getElementById('businessAddress');
+            const businessPhone = document.getElementById('businessPhone');
+            
+            let isValid2 = true;
+            
+            if (!businessName.value) {
+                showFieldError(businessName, '請輸入店家名稱');
+                isValid2 = false;
+            }
+            
+            if (!businessType.value) {
+                showFieldError(businessType, '請選擇店家類型');
+                isValid2 = false;
+            }
+            
+            if (!businessAddress.value) {
+                showFieldError(businessAddress, '請輸入店家地址');
+                isValid2 = false;
+            }
+            
+            if (!businessPhone.value || !isValidPhone(businessPhone.value)) {
+                showFieldError(businessPhone, '請輸入有效的店家電話');
+                isValid2 = false;
+            }
+            
+            return isValid2;
+            
+        case 3:
+            // 驗證步驟3：身份驗證
+            const contactName = document.getElementById('contactName');
+            const contactPhone = document.getElementById('contactPhone');
+            const termsCheck = document.getElementById('termsCheck');
+            
+            let isValid3 = true;
+            
+            if (!contactName.value) {
+                showFieldError(contactName, '請輸入聯絡人姓名');
+                isValid3 = false;
+            }
+            
+            if (!contactPhone.value || !isValidPhone(contactPhone.value)) {
+                showFieldError(contactPhone, '請輸入有效的聯絡人電話');
+                isValid3 = false;
+            }
+            
+            if (!termsCheck.checked) {
+                showFieldError(termsCheck, '請同意使用條款和隱私政策');
+                isValid3 = false;
+            }
+            
+            // 檢查是否有上傳文件
+            if (uploadedFiles.length === 0) {
+                alert('請上傳至少一個營業執照或相關證明文件');
+                isValid3 = false;
+            }
+            
+            return isValid3;
+            
+        default:
+            return true;
+    }
+};
+
+// 導出 validateStep 到全局
+window.validateStep = validateStep;
+
+// 格式化文件大小的輔助函數
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+window.formatFileSize = formatFileSize;
+
+console.log('firebase-register.js 基本功能加載完成');
+
+// DOMContentLoaded 事件處理
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM 內容已加載，開始初始化...');
+    
+    // 設置步驟導航
+    setupStepNavigation();
+    
+    // 初始化第一步為活動狀態
+    const firstStep = document.getElementById('step-1-content');
+    if (firstStep) {
+        firstStep.classList.add('active');
+        firstStep.style.display = 'block';
+    }
+    
+    // 綁定按鈕事件
+    const nextButtons = document.querySelectorAll('.btn-next');
+    nextButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const currentStep = parseInt(this.getAttribute('data-step'));
+            console.log(`下一步按鈕點擊，當前步驟: ${currentStep}`);
+            
+            if (typeof window.nextStep === 'function') {
+                window.nextStep(currentStep);
+            } else {
+                console.error('nextStep 函數不可用');
+            }
+        });
+    });
+    
+    const prevButtons = document.querySelectorAll('.btn-prev');
+    prevButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const currentStep = parseInt(this.getAttribute('data-step'));
+            console.log(`上一步按鈕點擊，當前步驟: ${currentStep}`);
+            
+            if (typeof window.prevStep === 'function') {
+                window.prevStep(currentStep);
+            } else {
+                console.error('prevStep 函數不可用');
+            }
+        });
+    });
+    
+    // 添加刷新按鈕的事件處理
+    const refreshButton = document.querySelector('.btn-outline-secondary[onclick="updateSummaryInfo()"]');
+    if (refreshButton) {
+        refreshButton.removeAttribute('onclick');
+        refreshButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (typeof updateSummaryInfo === 'function') {
+                updateSummaryInfo();
+            }
+        });
+    }
+    
+    console.log('初始化完成');
+});
 
 // 開始導入模組
 // 使用try-catch確保即使導入失敗，頁面仍可運作
@@ -248,7 +702,7 @@ function ensureGlobalFunctions() {
             const nextStepIndicator = document.getElementById(`step-${nextStep}`);
             if (nextStepIndicator) nextStepIndicator.classList.add('active');
             
-            // 如果是第3步，顯示提交按鈕
+            // 如果是第4步，顯示提交按鈕
             const submitButton = document.querySelector('.btn-submit');
             if (submitButton && nextStep === 4) {
                 submitButton.style.display = 'block';
