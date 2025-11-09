@@ -62,6 +62,90 @@ function initializeGlobalFunctions() {
         }
     };
     
+    // 更新步驟4的摘要資訊函數
+    updateSummaryInfo = function() {
+        console.log("更新步驟4摘要資訊");
+        
+        const summaryContainer = document.querySelector('.summary-info .row');
+        if (!summaryContainer) {
+            console.error("找不到摘要資訊容器");
+            return;
+        }
+        
+        // 收集所有表單資料
+        const formData = {
+            email: document.getElementById('email')?.value || '',
+            businessName: document.getElementById('businessName')?.value || '',
+            businessType: document.getElementById('businessType')?.value || '',
+            businessAddress: document.getElementById('businessAddress')?.value || '',
+            businessPhone: document.getElementById('businessPhone')?.value || '',
+            businessDescription: document.getElementById('businessDescription')?.value || '',
+            contactName: document.getElementById('contactName')?.value || '',
+            contactPhone: document.getElementById('contactPhone')?.value || '',
+            uploadedFilesCount: uploadedFiles.length || 0
+        };
+        
+        // 生成摘要 HTML
+        summaryContainer.innerHTML = `
+            <div class="col-md-6 mb-3">
+                <div class="summary-item">
+                    <strong><i class="fas fa-envelope text-primary me-2"></i>電子郵件:</strong>
+                    <p class="mb-0 ms-4">${formData.email || '未填寫'}</p>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="summary-item">
+                    <strong><i class="fas fa-store text-primary me-2"></i>店家名稱:</strong>
+                    <p class="mb-0 ms-4">${formData.businessName || '未填寫'}</p>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="summary-item">
+                    <strong><i class="fas fa-tag text-primary me-2"></i>店家類型:</strong>
+                    <p class="mb-0 ms-4">${formData.businessType || '未填寫'}</p>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="summary-item">
+                    <strong><i class="fas fa-map-marker-alt text-primary me-2"></i>店家地址:</strong>
+                    <p class="mb-0 ms-4">${formData.businessAddress || '未填寫'}</p>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="summary-item">
+                    <strong><i class="fas fa-phone text-primary me-2"></i>店家電話:</strong>
+                    <p class="mb-0 ms-4">${formData.businessPhone || '未填寫'}</p>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="summary-item">
+                    <strong><i class="fas fa-user text-primary me-2"></i>聯絡人姓名:</strong>
+                    <p class="mb-0 ms-4">${formData.contactName || '未填寫'}</p>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="summary-item">
+                    <strong><i class="fas fa-mobile-alt text-primary me-2"></i>聯絡人手機:</strong>
+                    <p class="mb-0 ms-4">${formData.contactPhone || '未填寫'}</p>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="summary-item">
+                    <strong><i class="fas fa-file-upload text-primary me-2"></i>上傳檔案:</strong>
+                    <p class="mb-0 ms-4">${formData.uploadedFilesCount} 個檔案</p>
+                </div>
+            </div>
+            <div class="col-12 mb-3">
+                <div class="summary-item">
+                    <strong><i class="fas fa-info-circle text-primary me-2"></i>店家介紹:</strong>
+                    <p class="mb-0 ms-4 text-muted" style="white-space: pre-wrap;">${formData.businessDescription || '未填寫'}</p>
+                </div>
+            </div>
+        `;
+        
+        console.log("摘要資訊已更新", formData);
+    };
+    
     // 導出所有基本函數到全局
     window.isEmpty = isEmpty;
     window.isValidEmail = isValidEmail;
@@ -69,6 +153,7 @@ function initializeGlobalFunctions() {
     window.isStrongPassword = isStrongPassword;
     window.showFieldError = showFieldError;
     window.clearFieldError = clearFieldError;
+    window.updateSummaryInfo = updateSummaryInfo;
     
     console.log("基本工具函數已初始化並導出到全局");
 }
