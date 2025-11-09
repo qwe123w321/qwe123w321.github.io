@@ -248,9 +248,9 @@ function ensureGlobalFunctions() {
             const nextStepIndicator = document.getElementById(`step-${nextStep}`);
             if (nextStepIndicator) nextStepIndicator.classList.add('active');
             
-            // 如果是第4步，顯示提交按鈕
+            // 如果是第3步，顯示提交按鈕
             const submitButton = document.querySelector('.btn-submit');
-            if (submitButton && nextStep === 4) {
+            if (submitButton && nextStep === 3) {
                 submitButton.style.display = 'block';
             }
             
