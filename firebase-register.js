@@ -1045,72 +1045,92 @@ function renderFilePreview(file, index, showDeleteButton = true) {
 
 // 更新摘要信息
 function updateSummaryInfo() {
-   const summaryContainer = document.querySelector('.summary-info .row');
-   if (!summaryContainer) return;
-   
-   // 清空原有內容
-   summaryContainer.innerHTML = '';
-   
-   // 獲取各步驟的輸入值
-   const email = document.getElementById('email')?.value || '';
-   const businessName = document.getElementById('businessName')?.value || '';
-   const businessType = document.getElementById('businessType')?.value || '';
-   const businessDescription = document.getElementById('businessDescription')?.value || '';
-   const businessAddress = document.getElementById('businessAddress')?.value || '';
-   const businessPhone = document.getElementById('businessPhone')?.value || '';
-   const contactName = document.getElementById('contactName')?.value || '';
-   const contactPhone = document.getElementById('contactPhone')?.value || '';
-   const uploadedFilesCount = uploadedFiles.length;
-   
-   // 創建摘要項目
-   const summaryItems = [
-       { label: '電子郵件', value: email },
-       { label: '店家名稱', value: businessName },
-       { label: '店家類型', value: businessType },
-       { label: '店家地址', value: businessAddress },
-       { label: '店家電話', value: businessPhone },
-       { label: '店家介紹', value: businessDescription },
-       { label: '聯絡人姓名', value: contactName },
-       { label: '聯絡人電話', value: contactPhone },
-       { label: '上傳證明文件', value: `${uploadedFilesCount}個檔案` }
-   ];
-   
-   // 顯示基本信息
-   summaryItems.forEach(item => {
-       const col = document.createElement('div');
-       col.className = 'col-md-12 mb-2';
-       col.innerHTML = `
-           <div class="d-flex">
-               <div class="fw-bold me-3" style="min-width: 120px;">${item.label}:</div>
-               <div class="text-break">${item.value || '尚未填寫'}</div>
-           </div>
-       `;
-       summaryContainer.appendChild(col);
-   });
-   
-   // 添加文件預覽區域（如果有上傳文件）
-   if (uploadedFilesCount > 0) {
-       // 創建標題行
-       const titleRow = document.createElement('div');
-       titleRow.className = 'col-12 mt-4 mb-2';
-       titleRow.innerHTML = '<h6 class="fw-bold">已上傳檔案:</h6>';
-       summaryContainer.appendChild(titleRow);
-       
-       // 創建預覽區域
-       const filesGrid = document.createElement('div');
-       filesGrid.className = 'row g-3';
-       
-       // 使用函數渲染預覽，但不顯示刪除按鈕
-       uploadedFiles.forEach((file, index) => {
-           const filePreviewEl = renderFilePreview(file, index, false);
-           filesGrid.appendChild(filePreviewEl);
-       });
-       
-       const filesContainer = document.createElement('div');
-       filesContainer.className = 'col-12';
-       filesContainer.appendChild(filesGrid);
-       summaryContainer.appendChild(filesContainer);
-   }
+    try {
+        const summaryContainer = document.querySelector('.summary-info .row');
+        if (!summaryContainer) {
+            console.warn('找不到 .summary-info .row 容器');
+            return;
+        }
+
+        // log 方便除錯
+        console.log('updateSummaryInfo 執行中...', {
+            email: !!document.getElementById('email'),
+            businessName: !!document.getElementById('businessName'),
+            uploadedFilesDefined: typeof uploadedFiles !== 'undefined'
+        });
+
+        // 預先複製資料，避免在中途拋錯後留下空容器
+        const email = document.getElementById('email')?.value || '';
+        const businessName = document.getElementById('businessName')?.value || '';
+        const businessType = document.getElementById('businessType')?.value || '';
+        const businessDescription = document.getElementById('businessDescription')?.value || '';
+        const businessAddress = document.getElementById('businessAddress')?.value || '';
+        const businessPhone = document.getElementById('businessPhone')?.value || '';
+        const contactName = document.getElementById('contactName')?.value || '';
+        const contactPhone = document.getElementById('contactPhone')?.value || '';
+        const files = (Array.isArray(uploadedFiles) ? uploadedFiles.slice() : []);
+        const uploadedFilesCount = files.length;
+
+        // 現在把內容組成一個 fragment，最後一次性替換 innerHTML（降低中途錯誤造成空白的機率）
+        const frag = document.createDocumentFragment();
+
+        const summaryItems = [
+            { label: '電子郵件', value: email },
+            { label: '店家名稱', value: businessName },
+            { label: '店家類型', value: businessType },
+            { label: '店家地址', value: businessAddress },
+            { label: '店家電話', value: businessPhone },
+            { label: '店家介紹', value: businessDescription },
+            { label: '聯絡人姓名', value: contactName },
+            { label: '聯絡人電話', value: contactPhone },
+            { label: '上傳證明文件', value: `${uploadedFilesCount}個檔案` }
+        ];
+
+        summaryItems.forEach(item => {
+            const col = document.createElement('div');
+            col.className = 'col-md-12 mb-2';
+            col.innerHTML = `
+                <div class="d-flex">
+                    <div class="fw-bold me-3" style="min-width: 120px;">${item.label}:</div>
+                    <div class="text-break">${item.value || '尚未填寫'}</div>
+                </div>
+            `;
+            frag.appendChild(col);
+        });
+
+        if (uploadedFilesCount > 0) {
+            const titleRow = document.createElement('div');
+            titleRow.className = 'col-12 mt-4 mb-2';
+            titleRow.innerHTML = '<h6 class="fw-bold">已上傳檔案:</h6>';
+            frag.appendChild(titleRow);
+
+            const filesGrid = document.createElement('div');
+            filesGrid.className = 'row g-3';
+
+            files.forEach((file, index) => {
+                try {
+                    // renderFilePreview 可能會拋錯，因此單獨 try/catch
+                    const filePreviewEl = renderFilePreview(file, index, false);
+                    if (filePreviewEl) filesGrid.appendChild(filePreviewEl);
+                } catch (err) {
+                    console.warn('renderFilePreview 出錯（忽略該檔案預覽）:', err, file);
+                }
+            });
+
+            const filesContainer = document.createElement('div');
+            filesContainer.className = 'col-12';
+            filesContainer.appendChild(filesGrid);
+            frag.appendChild(filesContainer);
+        }
+
+        // 成功組好 fragment 再清空 + append —— 保證不會因中途例外而留下空白
+        summaryContainer.innerHTML = '';
+        summaryContainer.appendChild(frag);
+
+    } catch (err) {
+        console.error('updateSummaryInfo 發生錯誤:', err);
+        // 不要把 summaryContainer 清空（已在 try 裡保護），若需要可以顯示一條錯誤訊息給使用者
+    }
 }
 
 // 初始化文件上傳功能
