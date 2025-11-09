@@ -248,9 +248,9 @@ function ensureGlobalFunctions() {
             const nextStepIndicator = document.getElementById(`step-${nextStep}`);
             if (nextStepIndicator) nextStepIndicator.classList.add('active');
             
-            // 如果是第3步，顯示提交按鈕
+            // 如果是第4步，顯示提交按鈕
             const submitButton = document.querySelector('.btn-submit');
-            if (submitButton && nextStep === 3) {
+            if (submitButton && nextStep === 4) {
                 submitButton.style.display = 'block';
             }
             
@@ -1046,7 +1046,7 @@ function renderFilePreview(file, index, showDeleteButton = true) {
 // 更新摘要信息
 function updateSummaryInfo() {
   try {
-    const summaryContainer = document.querySelector('.summary-info .row');
+    const summaryContainer = document.querySelector('#step-4-content .summary-info .row');
     if (!summaryContainer) {
       console.warn('⚠️ 找不到 .summary-info .row 容器');
       return;
