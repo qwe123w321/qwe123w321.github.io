@@ -5,7 +5,6 @@ console.log("開始加載 firebase-register.js");
 var nextStep, prevStep, validateStep, togglePasswordVisibility, updatePasswordStrength, updatePasswordRulesCheck;
 var handleRegisterSubmit, isEmpty, isValidEmail, isValidPhone, isStrongPassword;
 var showFieldError, clearFieldError, removeUploadedFile, enhancedUploadPreview, formatFileSize;
-var updateSummaryInfo;
 
 // 全局變量存儲上傳的檔案
 var uploadedFiles = [];
