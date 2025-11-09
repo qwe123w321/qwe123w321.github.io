@@ -228,9 +228,20 @@ function ensureGlobalFunctions() {
             const nextStep = currentStep + 1;
             
             // 切換步驟內容
-            document.querySelectorAll('.form-step').forEach(step => step.classList.remove('active'));
+            // document.querySelectorAll('.form-step').forEach(step => step.classList.remove('active'));
+            // const nextStepContent = document.getElementById(`step-${nextStep}-content`);
+            // if (nextStepContent) nextStepContent.classList.add('active');
+            document.querySelectorAll('.form-step').forEach(step => {
+                step.classList.remove('active');
+                // 確保隱藏所有步驟
+                step.style.display = 'none';
+            });
             const nextStepContent = document.getElementById(`step-${nextStep}-content`);
-            if (nextStepContent) nextStepContent.classList.add('active');
+            if (nextStepContent) {
+                nextStepContent.classList.add('active');
+                // 明確顯示當前步驟，覆蓋內聯樣式
+                nextStepContent.style.display = 'block';
+            }
             
             // 更新進度指示器
             document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
@@ -244,10 +255,26 @@ function ensureGlobalFunctions() {
             }
             
             // 如果進入第4步，更新摘要信息
+            // if (nextStep === 4) {
+            //     try {
+            //         if (typeof updateSummaryInfo === 'function') {
+            //             updateSummaryInfo();
+            //         }
+            //     } catch (error) {
+            //         console.error('更新摘要信息時發生錯誤:', error);
+            //     }
+            // }
             if (nextStep === 4) {
+                console.log('進入步驟 4，開始更新摘要信息');
                 try {
                     if (typeof updateSummaryInfo === 'function') {
-                        updateSummaryInfo();
+                        // 使用 setTimeout 確保 DOM 更新完成後再更新摘要
+                        setTimeout(() => {
+                            updateSummaryInfo();
+                            console.log('摘要信息更新完成');
+                        }, 100);
+                    } else {
+                        console.error('updateSummaryInfo 函數未定義');
                     }
                 } catch (error) {
                     console.error('更新摘要信息時發生錯誤:', error);
