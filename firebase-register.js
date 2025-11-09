@@ -335,7 +335,7 @@ function ensureGlobalFunctions() {
             
             // 如果是第4步，顯示提交按鈕
             const submitButton = document.querySelector('.btn-submit');
-            if (submitButton && nextStep === 3) {
+            if (submitButton && nextStep === 4) {
                 submitButton.style.display = 'block';
             }
             
